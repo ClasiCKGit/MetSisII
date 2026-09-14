@@ -29,10 +29,10 @@ Como socio:
 
 ## Integrantes 
 
-* Lautaro Capdeville 
-* Santino Crivera 
-* Ramiro Pizzico 
-* Guido Strizzi
+- Lautaro Capdeville 
+- Santino Crivera 
+- Ramiro Pizzico 
+- Guido Strizzi
 
 ## Tecnologías elegidas.
 
@@ -47,7 +47,7 @@ Como socio:
 
 ### Frontend
 - Frontend: React + vite
-- Styles: Tailwind, shadcn/ui
+- Styles: Tailwind + shadcn/ui
 
 ### Extra
 - Docker (a definir)
