@@ -131,14 +131,83 @@ FitManager/
 └── README.md
 ```
 
-## Cómo instalar dependencias.
 
-W.I.P.
+## Gestión de dependencias (npm workspaces)
 
-## Cómo ejecutar el proyecto.
+Este proyecto es un **monorepo** manejado con [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces). Contiene tres paquetes:
 
-W.I.P.
+| Paquete             | Ubicación          | Descripción                          |
+|---------------------|---------------------|---------------------------------------|
+| `@fitmanager/api`       | `apps/api`          | Backend (Express + TypeScript)        |
+| `@fitmanager/web`       | `apps/web`          | Frontend (React + Vite)               |
+| `@fitmanager/shared`    | `packages/shared`   | Tipos y schemas (Zod) compartidos     |
+
+### Reglas del equipo
+
+1. **Nunca ejecutes `npm install` dentro de `apps/api`, `apps/web` o `packages/shared`.** Todo se instala desde la raíz del repo.
+2. **Hay un solo `package-lock.json`**, en la raíz. No debe existir ningún otro `package-lock.json` en subcarpetas — si aparece uno, borralo.
+3. **Si tu código importa algo, esa dependencia tiene que estar declarada en el `package.json` del workspace que la usa**, aunque "funcione" sin declararla (ver sección de *phantom dependencies* más abajo).
+
+### Setup inicial
+
+```bash
+git clone https://github.com/ClasiCKGit/MetSisII
+cd MetSisII
+npm install
+```
+
+Esto instala las dependencias de los tres paquetes de una sola vez.
+
+### Comandos comunes
+
+```bash
+# Levantar API y Web en simultáneo
+npm run dev
+
+# Levantar solo uno
+npm run dev:api
+npm run dev:web
+
+# Instalar una dependencia en un workspace específico
+npm install <paquete> --workspace=apps/api
+npm install <paquete> --workspace=apps/web
+npm install -D <paquete> --workspace=packages/shared
+
+# Instalar una herramienta compartida para TODO el repo (linters, formatters, etc.)
+npm install -D <paquete> -w .
+
+# Build de todos los paquetes
+npm run build
+
+# Migraciones de base de datos (Prisma vive en apps/api)
+npm run db:migrate
+npm run db:studio
+
+# Ver qué workspaces detecta npm (útil para debug)
+npm ls --workspaces
+```
+
+### ⚠️ Phantom dependencies
+
+Como npm "hoistea" (sube) las dependencias comunes a un único `node_modules` en la raíz, es posible importar un paquete en `apps/api` que en realidad solo fue declarado en `apps/web`, y que igual funcione en tu máquina. **Esto es un bug latente**: se puede romper al buildear en Docker o si otro dev borra esa dependencia del otro workspace.
+
+Antes de abrir un PR, si agregaste un import nuevo, verificá que el paquete esté en el `package.json` correcto. Podés chequear dependencias no declaradas con:
+
+```bash
+npx depcheck apps/api
+npx depcheck apps/web
+```
+
+### Compartir código entre API y Web
+
+Todo lo que necesite vivir tanto en el backend como en el frontend (tipos de dominio, schemas de validación Zod) va en `packages/shared`. Se importa como un paquete normal:
+
+```ts
+import { CrearSocioSchema } from "@fitmanager/shared";
+```
+
+Si agregás algo nuevo ahí, exportalo desde `packages/shared/src/index.ts`.
 
 ## Estado actual y pendientes conocidos.
 
-0%
+W.I.P
