@@ -3,12 +3,7 @@
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
-
-    "baseUrl": ".",
-    "paths": {
-      "@gymflow/shared": ["../../packages/shared/src"]
-    },
-
+    
     // Environment Settings
     "target": "ES2022",
     "module": "commonjs",
