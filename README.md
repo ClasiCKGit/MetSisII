@@ -174,7 +174,7 @@ npm install <paquete> --workspace=apps/web
 npm install -D <paquete> --workspace=packages/shared
 
 # Instalar una herramienta compartida para TODO el repo (linters, formatters, etc.)
-npm install -D <paquete> -w .
+npm install -D <paquete> --workspaces
 
 # Build de todos los paquetes
 npm run build
