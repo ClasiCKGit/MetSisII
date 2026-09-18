@@ -54,5 +54,5 @@ export default [
   },
 
   // SIEMPRE al final: desactiva reglas que chocan con Prettier
-  prettierConfig
+  prettierConfig,
 ];

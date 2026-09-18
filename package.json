@@ -13,7 +13,10 @@
     "build": "npm run build --workspaces --if-present",
     "db:migrate": "npm run prisma:migrate -w apps/api",
     "db:studio": "npm run prisma:studio -w apps/api",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
