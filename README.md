@@ -263,6 +263,47 @@ Si usás VS Code, al abrir el repo te va a aparecer un aviso para instalar las e
 ```
 4. Nunca uses `git commit --no-verify` para saltear el hook salvo emergencia real — rompe el propósito de tenerlo.
 
-## Estado actual y pendientes conocidos.
+## Base de datos (Postgres con Docker)
 
-W.I.P
+Postgres corre en un contenedor Docker para desarrollo, así todos trabajamos con la misma versión sin instalar nada localmente.
+
+### Requisitos
+
+- Docker y Docker Compose instalados ([Docker Desktop](https://www.docker.com/products/docker-desktop/) en Windows/Mac lo incluye).
+
+### Setup inicial
+
+1. Copiá los archivos de ejemplo de variables de entorno:
+```bash
+   cp .env.example .env
+   cp apps/api/.env.example apps/api/.env
+```
+2. Levantá el contenedor:
+```bash
+   npm run db:up
+```
+3. Verificá que esté sano:
+```bash
+   docker compose ps   # el estado debe decir "healthy"
+```
+
+### Comandos
+
+```bash
+npm run db:up       # levanta Postgres en background
+npm run db:down      # lo detiene (los datos persisten)
+npm run db:logs      # ver logs en vivo
+npm run db:reset      # borra TODOS los datos y arranca de cero
+```
+
+### Conectarse manualmente (debug)
+
+```bash
+docker exec -it fitmanager-db psql -U fitmanager -d fitmanager_dev
+```
+
+### ⚠️ Notas importantes
+
+- **Nunca commitear `.env`** — solo `.env.example`. Si se agrega una variable nueva, actualizar también el `.example` correspondiente para que el resto del equipo sepa que existe.
+- Los datos persisten en un volumen de Docker (`pgdata`) entre reinicios de `db:down`/`db:up`. Si se necesita data limpia (por ejemplo, para probar migraciones desde cero), usar `npm run db:reset`.
+- El puerto por default es `5432`. Si se tiene un Postgres corriendo localmente en la máquina y choca el puerto, cambiar `POSTGRES_PORT` en el `.env` local (no en el `.example`).
