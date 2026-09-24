@@ -307,3 +307,15 @@ docker exec -it fitmanager-db psql -U fitmanager -d fitmanager_dev
 - **Nunca commitear `.env`** — solo `.env.example`. Si se agrega una variable nueva, actualizar también el `.example` correspondiente para que el resto del equipo sepa que existe.
 - Los datos persisten en un volumen de Docker (`pgdata`) entre reinicios de `db:down`/`db:up`. Si se necesita data limpia (por ejemplo, para probar migraciones desde cero), usar `npm run db:reset`.
 - El puerto por default es `5432`. Si se tiene un Postgres corriendo localmente en la máquina y choca el puerto, cambiar `POSTGRES_PORT` en el `.env` local (no en el `.example`).
+
+### ⚠️ Conflicto de puerto en Windows
+
+Si tenés un Postgres nativo instalado en Windows (por ejemplo, instalado junto con pgAdmin), puede estar corriendo como servicio y ocupando el puerto 5432, compitiendo con el contenedor de Docker. Los síntomas son confusos: `docker exec` para conectarte *dentro* del contenedor funciona bien, pero cualquier conexión desde Node/Prisma *hacia* `localhost:5432` falla con error de autenticación, aunque la contraseña sea correcta — porque en realidad estás hablando con el Postgres nativo, no con el del contenedor.
+
+**Diagnóstico:**
+```powershell
+Get-Service | Where-Object {$_.Name -like "*postgres*"}
+netstat -ano | findstr :5432
+```
+
+**Solución:** el proyecto usa el puerto `5433` en el host (mapeado al `5432` interno del contenedor) para evitar el conflicto. Ver `POSTGRES_PORT` en `.env.example`.
