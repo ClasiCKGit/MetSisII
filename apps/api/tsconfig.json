@@ -39,5 +39,5 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "exclude": ["prisma.config.ts", "dist"]
+  "exclude": ["prisma.config.ts", "prisma/seed.ts", "dist"]
 }
