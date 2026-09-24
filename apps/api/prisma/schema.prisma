@@ -11,3 +11,252 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ────────────────────────────────
+// Tenant
+// ────────────────────────────────
+
+model Gimnasio {
+  id        String   @id @default(uuid())
+  nombre    String
+  slug      String   @unique // para subdominios o identificación en la app
+  email     String?
+  telefono  String?
+  direccion String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios       Usuario[]
+  socios         Socio[]
+  profesores     Profesor[]
+  actividades    Actividad[]
+  tiposMembresia TipoMembresia[]
+  membresias     Membresia[]
+  pagos          Pago[]
+
+  @@map("gimnasios")
+}
+
+// ────────────────────────────────
+// Usuarios del sistema (admin / recepción)
+// ────────────────────────────────
+
+enum RolUsuario {
+  ADMIN
+  RECEPCIONISTA
+}
+
+model Usuario {
+  id           String     @id @default(uuid())
+  gimnasioId   String
+  email        String
+  passwordHash String
+  nombre       String
+  apellido     String
+  rol          RolUsuario @default(RECEPCIONISTA)
+  activo       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  gimnasio Gimnasio @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+
+  @@unique([gimnasioId, email])
+  @@index([gimnasioId])
+  @@map("usuarios")
+}
+
+// ────────────────────────────────
+// Socios
+// ────────────────────────────────
+
+model Socio {
+  id              String   @id @default(uuid())
+  gimnasioId      String
+  nombre          String
+  apellido        String
+  dni             String
+  email           String?
+  telefono        String?
+  fechaNacimiento DateTime?
+  fechaIngreso    DateTime @default(now())
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gimnasio   Gimnasio    @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  membresias Membresia[]
+  pagos      Pago[]
+
+  @@unique([gimnasioId, dni])
+  @@index([gimnasioId])
+  @@map("socios")
+}
+
+// ────────────────────────────────
+// Profesores (sin login, solo dato administrativo)
+// ────────────────────────────────
+
+model Profesor {
+  id           String   @id @default(uuid())
+  gimnasioId   String
+  nombre       String
+  apellido     String
+  dni          String?
+  email        String?
+  telefono     String?
+  especialidad String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  gimnasio    Gimnasio    @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  actividades Actividad[]
+
+  @@index([gimnasioId])
+  @@map("profesores")
+}
+
+// ────────────────────────────────
+// Actividades (musculación, jiujitsu, crossfit, etc.)
+// ────────────────────────────────
+
+model Actividad {
+  id          String   @id @default(uuid())
+  gimnasioId  String
+  nombre      String
+  descripcion String?
+  cupo        Int?     // null = sin límite
+  profesorId  String?
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gimnasio       Gimnasio        @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  profesor       Profesor?       @relation(fields: [profesorId], references: [id], onDelete: SetNull)
+  horarios       Horario[]
+  tiposMembresia TipoMembresia[]
+  membresias     Membresia[]
+
+  @@index([gimnasioId])
+  @@map("actividades")
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+  DOMINGO
+}
+
+model Horario {
+  id          String    @id @default(uuid())
+  actividadId String
+  diaSemana   DiaSemana
+  horaInicio  String    // "18:00" — guardado como string simple; se puede migrar a DateTime/Time si hace falta más adelante
+  horaFin     String
+
+  actividad Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+
+  @@index([actividadId])
+  @@map("horarios")
+}
+
+// ────────────────────────────────
+// Tipos de membresía (por actividad)
+// ────────────────────────────────
+
+model TipoMembresia {
+  id              String   @id @default(uuid())
+  gimnasioId      String
+  actividadId     String
+  nombre          String   // "Mensual", "Trimestral", "Clase suelta"
+  precio          Decimal  @db.Decimal(10, 2)
+  duracionDias    Int      // 30, 90, 365, etc.
+  cantidadClases  Int?     // null = ilimitado dentro del período
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gimnasio   Gimnasio    @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  actividad  Actividad   @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  membresias Membresia[]
+
+  @@index([gimnasioId])
+  @@index([actividadId])
+  @@map("tipos_membresia")
+}
+
+// ────────────────────────────────
+// Membresías (= inscripción del socio a una actividad puntual)
+// ────────────────────────────────
+
+enum EstadoMembresia {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+}
+
+model Membresia {
+  id              String          @id @default(uuid())
+  gimnasioId      String
+  socioId         String
+  actividadId     String
+  tipoMembresiaId String
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  estado          EstadoMembresia @default(ACTIVA)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  gimnasio      Gimnasio      @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  socio         Socio         @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  actividad     Actividad     @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  tipoMembresia TipoMembresia @relation(fields: [tipoMembresiaId], references: [id])
+  pagos         Pago[]
+
+  @@index([gimnasioId])
+  @@index([socioId, actividadId])
+  @@map("membresias")
+}
+
+// ────────────────────────────────
+// Pagos
+// ────────────────────────────────
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  MERCADO_PAGO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+  RECHAZADO
+}
+
+model Pago {
+  id          String     @id @default(uuid())
+  gimnasioId  String
+  socioId     String
+  membresiaId String?
+  monto       Decimal    @db.Decimal(10, 2)
+  fecha       DateTime   @default(now())
+  metodoPago  MetodoPago
+  estado      EstadoPago @default(PENDIENTE)
+  concepto    String?    // para pagos sueltos que no atan a una membresía
+  createdAt   DateTime   @default(now())
+
+  gimnasio  Gimnasio   @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
+  socio     Socio      @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  membresia Membresia? @relation(fields: [membresiaId], references: [id], onDelete: SetNull)
+
+  @@index([gimnasioId])
+  @@index([socioId])
+  @@map("pagos")
+}
