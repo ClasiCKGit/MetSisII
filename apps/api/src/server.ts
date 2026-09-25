@@ -1,42 +1,33 @@
-import "dotenv/config";
-import cors from "cors";
-import express, { type Request, type Response } from "express";
-import helmet from "helmet";
-import pino from "pino";
-import pinoHttp from "pino-http";
+// apps/api/src/server.ts
+import "./config/env"; // valida env vars al arrancar, antes que cualquier otra cosa
+import { env } from "./config/env";
+import { logger } from "./config/logger";
+import { createApp } from "./app";
+import { prisma } from "./config/database";
 
-// Crea la aplicación, define el puerto y configura el logger.
-const app = express();
-const port = Number(process.env.PORT ?? 3000);
-const logger = pino({ level: process.env.LOG_LEVEL ?? "info" });
+const app = createApp();
 
-// Agrega seguridad, CORS, parsing de JSON y logging de requests.
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
+async function start() {
+  try {
+    await prisma.$connect();
+    logger.info("Conectado a la base de datos");
 
-// Permite comprobar rápidamente si la API está funcionando.
-app.get("/health", (_request: Request, response: Response) => {
-  response.status(200).json({
-    status: "ok",
-    service: "fitmanager-api",
-  });
-});
-
-// Responde con un error cuando no existe la ruta solicitada.
-app.use((_request: Request, response: Response) => {
-  response.status(404).json({
-    error: "Ruta no encontrada",
-  });
-});
-
-// Inicia el servidor solo cuando este archivo se ejecuta directamente.
-if (require.main === module) {
-  app.listen(port, () => {
-    logger.info({ port }, "API escuchando");
-  });
+    app.listen(env.PORT, () => {
+      logger.info(`API corriendo en http://localhost:${env.PORT}`);
+    });
+  } catch (err) {
+    logger.error(err, "Error al iniciar el servidor");
+    process.exit(1);
+  }
 }
 
-// Exporta la aplicación para poder reutilizarla en tests.
-export { app };
+async function shutdown() {
+  logger.info("Cerrando servidor...");
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+start();
