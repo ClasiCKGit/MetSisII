@@ -22,15 +22,16 @@
     "build": "npm run build --workspaces --if-present",
     "db:migrate": "npm run prisma:migrate -w apps/api",
     "db:studio": "npm run prisma:studio -w apps/api",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:seed": "npm run prisma:seed -w apps/api",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky",
-    "db:up": "docker compose up -d",
-    "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f postgres",
-    "db:reset": "docker compose down -v && docker compose up -d"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

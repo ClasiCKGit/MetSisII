@@ -13,6 +13,7 @@ async function main() {
   await prisma.membresia.deleteMany();
   await prisma.tipoMembresia.deleteMany();
   await prisma.horario.deleteMany();
+  await prisma.actividadProfesor.deleteMany();
   await prisma.actividad.deleteMany();
   await prisma.profesor.deleteMany();
   await prisma.socio.deleteMany();
@@ -58,16 +59,6 @@ async function main() {
       apellido: "Torres",
       especialidad: "Musculación y funcional",
       telefono: "291-9990000",
-    },
-  });
-
-  const profeJiuJitsu = await prisma.profesor.create({
-    data: {
-      gimnasioId: gimnasio.id,
-      nombre: "Marina",
-      apellido: "Silva",
-      especialidad: "Jiu-Jitsu",
-      telefono: "291-3334444",
     },
   });
 
@@ -123,20 +114,46 @@ async function main() {
     ],
   });
 
+  const profeJiuJitsu = await prisma.profesor.create({
+    data: {
+      gimnasioId: gimnasio.id,
+      nombre: "Marina",
+      apellido: "Silva",
+      especialidad: "Jiu-Jitsu",
+      telefono: "291-3334444",
+    },
+  });
+
   const jiujitsu = await prisma.actividad.create({
     data: {
       gimnasioId: gimnasio.id,
       nombre: "Jiu-Jitsu",
       descripcion: "Clases de Jiu-Jitsu para todos los niveles",
       cupo: 20,
-      profesorId: profeJiuJitsu.id,
-      horarios: {
-        create: [
-          { diaSemana: "MARTES", horaInicio: "19:00", horaFin: "20:30" },
-          { diaSemana: "JUEVES", horaInicio: "19:00", horaFin: "20:30" },
-        ],
-      },
     },
+  });
+
+  const vinculoMarina = await prisma.actividadProfesor.create({
+    data: { gimnasioId: gimnasio.id, actividadId: jiujitsu.id, profesorId: profeJiuJitsu.id },
+  });
+
+  await prisma.horario.createMany({
+    data: [
+      {
+        actividadId: jiujitsu.id,
+        diaSemana: "MARTES",
+        horaInicio: "19:00",
+        horaFin: "20:30",
+        actividadProfesorId: vinculoMarina.id,
+      },
+      {
+        actividadId: jiujitsu.id,
+        diaSemana: "JUEVES",
+        horaInicio: "19:00",
+        horaFin: "20:30",
+        actividadProfesorId: vinculoMarina.id,
+      },
+    ],
   });
 
   const tipoMusculacionMensual = await prisma.tipoMembresia.create({
