@@ -319,3 +319,53 @@ netstat -ano | findstr :5432
 ```
 
 **Solución:** el proyecto usa el puerto `5433` en el host (mapeado al `5432` interno del contenedor) para evitar el conflicto. Ver `POSTGRES_PORT` en `.env.example`.
+
+## Backend — Estructura base (Express)
+
+### Arquitectura de arranque
+
+```
+src/
+├── config/
+│   ├── env.ts # Validación de variables de entorno (Zod)
+│   ├── logger.ts # Configuración de Pino
+│   └── database.ts # Instancia única de Prisma Client
+├── middlewares/
+│   └── error.middleware.ts # Manejo centralizado de errores + clase AppError
+├── types/
+│   └── express.d.ts # Extensión de tipos de Express (req.log)
+├── app.ts # Configuración de Express (middlewares, rutas, error handlers)
+└── server.ts # Entry point: valida env, conecta DB, levanta el servidor
+```
+
+`app.ts` y `server.ts` están separados a propósito: `app.ts` exporta la app de Express ya configurada, sin levantar ningún puerto, para poder testearla con Supertest. `server.ts` es el único responsable de poner el servidor a escuchar.
+
+### Variables de entorno
+
+Se validan al arrancar con Zod (`src/config/env.ts`). Si falta alguna o tiene un formato inválido, el servidor no arranca y muestra qué está mal. Ver `apps/api/.env.example` para la lista completa.
+
+### Manejo de errores
+
+Todo el manejo de errores pasa por un único middleware central (`error.middleware.ts`), montado al final de `app.ts`. Desde cualquier controller/service, para devolver un error controlado con su código HTTP correspondiente:
+
+```ts
+import { AppError } from "../../middlewares/error.middleware";
+
+if (!socio) {
+  throw new AppError(404, "Socio no encontrado");
+}
+```
+
+Los errores de validación de Zod (`ZodError`) se capturan automáticamente y devuelven `400` con el detalle de qué campos fallaron. Cualquier otro error no controlado devuelve `500`, y en desarrollo incluye el mensaje y el stack trace en la respuesta (en producción no, por seguridad).
+
+### Levantar el servidor
+
+```bash
+npm run dev -w apps/api
+```
+
+Verificar que esté vivo:
+
+```bash
+curl http://localhost:3000/health
+```
