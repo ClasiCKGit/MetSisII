@@ -369,3 +369,67 @@ Verificar que esté vivo:
 ```bash
 curl http://localhost:3000/health
 ```
+
+## ✅ Integración continua (GitHub Actions)
+
+Cada Pull Request hacia `main` y cada push a `main` dispara un workflow que valida el código en un entorno limpio, sin nada de lo que tenga instalado o generado cada desarrollador. Si falla, el PR no se puede mergear.
+
+El workflow está en `.github/workflows/ci.yml`.
+
+### Qué verifica
+
+El job **"Lint y build"** ejecuta, en este orden:
+
+| Paso | Comando | Qué detecta |
+|---|---|---|
+| Instalar dependencias | `npm ci` | `package-lock.json` desactualizado respecto a los `package.json` |
+| Lint | `npm run lint` | Errores de ESLint en todo el monorepo |
+| Formato | `npm run format:check` | Archivos que no cumplen las reglas de Prettier |
+| Prisma Client | `npm run prisma:generate -w apps/api` | Errores en `schema.prisma`; deja generado el cliente que necesita el build |
+| Build | `npm run build` | Errores de TypeScript, imports rotos, tipos incompatibles en API y web |
+
+Todavía no corre tests, porque el proyecto aún no tiene ninguno. Cuando se agreguen, se suma un paso al mismo workflow.
+
+### Cuándo corre
+
+- En cada **Pull Request** con destino `main`.
+- En cada **push** a `main`.
+
+> El workflow también está configurado para `develop`, pero hoy no usamos esa rama. Si se incorpora, la regla de protección descripta abajo también hay que replicarla ahí.
+
+Si se sube un commit nuevo a un PR mientras hay una corrida en curso, la anterior se cancela automáticamente.
+
+### Protección de la rama `main`
+
+`main` tiene un *ruleset* en GitHub que exige que el check **"Lint y build"** pase antes de poder mergear un PR. Como consecuencia:
+
+- No se puede mergear código que no compile o no pase el lint.
+- Todo cambio llega a `main` mediante un Pull Request.
+
+Los administradores del repo gestionan esta regla en **Settings → Rules → Rulesets**.
+
+### Reproducir el CI en tu máquina
+
+Antes de abrir un PR, corré los mismos pasos que va a correr GitHub. Si pasan localmente, deberían pasar en CI:
+
+```bash
+npm ci
+npm run lint
+npm run format:check
+npm run prisma:generate -w apps/api
+npm run build
+```
+
+> `npm ci` borra `node_modules` y reinstala todo desde el lock. Algo más rápido para el día a día son los pasos 2 a 5.
+
+### Si el CI falla en tu PR
+
+Entrá a la pestaña **Checks** del PR (o a **Actions** en el repo) y abrí el paso que quedó en rojo.
+
+| Falla en | Causa probable | Solución |
+|---|---|---|
+| Instalar dependencias | Cambiaste un `package.json` y no commiteaste el `package-lock.json` | Corré `npm install` y commiteá el lock actualizado |
+| Lint | Error de ESLint | `npm run lint:fix`; lo que no se autocorrija, se arregla a mano |
+| Verificar formato | Archivos sin formatear | `npm run format` y commiteá el resultado |
+| Generar Prisma Client | Error de sintaxis en `schema.prisma` | `npx prisma validate` dentro de `apps/api` |
+| Build | Error de tipos o imports | `npm run build` localmente para ver el detalle |
