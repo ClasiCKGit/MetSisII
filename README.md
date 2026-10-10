@@ -1,6 +1,6 @@
 # MetSisII
 
-## FitManager (nombre a definir)
+## FitManager
 
 Aplicacion web de gestion de gimnasios. La idea es brindar a el/los administradores y a los socios una plataforma para interactuar con el gimnasio. 
 
@@ -131,14 +131,305 @@ FitManager/
 └── README.md
 ```
 
-## Cómo instalar dependencias.
 
-W.I.P.
+## Gestión de dependencias (npm workspaces)
 
-## Cómo ejecutar el proyecto.
+Este proyecto es un **monorepo** manejado con [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces). Contiene tres paquetes:
 
-W.I.P.
+| Paquete             | Ubicación          | Descripción                          |
+|---------------------|---------------------|---------------------------------------|
+| `@fitmanager/api`       | `apps/api`          | Backend (Express + TypeScript)        |
+| `@fitmanager/web`       | `apps/web`          | Frontend (React + Vite)               |
+| `@fitmanager/shared`    | `packages/shared`   | Tipos y schemas (Zod) compartidos     |
 
-## Estado actual y pendientes conocidos.
+### Reglas del equipo
 
-0%
+1. **Nunca ejecutes `npm install` dentro de `apps/api`, `apps/web` o `packages/shared`.** Todo se instala desde la raíz del repo.
+2. **Hay un solo `package-lock.json`**, en la raíz. No debe existir ningún otro `package-lock.json` en subcarpetas — si aparece uno, borralo.
+3. **Si tu código importa algo, esa dependencia tiene que estar declarada en el `package.json` del workspace que la usa**, aunque "funcione" sin declararla (ver sección de *phantom dependencies* más abajo).
+
+### Setup inicial
+
+```bash
+git clone https://github.com/ClasiCKGit/MetSisII
+cd MetSisII
+npm install
+```
+
+Esto instala las dependencias de los tres paquetes de una sola vez.
+
+### Comandos comunes
+
+```bash
+# Levantar API y Web en simultáneo
+npm run dev
+
+# Levantar solo uno
+npm run dev:api
+npm run dev:web
+
+# Instalar una dependencia en un workspace específico
+npm install <paquete> --workspace=apps/api
+npm install <paquete> --workspace=apps/web
+npm install -D <paquete> --workspace=packages/shared
+
+# Instalar una herramienta compartida para TODO el repo (linters, formatters, etc.)
+npm install -D <paquete> --workspaces
+
+# Build de todos los paquetes
+npm run build
+
+# Migraciones de base de datos (Prisma vive en apps/api)
+npm run db:migrate
+npm run db:studio
+
+# Ver qué workspaces detecta npm (útil para debug)
+npm ls --workspaces
+```
+
+### ⚠️ Phantom dependencies
+
+Como npm "hoistea" (sube) las dependencias comunes a un único `node_modules` en la raíz, es posible importar un paquete en `apps/api` que en realidad solo fue declarado en `apps/web`, y que igual funcione en tu máquina. **Esto es un bug latente**: se puede romper al buildear en Docker o si otro dev borra esa dependencia del otro workspace.
+
+Antes de abrir un PR, si agregaste un import nuevo, verificá que el paquete esté en el `package.json` correcto. Podés chequear dependencias no declaradas con:
+
+```bash
+npx depcheck apps/api
+npx depcheck apps/web
+```
+
+### Compartir código entre API y Web
+
+Todo lo que necesite vivir tanto en el backend como en el frontend (tipos de dominio, schemas de validación Zod) va en `packages/shared`. Se importa como un paquete normal:
+
+```ts
+import { CrearSocioSchema } from "@fitmanager/shared";
+```
+
+Si agregás algo nuevo ahí, exportalo desde `packages/shared/src/index.ts`.
+
+## Linting y formateo de código
+
+El proyecto usa **ESLint** (flat config) y **Prettier** para mantener el código consistente entre los 4 desarrolladores, con **Husky + lint-staged** para aplicarlo automáticamente antes de cada commit.
+
+### Configuración
+
+Toda la config vive en la raíz del repo y aplica a los tres workspaces (`apps/api`, `apps/web`, `packages/shared`) desde un único lugar:
+
+| Archivo | Qué hace |
+|---|---|
+| `eslint.config.js` | Reglas de ESLint. Usa flat config (array plano), con reglas base de TypeScript para todo el repo y reglas específicas de React solo para `apps/web`. |
+| `.prettierrc.json` | Reglas de formato (comillas, punto y coma, ancho de línea, etc.). |
+| `.prettierignore` | Archivos/carpetas que Prettier no debe tocar. |
+| `.husky/pre-commit` | Hook de Git que corre `lint-staged` antes de cada commit. |
+| `.vscode/settings.json` | Formateo automático al guardar, configurado para todo el equipo. |
+| `.vscode/extensions.json` | Sugiere instalar las extensiones necesarias al abrir el repo en VS Code. |
+
+> **Nota:** `eslint-config-prettier` está incluido al final de `eslint.config.js` para desactivar las reglas de ESLint que compiten con Prettier. Nunca agregues reglas de formato (espaciado, comillas, etc.) directamente en `eslint.config.js` — eso es responsabilidad exclusiva de Prettier.
+
+### Comandos
+
+```bash
+# Revisar errores de lint en todo el repo
+npm run lint
+
+# Revisar y corregir automáticamente lo que se pueda
+npm run lint:fix
+
+# Formatear todo el código
+npm run format
+
+# Solo verificar formato, sin modificar archivos (útil en CI)
+npm run format:check
+```
+
+### Pre-commit hook (Husky)
+
+Al hacer `git commit`, se ejecuta automáticamente `lint-staged`, que corre ESLint y Prettier **solo sobre los archivos que estás commiteando** (no todo el repo, para que sea rápido). Si hay un error de lint que no se puede autocorregir, el commit se bloquea hasta que lo resuelvas.
+
+Esto es automático para todo el equipo: el hook se instala solo al correr `npm install` después de clonar el repo (gracias al script `prepare` que agrega Husky), no requiere configuración manual de cada dev.
+
+### Setup del editor
+
+Si usás VS Code, al abrir el repo te va a aparecer un aviso para instalar las extensiones de ESLint y Prettier. Aceptalas — con eso el formateo al guardar (`Ctrl+S` / `Cmd+S`) queda automático y consistente con lo que corre el hook de pre-commit, evitando sorpresas al commitear.
+
+### Si el lint te bloquea un commit
+
+1. Corré `npm run lint` para ver el detalle del error.
+2. Si es de formato, `npm run format` lo resuelve solo.
+3. Si es una regla de ESLint que no aplica en tu caso puntual, se puede desactivar línea por línea con un comentario, pero **evitalo salvo que sea justificado**:
+```ts
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+```
+4. Nunca uses `git commit --no-verify` para saltear el hook salvo emergencia real — rompe el propósito de tenerlo.
+
+## Base de datos (Postgres con Docker)
+
+Postgres corre en un contenedor Docker para desarrollo, así todos trabajamos con la misma versión sin instalar nada localmente.
+
+### Requisitos
+
+- Docker y Docker Compose instalados ([Docker Desktop](https://www.docker.com/products/docker-desktop/) en Windows/Mac lo incluye).
+
+### Setup inicial
+
+1. Copiá los archivos de ejemplo de variables de entorno:
+```bash
+   cp .env.example .env
+   cp apps/api/.env.example apps/api/.env
+```
+2. Levantá el contenedor:
+```bash
+   npm run db:up
+```
+3. Verificá que esté sano:
+```bash
+   docker compose ps   # el estado debe decir "healthy"
+```
+
+### Comandos
+
+```bash
+npm run db:up       # levanta Postgres en background
+npm run db:down      # lo detiene (los datos persisten)
+npm run db:logs      # ver logs en vivo
+npm run db:reset      # borra TODOS los datos y arranca de cero
+```
+
+### Conectarse manualmente (debug)
+
+```bash
+docker exec -it fitmanager-db psql -U fitmanager -d fitmanager_dev
+```
+
+### ⚠️ Notas importantes
+
+- **Nunca commitear `.env`** — solo `.env.example`. Si se agrega una variable nueva, actualizar también el `.example` correspondiente para que el resto del equipo sepa que existe.
+- Los datos persisten en un volumen de Docker (`pgdata`) entre reinicios de `db:down`/`db:up`. Si se necesita data limpia (por ejemplo, para probar migraciones desde cero), usar `npm run db:reset`.
+- El puerto por default es `5432`. Si se tiene un Postgres corriendo localmente en la máquina y choca el puerto, cambiar `POSTGRES_PORT` en el `.env` local (no en el `.example`).
+
+### ⚠️ Conflicto de puerto en Windows
+
+Si tenés un Postgres nativo instalado en Windows (por ejemplo, instalado junto con pgAdmin), puede estar corriendo como servicio y ocupando el puerto 5432, compitiendo con el contenedor de Docker. Los síntomas son confusos: `docker exec` para conectarte *dentro* del contenedor funciona bien, pero cualquier conexión desde Node/Prisma *hacia* `localhost:5432` falla con error de autenticación, aunque la contraseña sea correcta — porque en realidad estás hablando con el Postgres nativo, no con el del contenedor.
+
+**Diagnóstico:**
+```powershell
+Get-Service | Where-Object {$_.Name -like "*postgres*"}
+netstat -ano | findstr :5432
+```
+
+**Solución:** el proyecto usa el puerto `5433` en el host (mapeado al `5432` interno del contenedor) para evitar el conflicto. Ver `POSTGRES_PORT` en `.env.example`.
+
+## Backend — Estructura base (Express)
+
+### Arquitectura de arranque
+
+```
+src/
+├── config/
+│   ├── env.ts # Validación de variables de entorno (Zod)
+│   ├── logger.ts # Configuración de Pino
+│   └── database.ts # Instancia única de Prisma Client
+├── middlewares/
+│   └── error.middleware.ts # Manejo centralizado de errores + clase AppError
+├── types/
+│   └── express.d.ts # Extensión de tipos de Express (req.log)
+├── app.ts # Configuración de Express (middlewares, rutas, error handlers)
+└── server.ts # Entry point: valida env, conecta DB, levanta el servidor
+```
+
+`app.ts` y `server.ts` están separados a propósito: `app.ts` exporta la app de Express ya configurada, sin levantar ningún puerto, para poder testearla con Supertest. `server.ts` es el único responsable de poner el servidor a escuchar.
+
+### Variables de entorno
+
+Se validan al arrancar con Zod (`src/config/env.ts`). Si falta alguna o tiene un formato inválido, el servidor no arranca y muestra qué está mal. Ver `apps/api/.env.example` para la lista completa.
+
+### Manejo de errores
+
+Todo el manejo de errores pasa por un único middleware central (`error.middleware.ts`), montado al final de `app.ts`. Desde cualquier controller/service, para devolver un error controlado con su código HTTP correspondiente:
+
+```ts
+import { AppError } from "../../middlewares/error.middleware";
+
+if (!socio) {
+  throw new AppError(404, "Socio no encontrado");
+}
+```
+
+Los errores de validación de Zod (`ZodError`) se capturan automáticamente y devuelven `400` con el detalle de qué campos fallaron. Cualquier otro error no controlado devuelve `500`, y en desarrollo incluye el mensaje y el stack trace en la respuesta (en producción no, por seguridad).
+
+### Levantar el servidor
+
+```bash
+npm run dev -w apps/api
+```
+
+Verificar que esté vivo:
+
+```bash
+curl http://localhost:3000/health
+```
+
+## ✅ Integración continua (GitHub Actions)
+
+Cada Pull Request hacia `main` y cada push a `main` dispara un workflow que valida el código en un entorno limpio, sin nada de lo que tenga instalado o generado cada desarrollador. Si falla, el PR no se puede mergear.
+
+El workflow está en `.github/workflows/ci.yml`.
+
+### Qué verifica
+
+El job **"Lint y build"** ejecuta, en este orden:
+
+| Paso | Comando | Qué detecta |
+|---|---|---|
+| Instalar dependencias | `npm ci` | `package-lock.json` desactualizado respecto a los `package.json` |
+| Lint | `npm run lint` | Errores de ESLint en todo el monorepo |
+| Formato | `npm run format:check` | Archivos que no cumplen las reglas de Prettier |
+| Prisma Client | `npm run prisma:generate -w apps/api` | Errores en `schema.prisma`; deja generado el cliente que necesita el build |
+| Build | `npm run build` | Errores de TypeScript, imports rotos, tipos incompatibles en API y web |
+
+Todavía no corre tests, porque el proyecto aún no tiene ninguno. Cuando se agreguen, se suma un paso al mismo workflow.
+
+### Cuándo corre
+
+- En cada **Pull Request** con destino `main`.
+- En cada **push** a `main`.
+
+> El workflow también está configurado para `develop`, pero hoy no usamos esa rama. Si se incorpora, la regla de protección descripta abajo también hay que replicarla ahí.
+
+Si se sube un commit nuevo a un PR mientras hay una corrida en curso, la anterior se cancela automáticamente.
+
+### Protección de la rama `main`
+
+`main` tiene un *ruleset* en GitHub que exige que el check **"Lint y build"** pase antes de poder mergear un PR. Como consecuencia:
+
+- No se puede mergear código que no compile o no pase el lint.
+- Todo cambio llega a `main` mediante un Pull Request.
+
+Los administradores del repo gestionan esta regla en **Settings → Rules → Rulesets**.
+
+### Reproducir el CI en tu máquina
+
+Antes de abrir un PR, corré los mismos pasos que va a correr GitHub. Si pasan localmente, deberían pasar en CI:
+
+```bash
+npm ci
+npm run lint
+npm run format:check
+npm run prisma:generate -w apps/api
+npm run build
+```
+
+> `npm ci` borra `node_modules` y reinstala todo desde el lock. Algo más rápido para el día a día son los pasos 2 a 5.
+
+### Si el CI falla en tu PR
+
+Entrá a la pestaña **Checks** del PR (o a **Actions** en el repo) y abrí el paso que quedó en rojo.
+
+| Falla en | Causa probable | Solución |
+|---|---|---|
+| Instalar dependencias | Cambiaste un `package.json` y no commiteaste el `package-lock.json` | Corré `npm install` y commiteá el lock actualizado |
+| Lint | Error de ESLint | `npm run lint:fix`; lo que no se autocorrija, se arregla a mano |
+| Verificar formato | Archivos sin formatear | `npm run format` y commiteá el resultado |
+| Generar Prisma Client | Error de sintaxis en `schema.prisma` | `npx prisma validate` dentro de `apps/api` |
+| Build | Error de tipos o imports | `npm run build` localmente para ver el detalle |
