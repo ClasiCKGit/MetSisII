@@ -1,11 +1,14 @@
-import { Logger } from "pino";
-
-// Para que typescript no se queje cuando usamos req.log, que es un tipo que agrega pino-http
+import type { Logger } from "pino";
+import type { TenantClient } from "../config/tenant";
+import type { AuthContext } from "../modules/auth/auth.types";
 
 declare global {
   namespace Express {
     interface Request {
       log: Logger;
+      // Disponibles solo en rutas detrás del middleware `authenticate`
+      auth: AuthContext;
+      db: TenantClient;
     }
   }
 }
