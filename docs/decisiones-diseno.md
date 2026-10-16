@@ -220,17 +220,17 @@ flowchart LR
 
 ### 4.4 Decisión
 
-- **Aplicar la opción B ahora**, junto con una **guarda de entorno** que impida ejecutar el seed si `NODE_ENV === "production"` (hallazgo 4). Es el cambio de mayor valor y menor costo: aplica *Extract Method*, reduce el *Long Method* y elimina el riesgo operativo. *Estado: pendiente.*
+- **Aplicar la opción B**, junto con una **guarda de entorno** que impida ejecutar el seed si `NODE_ENV === "production"` (hallazgo 4). Es el cambio de mayor valor y menor costo: aplica *Extract Method*, reduce el *Long Method* y evita ejecutarlo accidentalmente en producción. *Estado: implementado en `apps/api/prisma/seed.ts`.*
 - **Dejar la opción C para el epic de testing**, cuando existan tests que necesiten construir datos: ahí el patrón Builder se justifica por reutilización. Hoy sería especulativo (*Speculative Generality*).
 - **Descartar la opción D**: no justifica una dependencia nueva.
 
 ### 4.5 Evidencia y trade-offs
 
-**Evidencia.** `apps/api/prisma/seed.ts`; el commit del refactor reemplaza `main()` por llamadas a funciones con nombre.
+**Evidencia.** `apps/api/prisma/seed.ts`: `main()` ahora coordina `limpiarBase`, `crearGimnasio`, `crearAdmin`, `crearMusculacion`, `crearJiuJitsu`, `crearSocios` y `crearMembresiasYPagos`. La primera instrucción de `main()` rechaza `NODE_ENV === "production"` antes de borrar datos.
 
-**Beneficios.** Legibilidad, cada paso se puede modificar de forma aislada, y desaparece el riesgo de borrar una base de producción.
+**Beneficios.** Legibilidad, cada paso se puede modificar de forma aislada y se evita ejecutar accidentalmente este seed cuando `NODE_ENV` es `production`.
 
-**Costos.** Más funciones y un objeto de contexto que pasa entre ellas. Hay que comprobar que el seed sigue produciendo los mismos datos (se verifica con `prisma studio`).
+**Costos.** Hay más funciones y algunos datos de contexto pasan como parámetros. La repetición de datos de ejemplo (`gimnasioId`, precios y nombres) sigue presente; se conserva para evitar una abstracción prematura. Hay que comprobar que el seed sigue produciendo los mismos datos (se verifica con `prisma studio`).
 
 ---
 
@@ -238,7 +238,7 @@ flowchart LR
 
 | Principio | Dónde se cumple | Dónde hay tensión | Decisión |
 |---|---|---|---|
-| **S** — Responsabilidad única | Módulo `auth`: rutas, controller, service, schema y JWT en archivos separados. `validate.middleware.ts` solo valida. | `tenant.ts` junta política, transformación y construcción. `seed.ts` hace todo en `main()`. | `tenant.ts`: se mantiene. `seed.ts`: se refactoriza (Análisis 3). |
+| **S** — Responsabilidad única | Módulo `auth`: rutas, controller, service, schema y JWT en archivos separados. `validate.middleware.ts` solo valida. | `tenant.ts` junta política, transformación y construcción. | `tenant.ts`: se mantiene. `seed.ts`: se divide en funciones por tarea (Análisis 3). |
 | **O** — Abierto/cerrado | Se agrega un router nuevo con un `app.use(...)`, sin tocar los existentes. | `TENANT_MODELS` y el `switch` de `scopeArgs` obligan a editar código para extender. | Tabla `modelo → campo` (Análisis 1). |
 | **L** — Sustitución de Liskov | `AppError extends Error` se puede usar donde se espera un `Error`, y `errorHandler` lo distingue con `instanceof`. | No hay otras jerarquías de herencia. | Sin acción. El principio casi no aplica porque preferimos funciones y composición a la herencia. |
 | **I** — Segregación de interfaces | Los middlewares reciben solo `req`, `res` y `next`. | `req.db` expone el cliente completo (incluidos `gimnasio` y `$queryRaw`). `AuthContext` agrupa siete campos aunque cada consumidor use pocos. | Se restringe `Gimnasio` (Análisis 1). `AuthContext` se deja: en TypeScript, con tipado estructural, no genera acoplamiento real. |
@@ -250,8 +250,8 @@ flowchart LR
 
 | Smell | Ubicación | Refactoring asociado | Estado |
 |---|---|---|---|
-| Long Method | `prisma/seed.ts`, `main()` | Extract Method | Pendiente |
-| Duplicated Code | `prisma/seed.ts` | Extract Method / Builder | Pendiente |
+| Long Method | `prisma/seed.ts`, `main()` | Extract Method | Implementado |
+| Duplicated Code | `prisma/seed.ts` | Builder / fábricas de datos | Pendiente; se difiere al epic de testing |
 | Switch Statements | `config/tenant.ts`, `scopeArgs` | Replace Conditional with Lookup Table | Pendiente |
 | Magic Numbers / Strings | `prisma/seed.ts` (precios, contraseña); `"Bearer "` en `auth.middleware.ts` | Replace Magic Number with Symbolic Constant | Se deja: son datos de ejemplo y un prefijo estándar de HTTP |
 | Conocimiento duplicado | `rolSchema` (Zod) y `RolUsuario` (Prisma) | Importar los valores del enum generado por Prisma | Se deja, con la contrapartida de que acoplaría `auth.types.ts` al cliente generado |
@@ -264,7 +264,7 @@ flowchart LR
 ## 7. Clean Code: criterios adoptados
 
 - **Nombres.** El dominio va en español (`Socio`, `Membresia`, `Pago`, `gimnasioId`) porque es el lenguaje del negocio. La infraestructura técnica va en inglés (`authenticate`, `validateBody`, `errorHandler`). Es una convención deliberada y consistente.
-- **Funciones chicas y de un solo nivel de abstracción.** Cada función de `tenant.ts` y de `jwt.ts` hace una cosa. `seed.ts` es la excepción conocida.
+- **Funciones chicas y de un solo nivel de abstracción.** Cada función de `tenant.ts` y de `jwt.ts` hace una cosa. En `seed.ts`, las tareas principales ahora están separadas en funciones con nombre.
 - **Errores con excepciones, no con códigos de retorno.** `throw new AppError(404, "...")` y un único `errorHandler` central. Express 5 captura los errores de handlers `async`, así que no hace falta `try/catch` repetido.
 - **Fallar rápido.** `env.ts` valida las variables de entorno al arrancar y detiene el proceso con un mensaje claro si falta alguna.
 - **Comentarios que explican el porqué, no el qué.** Por ejemplo, el comentario sobre `DUMMY_HASH` explica que existe para igualar el tiempo de respuesta del login.
@@ -302,6 +302,6 @@ Se anotan para evaluar cuando llegue cada epic, **no** como cambios decididos. S
 | Restringir `Gimnasio` en `req.db` | Pendiente |
 | Tabla `modelo → campo` en lugar de `TENANT_MODELS` | Pendiente |
 | `gimnasioId` en `Horario` | Pendiente (Epic 3) |
-| Refactor de `seed.ts` con guarda de entorno | Pendiente |
+| Refactor de `seed.ts` con guarda de entorno | Implementado |
 | Inyección del cliente por parámetro en services de negocio | Acordado, a confirmar con el primer módulo |
 | Builder de datos de prueba | Diferido al epic de testing |

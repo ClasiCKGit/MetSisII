@@ -1,4 +1,3 @@
-// apps/api/prisma/seed.ts
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -7,7 +6,7 @@ import bcrypt from "bcrypt";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
+async function limpiarBase() {
   // Limpieza en orden (respetando FKs)
   await prisma.pago.deleteMany();
   await prisma.membresia.deleteMany();
@@ -19,8 +18,10 @@ async function main() {
   await prisma.socio.deleteMany();
   await prisma.usuario.deleteMany();
   await prisma.gimnasio.deleteMany();
+}
 
-  const gimnasio = await prisma.gimnasio.create({
+async function crearGimnasio() {
+  return prisma.gimnasio.create({
     data: {
       nombre: "FitZone Bahía Blanca",
       slug: "fitzone-bahia-blanca",
@@ -29,11 +30,13 @@ async function main() {
       direccion: "Av. Colón 123, Bahía Blanca",
     },
   });
+}
 
+async function crearAdmin(gimnasioId: string) {
   const passwordHash = await bcrypt.hash("admin123", 10);
-  const admin = await prisma.usuario.create({
+  return prisma.usuario.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       email: "admin@fitzone.com",
       passwordHash,
       nombre: "Ana",
@@ -41,145 +44,137 @@ async function main() {
       rol: "ADMIN",
     },
   });
+}
 
-  const profeMusculacion1 = await prisma.profesor.create({
+async function crearMusculacion(gimnasioId: string) {
+  const profesorCarlos = await prisma.profesor.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       nombre: "Carlos",
       apellido: "Gómez",
       especialidad: "Musculación",
       telefono: "291-1112222",
     },
   });
-
-  const profeMusculacion2 = await prisma.profesor.create({
+  const profesorDiego = await prisma.profesor.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       nombre: "Diego",
       apellido: "Torres",
       especialidad: "Musculación y funcional",
       telefono: "291-9990000",
     },
   });
-
-  const musculacion = await prisma.actividad.create({
+  const actividad = await prisma.actividad.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       nombre: "Musculación",
       descripcion: "Sala de musculación libre con asesoramiento",
       cupo: 30,
     },
   });
 
-  // vinculamos ambos profesores a la actividad
   const vinculoCarlos = await prisma.actividadProfesor.create({
-    data: {
-      gimnasioId: gimnasio.id,
-      actividadId: musculacion.id,
-      profesorId: profeMusculacion1.id,
-    },
+    data: { gimnasioId, actividadId: actividad.id, profesorId: profesorCarlos.id },
   });
   const vinculoDiego = await prisma.actividadProfesor.create({
-    data: {
-      gimnasioId: gimnasio.id,
-      actividadId: musculacion.id,
-      profesorId: profeMusculacion2.id,
-    },
+    data: { gimnasioId, actividadId: actividad.id, profesorId: profesorDiego.id },
   });
 
   await prisma.horario.createMany({
     data: [
       {
-        actividadId: musculacion.id,
+        actividadId: actividad.id,
         diaSemana: "LUNES",
         horaInicio: "08:00",
         horaFin: "22:00",
         actividadProfesorId: vinculoCarlos.id,
       },
       {
-        actividadId: musculacion.id,
+        actividadId: actividad.id,
         diaSemana: "MIERCOLES",
         horaInicio: "08:00",
         horaFin: "22:00",
         actividadProfesorId: vinculoCarlos.id,
       },
       {
-        actividadId: musculacion.id,
+        actividadId: actividad.id,
         diaSemana: "VIERNES",
         horaInicio: "08:00",
         horaFin: "22:00",
         actividadProfesorId: vinculoDiego.id,
       },
-      { actividadId: musculacion.id, diaSemana: "SABADO", horaInicio: "09:00", horaFin: "13:00" }, // sin profesor fijo asignado
+      { actividadId: actividad.id, diaSemana: "SABADO", horaInicio: "09:00", horaFin: "13:00" }, // sin profesor fijo asignado
     ],
   });
 
-  const profeJiuJitsu = await prisma.profesor.create({
+  const tipoMembresia = await prisma.tipoMembresia.create({
     data: {
-      gimnasioId: gimnasio.id,
-      nombre: "Marina",
-      apellido: "Silva",
-      especialidad: "Jiu-Jitsu",
-      telefono: "291-3334444",
-    },
-  });
-
-  const jiujitsu = await prisma.actividad.create({
-    data: {
-      gimnasioId: gimnasio.id,
-      nombre: "Jiu-Jitsu",
-      descripcion: "Clases de Jiu-Jitsu para todos los niveles",
-      cupo: 20,
-    },
-  });
-
-  const vinculoMarina = await prisma.actividadProfesor.create({
-    data: { gimnasioId: gimnasio.id, actividadId: jiujitsu.id, profesorId: profeJiuJitsu.id },
-  });
-
-  await prisma.horario.createMany({
-    data: [
-      {
-        actividadId: jiujitsu.id,
-        diaSemana: "MARTES",
-        horaInicio: "19:00",
-        horaFin: "20:30",
-        actividadProfesorId: vinculoMarina.id,
-      },
-      {
-        actividadId: jiujitsu.id,
-        diaSemana: "JUEVES",
-        horaInicio: "19:00",
-        horaFin: "20:30",
-        actividadProfesorId: vinculoMarina.id,
-      },
-    ],
-  });
-
-  const tipoMusculacionMensual = await prisma.tipoMembresia.create({
-    data: {
-      gimnasioId: gimnasio.id,
-      actividadId: musculacion.id,
+      gimnasioId,
+      actividadId: actividad.id,
       nombre: "Mensual",
       precio: 15000,
       duracionDias: 30,
     },
   });
 
-  const tipoJiuJitsuMensual = await prisma.tipoMembresia.create({
+  return { actividad, tipoMembresia };
+}
+
+async function crearJiuJitsu(gimnasioId: string) {
+  const profesor = await prisma.profesor.create({
     data: {
-      gimnasioId: gimnasio.id,
-      actividadId: jiujitsu.id,
+      gimnasioId,
+      nombre: "Marina",
+      apellido: "Silva",
+      especialidad: "Jiu-Jitsu",
+      telefono: "291-3334444",
+    },
+  });
+  const actividad = await prisma.actividad.create({
+    data: {
+      gimnasioId,
+      nombre: "Jiu-Jitsu",
+      descripcion: "Clases de Jiu-Jitsu para todos los niveles",
+      cupo: 20,
+    },
+  });
+  const vinculo = await prisma.actividadProfesor.create({
+    data: { gimnasioId, actividadId: actividad.id, profesorId: profesor.id },
+  });
+
+  await prisma.horario.createMany({
+    data: [
+      {
+        actividadId: actividad.id,
+        diaSemana: "MARTES",
+        horaInicio: "19:00",
+        horaFin: "20:30",
+        actividadProfesorId: vinculo.id,
+      },
+      {
+        actividadId: actividad.id,
+        diaSemana: "JUEVES",
+        horaInicio: "19:00",
+        horaFin: "20:30",
+        actividadProfesorId: vinculo.id,
+      },
+    ],
+  });
+
+  const tipoMembresia = await prisma.tipoMembresia.create({
+    data: {
+      gimnasioId,
+      actividadId: actividad.id,
       nombre: "Mensual",
       precio: 12000,
       duracionDias: 30,
     },
   });
-
   await prisma.tipoMembresia.create({
     data: {
-      gimnasioId: gimnasio.id,
-      actividadId: jiujitsu.id,
+      gimnasioId,
+      actividadId: actividad.id,
       nombre: "Clase suelta",
       precio: 2000,
       duracionDias: 1,
@@ -187,9 +182,13 @@ async function main() {
     },
   });
 
+  return { actividad, tipoMembresia };
+}
+
+async function crearSocios(gimnasioId: string) {
   const socio1 = await prisma.socio.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       nombre: "Juan",
       apellido: "Pérez",
       dni: "30123456",
@@ -197,10 +196,9 @@ async function main() {
       telefono: "291-5556666",
     },
   });
-
   const socio2 = await prisma.socio.create({
     data: {
-      gimnasioId: gimnasio.id,
+      gimnasioId,
       nombre: "Lucía",
       apellido: "Fernández",
       dni: "32456789",
@@ -208,7 +206,15 @@ async function main() {
       telefono: "291-7778888",
     },
   });
+  return { socio1, socio2 };
+}
 
+async function crearMembresiasYPagos(
+  gimnasioId: string,
+  socios: Awaited<ReturnType<typeof crearSocios>>,
+  musculacion: Awaited<ReturnType<typeof crearMusculacion>>,
+  jiuJitsu: Awaited<ReturnType<typeof crearJiuJitsu>>
+) {
   const hoy = new Date();
   const enUnMes = new Date();
   enUnMes.setDate(hoy.getDate() + 30);
@@ -216,35 +222,34 @@ async function main() {
   // Socio 1: solo musculación
   const membresiaSocio1 = await prisma.membresia.create({
     data: {
-      gimnasioId: gimnasio.id,
-      socioId: socio1.id,
-      actividadId: musculacion.id,
-      tipoMembresiaId: tipoMusculacionMensual.id,
+      gimnasioId,
+      socioId: socios.socio1.id,
+      actividadId: musculacion.actividad.id,
+      tipoMembresiaId: musculacion.tipoMembresia.id,
       fechaInicio: hoy,
       fechaFin: enUnMes,
       estado: "ACTIVA",
     },
   });
 
-  // Socio 2: musculación + jiujitsu (caso de dos actividades en paralelo)
-  const membresiaSocio2Jiujitsu = await prisma.membresia.create({
+  // Socio 2: musculación + jiu-jitsu (caso de dos actividades en paralelo)
+  const membresiaSocio2JiuJitsu = await prisma.membresia.create({
     data: {
-      gimnasioId: gimnasio.id,
-      socioId: socio2.id,
-      actividadId: jiujitsu.id,
-      tipoMembresiaId: tipoJiuJitsuMensual.id,
+      gimnasioId,
+      socioId: socios.socio2.id,
+      actividadId: jiuJitsu.actividad.id,
+      tipoMembresiaId: jiuJitsu.tipoMembresia.id,
       fechaInicio: hoy,
       fechaFin: enUnMes,
       estado: "ACTIVA",
     },
   });
-
   const membresiaSocio2Musculacion = await prisma.membresia.create({
     data: {
-      gimnasioId: gimnasio.id,
-      socioId: socio2.id,
-      actividadId: musculacion.id,
-      tipoMembresiaId: tipoMusculacionMensual.id,
+      gimnasioId,
+      socioId: socios.socio2.id,
+      actividadId: musculacion.actividad.id,
+      tipoMembresiaId: musculacion.tipoMembresia.id,
       fechaInicio: hoy,
       fechaFin: enUnMes,
       estado: "ACTIVA",
@@ -254,24 +259,24 @@ async function main() {
   await prisma.pago.createMany({
     data: [
       {
-        gimnasioId: gimnasio.id,
-        socioId: socio1.id,
+        gimnasioId,
+        socioId: socios.socio1.id,
         membresiaId: membresiaSocio1.id,
         monto: 15000,
         metodoPago: "EFECTIVO",
         estado: "PAGADO",
       },
       {
-        gimnasioId: gimnasio.id,
-        socioId: socio2.id,
-        membresiaId: membresiaSocio2Jiujitsu.id,
+        gimnasioId,
+        socioId: socios.socio2.id,
+        membresiaId: membresiaSocio2JiuJitsu.id,
         monto: 12000,
         metodoPago: "TRANSFERENCIA",
         estado: "PAGADO",
       },
       {
-        gimnasioId: gimnasio.id,
-        socioId: socio2.id,
+        gimnasioId,
+        socioId: socios.socio2.id,
         membresiaId: membresiaSocio2Musculacion.id,
         monto: 15000,
         metodoPago: "MERCADO_PAGO",
@@ -279,6 +284,20 @@ async function main() {
       },
     ],
   });
+}
+
+async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("El seed no se puede ejecutar en producción.");
+  }
+
+  await limpiarBase();
+  const gimnasio = await crearGimnasio();
+  const admin = await crearAdmin(gimnasio.id);
+  const musculacion = await crearMusculacion(gimnasio.id);
+  const jiuJitsu = await crearJiuJitsu(gimnasio.id);
+  const socios = await crearSocios(gimnasio.id);
+  await crearMembresiasYPagos(gimnasio.id, socios, musculacion, jiuJitsu);
 
   console.log("✅ Seed completado");
   console.log(`   Gimnasio: ${gimnasio.nombre} (${gimnasio.id})`);
