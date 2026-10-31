@@ -1,13 +1,13 @@
-import "./App.css";
-import { Button } from "../src/components/ui/button";
+
+import './App.css'
 
 function App() {
+
   return (
     <>
       Hello World
-      <Button> probando shadcn </Button>
     </>
-  );
+  )
 }
 
-export default App;
+export default App
