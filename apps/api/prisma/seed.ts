@@ -280,9 +280,148 @@ async function main() {
     ],
   });
 
+  // ── Segundo gimnasio: sirve para probar el aislamiento entre tenants ──
+  const gimnasio2 = await prisma.gimnasio.create({
+    data: {
+      nombre: "PowerGym Punta Alta",
+      slug: "powergym-punta-alta",
+      email: "contacto@powergym.com",
+      telefono: "291-4445555",
+      direccion: "Calle Rivadavia 456, Punta Alta",
+    },
+  });
+
+  const admin2 = await prisma.usuario.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      email: "admin@powergym.com",
+      passwordHash, // misma contraseña de prueba que el admin del primer gimnasio
+      nombre: "Pablo",
+      apellido: "Administrador",
+      rol: "ADMIN",
+    },
+  });
+
+  // Mismo email que el admin del primer gimnasio, pero en otro tenant y con otra
+  // contraseña: el email es único por gimnasio, no global. Por eso el login pide el slug.
+  const passwordHashRecepcion = await bcrypt.hash("recepcion123", 10);
+  await prisma.usuario.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      email: admin.email,
+      passwordHash: passwordHashRecepcion,
+      nombre: "Laura",
+      apellido: "Recepción",
+      rol: "RECEPCIONISTA",
+    },
+  });
+
+  const profeCrossfit = await prisma.profesor.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      nombre: "Sofía",
+      apellido: "Ramírez",
+      especialidad: "CrossFit",
+      telefono: "291-6667777",
+    },
+  });
+
+  const crossfit = await prisma.actividad.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      nombre: "CrossFit",
+      descripcion: "Entrenamiento funcional de alta intensidad",
+      cupo: 15,
+    },
+  });
+
+  const vinculoSofia = await prisma.actividadProfesor.create({
+    data: { gimnasioId: gimnasio2.id, actividadId: crossfit.id, profesorId: profeCrossfit.id },
+  });
+
+  await prisma.horario.createMany({
+    data: [
+      {
+        actividadId: crossfit.id,
+        diaSemana: "LUNES",
+        horaInicio: "18:00",
+        horaFin: "19:00",
+        actividadProfesorId: vinculoSofia.id,
+      },
+      {
+        actividadId: crossfit.id,
+        diaSemana: "MIERCOLES",
+        horaInicio: "18:00",
+        horaFin: "19:00",
+        actividadProfesorId: vinculoSofia.id,
+      },
+    ],
+  });
+
+  const tipoCrossfitMensual = await prisma.tipoMembresia.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      actividadId: crossfit.id,
+      nombre: "Mensual",
+      precio: 18000,
+      duracionDias: 30,
+    },
+  });
+
+  // Mismo DNI que Juan Pérez del primer gimnasio: la unicidad del DNI es por gimnasio
+  const socio3 = await prisma.socio.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      nombre: "Martín",
+      apellido: "López",
+      dni: "30123456",
+      email: "martin.lopez@mail.com",
+      telefono: "291-8889999",
+    },
+  });
+
+  // Socio sin membresía ni pagos
+  await prisma.socio.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      nombre: "Valeria",
+      apellido: "Gómez",
+      dni: "33987654",
+      email: "valeria.gomez@mail.com",
+    },
+  });
+
+  const membresiaSocio3 = await prisma.membresia.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      socioId: socio3.id,
+      actividadId: crossfit.id,
+      tipoMembresiaId: tipoCrossfitMensual.id,
+      fechaInicio: hoy,
+      fechaFin: enUnMes,
+      estado: "ACTIVA",
+    },
+  });
+
+  await prisma.pago.create({
+    data: {
+      gimnasioId: gimnasio2.id,
+      socioId: socio3.id,
+      membresiaId: membresiaSocio3.id,
+      monto: 18000,
+      metodoPago: "TARJETA",
+      estado: "PAGADO",
+    },
+  });
+
   console.log("✅ Seed completado");
-  console.log(`   Gimnasio: ${gimnasio.nombre} (${gimnasio.id})`);
-  console.log(`   Admin: ${admin.email} / contraseña: admin123`);
+  console.log(`   Gimnasio 1: ${gimnasio.nombre} (${gimnasio.id})`);
+  console.log(`   Admin 1: ${admin.email} / contraseña: admin123`);
+  console.log(`   Gimnasio 2: ${gimnasio2.nombre} (${gimnasio2.id})`);
+  console.log(`   Admin 2: ${admin2.email} / contraseña: admin123`);
+  console.log(
+    `   Recepción 2: ${admin.email} / contraseña: recepcion123 (mismo email, otro gimnasio)`
+  );
 }
 
 main()
