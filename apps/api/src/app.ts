@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import { logger } from "./config/logger";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
+import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 
 export function createApp() {
   const app = express();
@@ -20,6 +21,7 @@ export function createApp() {
 
   // Acá se van a montar las rutas de cada módulo a medida que se implementen:
   app.use("/api/auth", authRouter);
+  app.use("/api/usuarios", usuariosRouter);
   // app.use("/api/socios", sociosRouter);
   // app.use("/api/profesores", profesoresRouter);
   // app.use("/api/actividades", actividadesRouter);
