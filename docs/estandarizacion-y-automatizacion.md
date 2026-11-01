@@ -447,7 +447,7 @@ git checkout dev
 git pull
 
 # 2. Crear la rama de la tarea
-git checkout -b feature/crud-socios
+git checkout -b ramiro/feature/crud-socios
 
 # 3. Trabajar y commitear en pasos chicos
 git add -p

@@ -33,6 +33,7 @@ git clone https://github.com/ClasiCKGit/MetSisII
 cd MetSisII
 npm install
 
+```bash
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
@@ -42,6 +43,7 @@ npm run db:migrate                     # aplicar migraciones
 npm run prisma:generate -w apps/api    # generar el cliente de Prisma
 npm run db:seed                        # datos de prueba
 npm run dev                            # API + web
+```
 
 **El orden importa: el cliente de Prisma se genera aparte y no se commitea, así que sin ese paso la API no compila.**
 
