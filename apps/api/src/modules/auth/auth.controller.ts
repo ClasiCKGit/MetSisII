@@ -16,3 +16,8 @@ export function me(req: Request, res: Response) {
   const { usuarioId, email, nombre, apellido, rol, gimnasio } = req.auth;
   res.json({ usuario: { id: usuarioId, email, nombre, apellido, rol }, gimnasio });
 }
+
+export async function changePassword(req: Request, res: Response) {
+  await authService.changePassword(req.db, req.auth, req.body);
+  res.status(204).send();
+}

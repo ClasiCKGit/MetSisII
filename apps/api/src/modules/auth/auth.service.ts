@@ -1,10 +1,11 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/database";
+import type { TenantClient } from "../../config/tenant";
 import { AppError } from "../../middlewares/error.middleware";
 import { signToken } from "../../utils/jwt";
-import type { LoginInput, RegisterGimnasioInput } from "./auth.schema";
-
-const BCRYPT_ROUNDS = 10;
+import { BCRYPT_ROUNDS, comparePassword, hashPassword } from "../../utils/password";
+import type { ChangePasswordInput, LoginInput, RegisterGimnasioInput } from "./auth.schema";
+import type { AuthContext } from "./auth.types";
 
 // Hash ficticio: si el usuario no existe igual hacemos un compare, para que el
 // tiempo de respuesta no revele qué emails están registrados.
@@ -33,7 +34,7 @@ export async function registerGimnasio(input: RegisterGimnasioInput) {
     throw new AppError(409, "Ese identificador de gimnasio ya está en uso");
   }
 
-  const passwordHash = await bcrypt.hash(input.admin.password, BCRYPT_ROUNDS);
+  const passwordHash = await hashPassword(input.admin.password);
 
   const { gimnasio, usuario } = await prisma.$transaction(async (tx) => {
     const gimnasio = await tx.gimnasio.create({ data: input.gimnasio });
@@ -62,7 +63,7 @@ export async function login({ gimnasioSlug, email, password }: LoginInput) {
       })
     : null;
 
-  const passwordOk = await bcrypt.compare(password, usuario?.passwordHash ?? DUMMY_HASH);
+  const passwordOk = await comparePassword(password, usuario?.passwordHash ?? DUMMY_HASH);
 
   // Mismo mensaje para todos los casos, no se revela cuál falló
   if (!gimnasio || !usuario || !usuario.activo || !passwordOk) {
@@ -70,4 +71,32 @@ export async function login({ gimnasioSlug, email, password }: LoginInput) {
   }
 
   return buildSession(usuario, gimnasio);
+}
+
+export async function changePassword(
+  db: TenantClient,
+  actor: AuthContext,
+  { currentPassword, newPassword }: ChangePasswordInput
+) {
+  const usuario = await db.usuario.findUnique({
+    where: { id: actor.usuarioId },
+    select: { passwordHash: true },
+  });
+  if (!usuario) {
+    throw new AppError(401, "Usuario inactivo o inexistente");
+  }
+
+  // Se responde 400 y no 401 a propósito: el frontend interpreta un 401 como
+  // sesión vencida y cierra la sesión, y acá el usuario solo se equivocó de contraseña.
+  if (!(await comparePassword(currentPassword, usuario.passwordHash))) {
+    throw new AppError(400, "La contraseña actual es incorrecta");
+  }
+  if (currentPassword === newPassword) {
+    throw new AppError(400, "La nueva contraseña tiene que ser distinta de la actual");
+  }
+
+  await db.usuario.update({
+    where: { id: actor.usuarioId },
+    data: { passwordHash: await hashPassword(newPassword) },
+  });
 }
