@@ -9,7 +9,7 @@ Documentación del módulo de autenticación de `apps/api`: cómo se registra un
 ## 1. Resumen
 
 - FitManager es **multi-tenant**: varios gimnasios comparten la misma base de datos. Cada gimnasio es un *tenant*.
-- Todas las tablas de negocio tienen una columna `gimnasioId`. Toda consulta tiene que filtrar por ella.
+- Las tablas de negocio llevan una columna `gimnasioId`, y toda consulta tiene que filtrar por ella. La excepción temporal es `Horario` (ver sección 14).
 - La autenticación usa **JWT** (HS256, 8 horas). El token identifica al usuario y a su gimnasio.
 - El filtrado por gimnasio **no se escribe a mano en cada query**: lo hace un cliente de Prisma especial (`req.db`) que agrega el `gimnasioId` automáticamente.
 - Hay dos roles: `ADMIN` y `RECEPCIONISTA`. Los profesores y los socios no tienen usuario en el sistema.
@@ -244,18 +244,16 @@ Valida y reemplaza `req.body` con el resultado de Zod (ya normalizado: emails en
 
 ### Cómo funciona
 
-`tenantClient(gimnasioId)` (en `config/tenant.ts`) devuelve un cliente de Prisma construido con una *Client Extension*. Esa extensión intercepta cada operación y le agrega el `gimnasioId`:
+`tenantClient(gimnasioId)` (en `config/tenant.ts`) devuelve un cliente de Prisma construido con una *Client Extension*. Esa extensión intercepta cada operación y le agrega la condición del gimnasio:
 
 | Operación | Qué hace la extensión |
 |---|---|
-| `findUnique`, `findFirst`, `findMany`, `count`, `aggregate`, `groupBy`, `delete`, `deleteMany` | Agrega `gimnasioId` al `where` |
-| `update`, `updateMany` | Agrega `gimnasioId` al `where` y **quita** `gimnasioId` del `data`, para que nadie mueva un registro a otro gimnasio |
+| `findUnique`, `findFirst`, `findMany`, `count`, `aggregate`, `groupBy`, `delete`, `deleteMany` | Agrega la condición del gimnasio al `where` |
+| `update`, `updateMany` | Agrega la condición al `where` y **quita** la columna del gimnasio del `data`, para que nadie mueva un registro a otro gimnasio |
 | `create`, `createMany` | Fija `gimnasioId` en `data`, pisando cualquier valor que viniera |
 | `upsert` | Combina lo anterior |
 
-Modelos protegidos: `Usuario`, `Socio`, `Profesor`, `Actividad`, `ActividadProfesor`, `TipoMembresia`, `Membresia`, `Pago`.
-
-Si se intenta modificar o borrar un registro de otro gimnasio, el `where` no encuentra nada y Prisma responde `P2025`, que el `errorHandler` traduce a `404`. Desde afuera se ve igual que un registro inexistente.
+La condición se agrega con `AND` y **no reemplaza** lo que ya pidió quien llama. Si se pide un registro de otro gimnasio (por ejemplo `where: { id, gimnasioId: otro }`), las dos condiciones se contradicen y la consulta no encuentra nada.
 
 ### Cómo usarlo
 
@@ -269,12 +267,27 @@ const socio = await req.db.socio.create({
 });
 ```
 
+### Tabla de reglas (`TENANT_RULES`)
+
+Cada modelo que se puede usar desde `req.db` tiene un renglón en la tabla `TENANT_RULES` de `config/tenant.ts`, con la columna que lo vincula a su gimnasio y, opcionalmente, las operaciones prohibidas.
+
+| Modelo | Columna de aislamiento | Restricciones |
+|---|---|---|
+| `Gimnasio` | `id` | Solo se puede **leer y actualizar el propio registro**. `create`, `createMany`, `upsert`, `delete` y `deleteMany` están prohibidos. |
+| `Usuario`, `Socio`, `Profesor`, `Actividad`, `ActividadProfesor`, `TipoMembresia`, `Membresia`, `Pago` | `gimnasioId` | Ninguna |
+| `Horario` | — (todavía no tiene `gimnasioId`) | **No registrado:** usarlo lanza un error |
+
+Por qué `Gimnasio` tiene esas restricciones: el alta de un gimnasio es el onboarding (que usa el `prisma` global), y un borrado físico arrastraría en cascada todos sus datos. El borrado es siempre lógico, con el campo `activo`.
+
+**La tabla falla cerrado.** Un modelo que no figura en `TENANT_RULES` no se puede usar: la extensión lanza un error en vez de dejar pasar la consulta sin filtro. Así, agregar un modelo y olvidarse de registrarlo no deja datos de otros gimnasios expuestos en silencio.
+
 ### Reglas para quien escriba código nuevo
 
 1. **Usá siempre `req.db`, nunca el `prisma` global**, en cualquier código que atienda una request. El `prisma` global no filtra nada. Solo se usa en el módulo `auth` (antes de que exista un usuario autenticado) y en scripts.
 2. **Ids escalares, nunca `connect`.** `socioId: "..."` funciona. `socio: { connect: ... }` más el `gimnasioId` que agrega la extensión hace que Prisma rechace la operación.
 3. **Validá los ids que lleguen en el body.** Antes de crear algo que referencia a otra entidad (por ejemplo una membresía con un `socioId`), buscala con `req.db`. Si pertenece a otro gimnasio devuelve `null` y respondés `404`.
 4. **Evitá `$queryRaw`.** No pasa por la extensión. Si hace falta (por ejemplo en reportes), filtrá por `gimnasioId` a mano.
+5. **Los modelos nuevos se registran en `TENANT_RULES` antes de usarse.** Hasta entonces, la extensión lanza un error. Un modelo que no tiene columna `gimnasioId` necesita primero una migración que la agregue.
 
 ---
 
@@ -291,6 +304,7 @@ const socio = await req.db.socio.create({
 | `404` | Registro inexistente o de otro gimnasio (`P2025`) | `Registro no encontrado` |
 | `409` | Slug ya usado | `Ese identificador de gimnasio ya está en uso` |
 | `409` | Violación de unicidad (`P2002`) | `Ya existe un registro con esos datos` |
+| `500` | Operación prohibida o modelo no registrado en `TENANT_RULES` (error de programación, no del usuario) | `Error interno del servidor`. En desarrollo incluye el detalle. |
 
 Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no encontrado")`. En Express 5 no hace falta `try/catch`: los errores de los handlers `async` llegan solos al `errorHandler`.
 
@@ -305,6 +319,7 @@ Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no
 - **Estado verificado en cada request**, no solo al iniciar sesión.
 - **Registro en transacción**: gimnasio y admin se crean juntos o no se crea ninguno.
 - **Limitación de intentos (recomendada, opcional).** Con `express-rate-limit` se puede limitar `/login` y `/register-gimnasio` (por ejemplo, 20 intentos cada 15 minutos por IP). Al desplegar detrás de un proxy hay que configurar `app.set("trust proxy", 1)`, o todos los usuarios compartirán la misma IP.
+- **El aislamiento falla cerrado.** Un modelo sin regla en `TENANT_RULES` y las operaciones prohibidas sobre `Gimnasio` lanzan un error antes de llegar a la base.
 
 ---
 
@@ -363,7 +378,15 @@ apps/api/src/
 
 ## 13. Cómo probarlo
 
-Con la API levantada (`npm run dev -w apps/api`). Datos del seed, **solo para desarrollo**: gimnasio `fitzone-bahia-blanca`, usuario `admin@fitzone.com`, contraseña `admin123`.
+Con la API levantada (`npm run dev -w apps/api`) y la base cargada con `npm run db:seed`. El seed crea dos gimnasios, **solo para desarrollo**:
+
+| Gimnasio (slug) | Email | Contraseña | Rol |
+|---|---|---|---|
+| `fitzone-bahia-blanca` | `admin@fitzone.com` | `admin123` | `ADMIN` |
+| `powergym-punta-alta` | `admin@powergym.com` | `admin123` | `ADMIN` |
+| `powergym-punta-alta` | `admin@fitzone.com` | `recepcion123` | `RECEPCIONISTA` |
+
+La última fila repite el email de la primera en otro gimnasio: sirve para comprobar que el email es único por gimnasio, no global.
 
 ```bash
 # Login
@@ -378,9 +401,26 @@ curl -s http://localhost:3000/api/auth/me -H "Authorization: Bearer <TOKEN>"
 curl -s -X POST http://localhost:3000/api/auth/register-gimnasio \
   -H "Content-Type: application/json" \
   -d '{"gimnasio":{"nombre":"Gym Test","slug":"gym-test"},"admin":{"nombre":"Ana","apellido":"Test","email":"ana@gymtest.com","password":"password123"}}'
+
+  # Mismo email, otro gimnasio: devuelve rol RECEPCIONISTA
+curl -s -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"gimnasioSlug":"powergym-punta-alta","email":"admin@fitzone.com","password":"recepcion123"}'
+
+# La contraseña de FitZone contra PowerGym: 401
+curl -s -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"gimnasioSlug":"powergym-punta-alta","email":"admin@fitzone.com","password":"admin123"}'
 ```
 
-**Prueba de aislamiento.** Con dos gimnasios creados, un script temporal (`apps/api/scripts/check-tenant.ts`, que no se commitea) crea un socio en cada uno y comprueba que el gimnasio A no puede leer, modificar ni borrar el socio del B. Las cuatro comprobaciones tienen que dar `true`. Se reemplaza por tests automáticos en el epic de testing, y el test de aislamiento entre gimnasios es el más importante del proyecto.
+**Prueba de aislamiento.** Con los dos gimnasios del seed, un script temporal (`apps/api/scripts/check-tenant.ts`, que no se commitea) crea un socio en cada uno y comprueba que el gimnasio A no puede leer, modificar ni borrar datos del B. Son nueve comprobaciones y todas tienen que dar `true`:
+
+- Cuatro sobre `Socio`: ver solo los propios, no leer, no modificar y no borrar los del otro gimnasio.
+- Tres sobre `Gimnasio`: ver solo el propio, no leer y no modificar el de otro.
+- Una que confirma que borrar gimnasios desde `req.db` está prohibido.
+- Una que confirma que `Horario` está bloqueado.
+
+Se reemplaza por tests automáticos en el epic de testing, y el test de aislamiento entre gimnasios es el más importante del proyecto.
 
 ---
 
@@ -388,7 +428,7 @@ curl -s -X POST http://localhost:3000/api/auth/register-gimnasio \
 
 | Tema | Detalle | Cuándo se resuelve |
 |---|---|---|
-| `Horario` sin aislamiento | La tabla no tiene `gimnasioId`, así que la extensión no la protege. | Epic 3: se agrega la columna con una migración y se suma a `TENANT_MODELS`. |
+| `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, así que no se puede usar por accidente. | Epic 3: se agrega la columna con una migración y se registra en `TENANT_RULES`. |
 | Consultas raw | `$queryRaw` ignora la extensión. | Regla de equipo (sección 8). |
 | Sin refresh tokens | El token dura 8 horas y no se puede revocar individualmente antes de que venza. Sí se corta el acceso desactivando al usuario, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
 | Recuperación de contraseña | No implementada. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
