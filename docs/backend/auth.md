@@ -2,7 +2,7 @@
 
 Documentación del módulo de autenticación de `apps/api`: cómo se registra un gimnasio, cómo se inicia sesión, cómo se protegen las rutas y cómo se garantiza que un gimnasio nunca vea los datos de otro.
 
-**Versiones de referencia:** Express 5.2.1 · Prisma 7.10.0 · Zod 4.6.5 · jsonwebtoken 9.0.3 · bcrypt 6.0.0
+**Versiones de referencia:** Express 5.2.1 · Prisma 7.10.0 · Zod 4.6.5 · jsonwebtoken 9.0.3 · bcrypt 6.0.0 · express-rate-limit 8.x
 
 ---
 
@@ -12,8 +12,7 @@ Documentación del módulo de autenticación de `apps/api`: cómo se registra un
 - Las tablas de negocio llevan una columna `gimnasioId`, y toda consulta tiene que filtrar por ella. La excepción temporal es `Horario` (ver sección 14).
 - La autenticación usa **JWT** (HS256, 8 horas). El token identifica al usuario y a su gimnasio.
 - El filtrado por gimnasio **no se escribe a mano en cada query**: lo hace un cliente de Prisma especial (`req.db`) que agrega el `gimnasioId` automáticamente.
-- Hay dos roles: `ADMIN` y `RECEPCIONISTA`. Los profesores y los socios no tienen usuario en el sistema.
-
+- Hay dos roles: `ADMIN` y `RECEPCIONISTA`. Los profesores y los socios no tienen usuario en el sistema. Solo los `ADMIN` gestionan al personal (crear usuarios, cambiar roles, desactivar y resetear contraseñas); cualquier usuario puede cambiar su propia contraseña.
 ---
 
 ## 2. Conceptos clave
@@ -34,7 +33,7 @@ El mismo email puede existir en dos gimnasios distintos (por ejemplo, alguien qu
 
 ## 3. Endpoints
 
-Prefijo común: `/api/auth`
+Prefijos: `/api/auth` (sesión y cuenta propia) y `/api/usuarios` (gestión del personal, solo `ADMIN`).
 
 ### `POST /api/auth/register-gimnasio`
 
@@ -127,6 +126,74 @@ Devuelve quién es el usuario logueado. Requiere el header `Authorization: Beare
 
 ---
 
+### `POST /api/auth/change-password`
+
+Cambia la contraseña del usuario logueado. Requiere `Authorization: Bearer <token>`. Sirve para cualquier rol.
+
+**Request**
+
+```json
+{
+  "currentPassword": "clave-actual",
+  "newPassword": "clave-nueva-123"
+}
+```
+
+**Respuesta `204`**, sin cuerpo.
+
+**Errores:** `400` validación, contraseña actual incorrecta o nueva igual a la actual · `401` sin sesión · `429` demasiados intentos.
+
+Una contraseña actual incorrecta responde `400` y **no** `401`, a propósito: el frontend interpreta un `401` como sesión vencida y cierra la sesión, y acá el usuario solo se equivocó de contraseña.
+
+---
+
+### Gestión de usuarios del personal (`/api/usuarios`)
+
+Todas las rutas requieren `Authorization: Bearer <token>` y rol `ADMIN` (un `RECEPCIONISTA` recibe `403`). Trabajan sobre `req.db`, así que solo ven y modifican usuarios del propio gimnasio.
+
+| Ruta | Qué hace | Éxito |
+|---|---|---|
+| `GET /api/usuarios` | Lista los usuarios del gimnasio, ordenados por apellido y nombre | `200` |
+| `POST /api/usuarios` | Crea un usuario | `201` |
+| `PATCH /api/usuarios/:id` | Actualiza nombre, apellido, rol o `activo` | `200` |
+| `POST /api/usuarios/:id/reset-password` | Fija una contraseña nueva a **otro** usuario | `204` |
+
+**Forma de un usuario en las respuestas** (nunca incluye `passwordHash`):
+
+```json
+{
+  "id": "uuid",
+  "email": "dani@fitzone.com",
+  "nombre": "Dani",
+  "apellido": "Gómez",
+  "rol": "RECEPCIONISTA",
+  "activo": true,
+  "createdAt": "2026-10-20T15:00:00.000Z"
+}
+```
+
+**Bodies**
+
+```json
+// POST /api/usuarios (rol es opcional y por defecto RECEPCIONISTA)
+{ "nombre": "Dani", "apellido": "Gómez", "email": "dani@fitzone.com", "password": "clave-nueva-1", "rol": "RECEPCIONISTA" }
+
+// PATCH /api/usuarios/:id (al menos un campo)
+{ "nombre": "Daniela", "rol": "ADMIN", "activo": true }
+
+// POST /api/usuarios/:id/reset-password
+{ "password": "clave-reseteada-1" }
+```
+
+**Reglas**
+
+- **Un admin no puede desactivarse ni cambiar su propio rol** (`409`). Esto garantiza que el gimnasio siempre tenga al menos un administrador activo: quien hace la llamada es un admin activo (lo verifica `authenticate`) y no puede dejar de serlo por su cuenta.
+- **No se puede resetear la contraseña propia** (`409`): se usa `POST /api/auth/change-password`, que exige la contraseña actual.
+- **El email no se puede modificar.** Un campo no permitido (`email`, `passwordHash`, `gimnasioId`) se rechaza con `400`.
+- **Crear un usuario con un email que ya existe en el gimnasio** responde `409`, aunque el existente esté desactivado.
+- **Un usuario de otro gimnasio responde `404`**, igual que uno inexistente.
+- **Desactivar corta el acceso al instante**, porque `authenticate` verifica el estado en cada request. Los usuarios no se borran, solo se desactivan.
+
 ## 4. Reglas de validación
 
 Definidas con Zod en `auth.schema.ts`.
@@ -140,6 +207,12 @@ Definidas con Zod en `auth.schema.ts`.
 | `slug` reservados | `www`, `api`, `app`, `admin`, `login`, `static`, `assets` (se van a usar como subdominios). |
 | `gimnasio.nombre` | Entre 2 y 100 caracteres. |
 | `admin.nombre` / `apellido` | Entre 1 y 60 caracteres. |
+| `rol` (crear usuario) | `ADMIN` o `RECEPCIONISTA`. Si se omite, se crea como `RECEPCIONISTA` (mínimo privilegio). |
+| `nombre` / `apellido` (usuarios) | Entre 1 y 60 caracteres, igual que en el registro. |
+| `PATCH /api/usuarios/:id` | Campos permitidos: `nombre`, `apellido`, `rol`, `activo`, y al menos uno. Cualquier otro campo se rechaza con `400` en lugar de ignorarse. |
+| `:id` (rutas de usuarios) | Tiene que ser un UUID válido; si no, `400`. |
+| `newPassword` / `password` (cambio y reset) | Misma regla que el registro: entre 8 y 72 caracteres. |
+| `currentPassword` | Solo se exige que no esté vacía. |
 
 Un body inválido responde `400` con este formato:
 
@@ -210,6 +283,8 @@ El payload se valida con Zod después de verificar la firma, en vez de confiar e
 
 **No hay refresh tokens.** Pasadas las 8 horas el usuario tiene que volver a iniciar sesión, y el cierre de sesión consiste en borrar el token del cliente.
 
+**Cambiar o resetear una contraseña no cierra las sesiones ya abiertas.** Los tokens emitidos antes siguen valiendo hasta que vencen (8 horas). Para cortar el acceso de inmediato hay que **desactivar al usuario**, que sí surte efecto en el acto.
+
 ---
 
 ## 7. Middlewares
@@ -237,6 +312,16 @@ router.get("/", requireRole("ADMIN", "RECEPCIONISTA"), listarActividades);
 ### `validateBody(schema)`
 
 Valida y reemplaza `req.body` con el resultado de Zod (ya normalizado: emails en minúsculas, textos recortados). Si falla, el error llega al `errorHandler` y responde `400`. Solo valida el body: en Express 5, `req.query` es de solo lectura.
+
+### `authLimiter`
+
+Limita los requests por IP en `register-gimnasio`, `login` y `change-password` (en esta última va antes de `authenticate`). Usa `express-rate-limit`.
+
+- **Producción:** 20 requests cada 15 minutos por IP. Al superarlo responde `429` con `{ "error": "Demasiados intentos, probá de nuevo en unos minutos" }` y los headers `RateLimit`.
+- **Desarrollo y tests:** 1000, para no molestar mientras se prueban credenciales inválidas.
+- **Es una sola instancia**: las tres rutas comparten el mismo contador por IP.
+- **Cuenta todos los requests**, también los exitosos y los de body inválido.
+- Al desplegar detrás de un proxy hay que configurar `app.set("trust proxy", 1)`; si no, todos los usuarios compartirían la IP del proxy.
 
 ---
 
@@ -305,6 +390,14 @@ Por qué `Gimnasio` tiene esas restricciones: el alta de un gimnasio es el onboa
 | `409` | Slug ya usado | `Ese identificador de gimnasio ya está en uso` |
 | `409` | Violación de unicidad (`P2002`) | `Ya existe un registro con esos datos` |
 | `500` | Operación prohibida o modelo no registrado en `TENANT_RULES` (error de programación, no del usuario) | `Error interno del servidor`. En desarrollo incluye el detalle. |
+| `400` | Contraseña actual incorrecta (`change-password`) | `La contraseña actual es incorrecta` |
+| `400` | Nueva contraseña igual a la actual | `La nueva contraseña tiene que ser distinta de la actual` |
+| `400` | Campo no permitido, id inválido o body vacío en `PATCH /api/usuarios/:id` | `Error de validación` + `details` |
+| `404` | Usuario inexistente o de otro gimnasio | `Usuario no encontrado` |
+| `409` | Email ya usado en el gimnasio | `Ya existe un usuario con ese email en este gimnasio (puede estar desactivado)` |
+| `409` | Un admin se desactiva o cambia su propio rol | `No podés desactivarte ni cambiar tu propio rol` |
+| `409` | Reset de la contraseña propia | `Para cambiar tu propia contraseña usá el cambio de contraseña con tu contraseña actual` |
+| `429` | Límite de intentos superado | `Demasiados intentos, probá de nuevo en unos minutos` |
 
 Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no encontrado")`. En Express 5 no hace falta `try/catch`: los errores de los handlers `async` llegan solos al `errorHandler`.
 
@@ -318,7 +411,12 @@ Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no
 - **Algoritmo del JWT fijado** en la verificación, para evitar ataques que lo cambian.
 - **Estado verificado en cada request**, no solo al iniciar sesión.
 - **Registro en transacción**: gimnasio y admin se crean juntos o no se crea ninguno.
-- **Limitación de intentos (recomendada, opcional).** Con `express-rate-limit` se puede limitar `/login` y `/register-gimnasio` (por ejemplo, 20 intentos cada 15 minutos por IP). Al desplegar detrás de un proxy hay que configurar `app.set("trust proxy", 1)`, o todos los usuarios compartirán la misma IP.
+- **Límite de intentos** (`authLimiter`): 20 requests cada 15 minutos por IP en producción, compartido por registro, login y cambio de contraseña (ver sección 7).
+- **El cambio de contraseña propia exige la actual**, y resetear la propia desde `/api/usuarios` está bloqueado: si no, una sesión robada podría cambiarla sin conocerla.
+- **Un admin no puede desactivarse ni quitarse el rol**, lo que asegura siempre un administrador activo sin tener que contarlos.
+- **Mínimo privilegio al crear usuarios:** si no se indica el rol, queda como `RECEPCIONISTA`.
+- **Los campos no permitidos se rechazan** en lugar de ignorarse (`strictObject` al actualizar usuarios).
+- **Las respuestas de usuarios eligen campo por campo** (`select`): `passwordHash` nunca sale de la API.
 - **El aislamiento falla cerrado.** Un modelo sin regla en `TENANT_RULES` y las operaciones prohibidas sobre `Gimnasio` lanzan un error antes de llegar a la base.
 
 ---
@@ -350,6 +448,8 @@ app.use("/api/socios", sociosRouter);
 
 Dentro de un controller, `req.auth` y `req.db` están disponibles gracias a `src/types/express.d.ts`. **Solo existen en rutas detrás de `authenticate`**: en cualquier otra, los tipos dicen que están pero valen `undefined`.
 
+**Convención para los services.** Reciben el cliente y el usuario por parámetro (`listar(db)`, `crear(db, actor, input)`) en lugar de importar el `prisma` global; el controller les pasa `req.db` y `req.auth`. Así un service no puede usar por error un cliente sin filtro por gimnasio, y se puede probar con un cliente falso.
+
 ---
 
 ## 12. Mapa de archivos
@@ -357,21 +457,29 @@ Dentro de un controller, `req.auth` y `req.db` están disponibles gracias a `src
 ```
 apps/api/src/
 ├── config/
-│   └── tenant.ts                  Cliente de Prisma con aislamiento por gimnasio
+│   └── tenant.ts                   Cliente de Prisma con aislamiento por gimnasio (tabla TENANT_RULES)
 ├── middlewares/
-│   ├── auth.middleware.ts         authenticate y requireRole
-│   ├── validate.middleware.ts     validateBody
-│   └── error.middleware.ts        AppError y errorHandler (incluye errores de Prisma)
-├── modules/auth/
-│   ├── auth.types.ts              Rol y AuthContext
-│   ├── auth.schema.ts             Schemas de Zod (registro y login)
-│   ├── auth.service.ts            Lógica: registerGimnasio y login
-│   ├── auth.controller.ts         Handlers HTTP
-│   └── auth.routes.ts             Rutas de /api/auth
+│   ├── auth.middleware.ts          authenticate y requireRole
+│   ├── rate-limit.middleware.ts    authLimiter (límite de intentos por IP)
+│   ├── validate.middleware.ts      validateBody
+│   └── error.middleware.ts         AppError y errorHandler (incluye errores de Prisma)
+├── modules/
+│   ├── auth/
+│   │   ├── auth.types.ts           Rol y AuthContext
+│   │   ├── auth.schema.ts          Schemas de Zod (registro, login y cambio de contraseña)
+│   │   ├── auth.service.ts         Lógica: registerGimnasio, login y changePassword
+│   │   ├── auth.controller.ts      Handlers HTTP
+│   │   └── auth.routes.ts          Rutas de /api/auth
+│   └── usuarios/
+│       ├── usuarios.schema.ts      Schemas de Zod (crear, actualizar, resetear, id)
+│       ├── usuarios.service.ts     Lógica de gestión del personal
+│       ├── usuarios.controller.ts  Handlers HTTP
+│       └── usuarios.routes.ts      Rutas de /api/usuarios (solo ADMIN)
 ├── types/
-│   └── express.d.ts               Agrega auth y db a Request
+│   └── express.d.ts                Agrega auth y db a Request
 └── utils/
-    └── jwt.ts                     signToken y verifyToken
+    ├── jwt.ts                      signToken y verifyToken
+    └── password.ts                 hashPassword, comparePassword y rondas de bcrypt
 ```
 
 ---
@@ -413,6 +521,45 @@ curl -s -X POST http://localhost:3000/api/auth/login \
   -d '{"gimnasioSlug":"powergym-punta-alta","email":"admin@fitzone.com","password":"admin123"}'
 ```
 
+**Gestión de usuarios y cambio de contraseña** (como admin de FitZone):
+
+```bash
+# Token de Ana guardado en una variable
+# Si no anda en bash hacer la request por Postman con el body indicado en el comando
+TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"gimnasioSlug":"fitzone-bahia-blanca","email":"admin@fitzone.com","password":"admin123"}' \
+  | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).token")
+
+# Listar usuarios del gimnasio
+curl -s http://localhost:3000/api/usuarios -H "Authorization: Bearer $TOKEN"
+
+# Crear una recepcionista
+curl -s -X POST http://localhost:3000/api/usuarios \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"nombre":"Dani","apellido":"Gómez","email":"dani@fitzone.com","password":"clave-nueva-1"}'
+
+# Desactivarla (reemplazar <ID> por el id devuelto al crearla)
+curl -s -X PATCH http://localhost:3000/api/usuarios/<ID> \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"activo": false}'
+
+# Cambiar la contraseña propia
+curl -s -X POST http://localhost:3000/api/auth/change-password \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"currentPassword":"admin123","newPassword":"otra-clave-123"}'
+```
+
+El último comando cambia la contraseña de Ana en la base de desarrollo. Para volver a `admin123`, correr `npm run db:seed`.
+
+Casos de error que conviene probar:
+
+- Listar con el token de una recepcionista: `403`.
+- Crear dos veces el mismo email: `409`.
+- `PATCH` sobre el propio id con `{"activo": false}`: `409`.
+- `PATCH` sobre el id de un usuario de otro gimnasio: `404`.
+- Cambio de contraseña con una actual incorrecta: `400` (no `401`).
+
 **Prueba de aislamiento.** Con los dos gimnasios del seed, un script temporal (`apps/api/scripts/check-tenant.ts`, que no se commitea) crea un socio en cada uno y comprueba que el gimnasio A no puede leer, modificar ni borrar datos del B. Son nueve comprobaciones y todas tienen que dar `true`:
 
 - Cuatro sobre `Socio`: ver solo los propios, no leer, no modificar y no borrar los del otro gimnasio.
@@ -431,6 +578,9 @@ Se reemplaza por tests automáticos en el epic de testing, y el test de aislamie
 | `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, así que no se puede usar por accidente. | Epic 3: se agrega la columna con una migración y se registra en `TENANT_RULES`. |
 | Consultas raw | `$queryRaw` ignora la extensión. | Regla de equipo (sección 8). |
 | Sin refresh tokens | El token dura 8 horas y no se puede revocar individualmente antes de que venza. Sí se corta el acceso desactivando al usuario, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
-| Recuperación de contraseña | No implementada. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
-| Gestión de usuarios del staff | Alta, baja y cambio de rol todavía no tienen endpoints. | Epic 1. |
+| Recuperación de contraseña | Un admin puede resetear la contraseña de otro usuario (`/api/usuarios/:id/reset-password`), pero falta el flujo por mail para quien olvidó la suya. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
+| Sesiones abiertas tras cambiar la contraseña | Cambiar o resetear una contraseña no invalida los tokens ya emitidos (valen hasta 8 horas). Desactivar al usuario sí corta el acceso al instante. | Se evalúa una columna `passwordChangedAt` para rechazar tokens anteriores al cambio. |
+| Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente admins activos (requiere verificar antes `$transaction` con la extensión). |
+| Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
+| Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |
 | Almacenamiento del token en el frontend | Sin definir. | Epic 1, parte de frontend. |
