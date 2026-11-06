@@ -31,7 +31,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "npm run test -w apps/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
