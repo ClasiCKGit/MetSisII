@@ -1,12 +1,8 @@
 {
   "compilerOptions": {
-    // File Layout
-    "rootDir": "./src",
-    "outDir": "./dist",
-
     // Environment Settings
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "nodenext",
     "types": ["node"],
 
     // Other Outputs
@@ -26,5 +22,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["prisma.config.ts", "prisma/seed.ts", "dist", "scripts", "tests", "vitest.config.mts"]
 }
