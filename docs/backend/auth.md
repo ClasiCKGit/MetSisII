@@ -2,7 +2,7 @@
 
 Documentación del módulo de autenticación de `apps/api`: cómo se registra un gimnasio, cómo se inicia sesión, cómo se protegen las rutas y cómo se garantiza que un gimnasio nunca vea los datos de otro.
 
-**Versiones de referencia:** Express 5.2.1 · Prisma 7.10.0 · Zod 4.6.5 · jsonwebtoken 9.0.3 · bcrypt 6.0.0 · express-rate-limit 8.x
+**Versiones de referencia:** Express 5.2.1 · Prisma 7.10.0 · Zod 4.6.5 · jsonwebtoken 9.0.3 · bcrypt 6.0.0 · express-rate-limit 8.x · Vitest 5.1.0
 
 ---
 
@@ -285,6 +285,23 @@ El payload se valida con Zod después de verificar la firma, en vez de confiar e
 
 **Cambiar o resetear una contraseña no cierra las sesiones ya abiertas.** Los tokens emitidos antes siguen valiendo hasta que vencen (8 horas). Para cortar el acceso de inmediato hay que **desactivar al usuario**, que sí surte efecto en el acto.
 
+### Qué se rechaza con `401`
+
+Todos estos casos están cubiertos por tests (`tests/integration/auth.test.ts`):
+
+| Caso | Mensaje |
+|---|---|
+| Sin el header `Authorization` | `Falta el token de autenticación` |
+| Esquema distinto de `Bearer` | `Falta el token de autenticación` |
+| Un valor que no es un JWT | `Token inválido o expirado` |
+| Token vencido | `Token inválido o expirado` |
+| Firmado con otro secreto | `Token inválido o expirado` |
+| Algoritmo `none` (sin firma) | `Token inválido o expirado` |
+| Sin `sub` o `gid` en el payload | `Token inválido o expirado` |
+| Firma válida, pero el `gid` no es el gimnasio del usuario | `Usuario inactivo o inexistente` |
+| Usuario desactivado o eliminado | `Usuario inactivo o inexistente` |
+| Gimnasio desactivado | `Usuario inactivo o inexistente` |
+
 ---
 
 ## 7. Middlewares
@@ -366,9 +383,27 @@ Por qué `Gimnasio` tiene esas restricciones: el alta de un gimnasio es el onboa
 
 **La tabla falla cerrado.** Un modelo que no figura en `TENANT_RULES` no se puede usar: la extensión lanza un error en vez de dejar pasar la consulta sin filtro. Así, agregar un modelo y olvidarse de registrarlo no deja datos de otros gimnasios expuestos en silencio.
 
+### Transacciones
+
+`req.db.$transaction` **mantiene el aislamiento**, tanto en la forma interactiva como en la de lote. Dentro de la transacción valen las mismas reglas: los registros se filtran por gimnasio, un `create` queda en el propio gimnasio aunque se pase otro, y los modelos bloqueados siguen bloqueados.
+
+```ts
+// Inscripción y pago juntos: o se guardan los dos, o ninguno
+await req.db.$transaction(async (tx) => {
+  const membresia = await tx.membresia.create({
+    data: { gimnasioId: req.auth.gimnasioId, socioId, actividadId, tipoMembresiaId, fechaInicio, fechaFin },
+  });
+  await tx.pago.create({
+    data: { gimnasioId: req.auth.gimnasioId, socioId, membresiaId: membresia.id, monto, metodoPago },
+  });
+});
+```
+
+Si algo falla adentro, se revierte todo. Está verificado con tests contra Postgres. Una consulta raw (`$queryRaw`), en cambio, **no** queda aislada ni siquiera dentro de una transacción.
+
 ### Reglas para quien escriba código nuevo
 
-1. **Usá siempre `req.db`, nunca el `prisma` global**, en cualquier código que atienda una request. El `prisma` global no filtra nada. Solo se usa en el módulo `auth` (antes de que exista un usuario autenticado) y en scripts.
+1. **Usá siempre `req.db`, nunca el `prisma` global**, en cualquier código que atienda una request. El `prisma` global no filtra nada. Solo se usa en el módulo `auth` (antes de que exista un usuario autenticado), en scripts y en los tests (para preparar y verificar datos).
 2. **Ids escalares, nunca `connect`.** `socioId: "..."` funciona. `socio: { connect: ... }` más el `gimnasioId` que agrega la extensión hace que Prisma rechace la operación.
 3. **Validá los ids que lleguen en el body.** Antes de crear algo que referencia a otra entidad (por ejemplo una membresía con un `socioId`), buscala con `req.db`. Si pertenece a otro gimnasio devuelve `null` y respondés `404`.
 4. **Evitá `$queryRaw`.** No pasa por la extensión. Si hace falta (por ejemplo en reportes), filtrá por `gimnasioId` a mano.
@@ -381,23 +416,26 @@ Por qué `Gimnasio` tiene esas restricciones: el alta de un gimnasio es el onboa
 | Código | Cuándo | Mensaje |
 |---|---|---|
 | `400` | Body inválido | `Error de validación` + `details` |
+| `400` | Cuerpo que no es un JSON válido | `El cuerpo de la solicitud no es un JSON válido` |
+| `400` | Contraseña actual incorrecta (`change-password`) | `La contraseña actual es incorrecta` |
+| `400` | Nueva contraseña igual a la actual | `La nueva contraseña tiene que ser distinta de la actual` |
+| `400` | Campo no permitido, id inválido o body vacío en `PATCH /api/usuarios/:id` | `Error de validación` + `details` |
 | `401` | Login fallido | `Credenciales inválidas` |
 | `401` | Falta el header | `Falta el token de autenticación` |
 | `401` | Token mal firmado o vencido | `Token inválido o expirado` |
 | `401` | Usuario o gimnasio desactivado, o eliminado | `Usuario inactivo o inexistente` |
 | `403` | Rol insuficiente | `No tenés permisos para realizar esta acción` |
 | `404` | Registro inexistente o de otro gimnasio (`P2025`) | `Registro no encontrado` |
-| `409` | Slug ya usado | `Ese identificador de gimnasio ya está en uso` |
-| `409` | Violación de unicidad (`P2002`) | `Ya existe un registro con esos datos` |
-| `500` | Operación prohibida o modelo no registrado en `TENANT_RULES` (error de programación, no del usuario) | `Error interno del servidor`. En desarrollo incluye el detalle. |
-| `400` | Contraseña actual incorrecta (`change-password`) | `La contraseña actual es incorrecta` |
-| `400` | Nueva contraseña igual a la actual | `La nueva contraseña tiene que ser distinta de la actual` |
-| `400` | Campo no permitido, id inválido o body vacío en `PATCH /api/usuarios/:id` | `Error de validación` + `details` |
 | `404` | Usuario inexistente o de otro gimnasio | `Usuario no encontrado` |
 | `409` | Email ya usado en el gimnasio | `Ya existe un usuario con ese email en este gimnasio (puede estar desactivado)` |
 | `409` | Un admin se desactiva o cambia su propio rol | `No podés desactivarte ni cambiar tu propio rol` |
 | `409` | Reset de la contraseña propia | `Para cambiar tu propia contraseña usá el cambio de contraseña con tu contraseña actual` |
+| `409` | Slug ya usado | `Ese identificador de gimnasio ya está en uso` |
+| `409` | Violación de unicidad (`P2002`) | `Ya existe un registro con esos datos` |
+| `413` | Cuerpo demasiado grande (más de 100 kB) | `La solicitud es demasiado grande` |
 | `429` | Límite de intentos superado | `Demasiados intentos, probá de nuevo en unos minutos` |
+| `500` | Operación prohibida o modelo no registrado en `TENANT_RULES` (error de programación, no del usuario) | `Error interno del servidor`. En desarrollo incluye el detalle. |
+| `4xx` | Otro error del cliente que lanza Express | `Solicitud inválida` |
 
 Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no encontrado")`. En Express 5 no hace falta `try/catch`: los errores de los handlers `async` llegan solos al `errorHandler`.
 
@@ -418,6 +456,8 @@ Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no
 - **Los campos no permitidos se rechazan** en lugar de ignorarse (`strictObject` al actualizar usuarios).
 - **Las respuestas de usuarios eligen campo por campo** (`select`): `passwordHash` nunca sale de la API.
 - **El aislamiento falla cerrado.** Un modelo sin regla en `TENANT_RULES` y las operaciones prohibidas sobre `Gimnasio` lanzan un error antes de llegar a la base.
+- **Los errores del cliente no se confunden con errores del servidor.** Un JSON roto o un cuerpo enorme responden `400` o `413` con un mensaje genérico, sin detalles internos. Antes respondían `500`, que además se registraba como error del servidor y en desarrollo mostraba el stack trace.
+- **Las defensas están probadas rompiéndolas.** La suite de tests se validó eliminando cada protección a propósito y comprobando que algún test falla (ver `docs/testing.md`, sección 8).
 
 ---
 
@@ -449,6 +489,7 @@ app.use("/api/socios", sociosRouter);
 Dentro de un controller, `req.auth` y `req.db` están disponibles gracias a `src/types/express.d.ts`. **Solo existen en rutas detrás de `authenticate`**: en cualquier otra, los tipos dicen que están pero valen `undefined`.
 
 **Convención para los services.** Reciben el cliente y el usuario por parámetro (`listar(db)`, `crear(db, actor, input)`) en lugar de importar el `prisma` global; el controller les pasa `req.db` y `req.auth`. Así un service no puede usar por error un cliente sin filtro por gimnasio, y se puede probar con un cliente falso.
+**Todo endpoint nuevo viene con sus tests.** Como mínimo: sin sesión (`401`), rol insuficiente (`403`), datos inválidos (`400`), el camino feliz verificando también la base, y **aislamiento** (un recurso de otro gimnasio responde `404` y no se modifica). Hay una plantilla en `docs/testing.md`, sección 6.
 
 ---
 
@@ -462,7 +503,7 @@ apps/api/src/
 │   ├── auth.middleware.ts          authenticate y requireRole
 │   ├── rate-limit.middleware.ts    authLimiter (límite de intentos por IP)
 │   ├── validate.middleware.ts      validateBody
-│   └── error.middleware.ts         AppError y errorHandler (incluye errores de Prisma)
+│   └── error.middleware.ts         AppError y errorHandler (errores de Prisma y 4xx de Express)
 ├── modules/
 │   ├── auth/
 │   │   ├── auth.types.ts           Rol y AuthContext
@@ -481,6 +522,8 @@ apps/api/src/
     ├── jwt.ts                      signToken y verifyToken
     └── password.ts                 hashPassword, comparePassword y rondas de bcrypt
 ```
+
+Los tests viven aparte, en `apps/api/tests/`. Ver `docs/testing.md`.
 
 ---
 
@@ -560,14 +603,23 @@ Casos de error que conviene probar:
 - `PATCH` sobre el id de un usuario de otro gimnasio: `404`.
 - Cambio de contraseña con una actual incorrecta: `400` (no `401`).
 
-**Prueba de aislamiento.** Con los dos gimnasios del seed, un script temporal (`apps/api/scripts/check-tenant.ts`, que no se commitea) crea un socio en cada uno y comprueba que el gimnasio A no puede leer, modificar ni borrar datos del B. Son nueve comprobaciones y todas tienen que dar `true`:
+**Tests automáticos.** Todo lo anterior (y más) está cubierto por la suite de tests, que corre contra una base de datos de pruebas separada:
 
-- Cuatro sobre `Socio`: ver solo los propios, no leer, no modificar y no borrar los del otro gimnasio.
-- Tres sobre `Gimnasio`: ver solo el propio, no leer y no modificar el de otro.
-- Una que confirma que borrar gimnasios desde `req.db` está prohibido.
-- Una que confirma que `Horario` está bloqueado.
+```bash
+npm run db:up
+npm test
+```
 
-Se reemplaza por tests automáticos en el epic de testing, y el test de aislamiento entre gimnasios es el más importante del proyecto.
+| Archivo | Cubre |
+|---|---|
+| `tenant.test.ts` | El aislamiento de `req.db`: lectura, escritura, borrado, `Gimnasio`, `Horario`, transacciones |
+| `auth.test.ts` | Registro, login, `/me`, tokens falsificados y cambio de contraseña |
+| `usuarios.test.ts` | Gestión del personal y reglas del administrador |
+| `login-timing.test.ts` | Tiempo de respuesta constante del login |
+| `rate-limit.test.ts` | Límite de intentos |
+| `app.test.ts` | Errores genéricos de la app |
+
+El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en `docs/testing.md`. El script temporal `check-tenant.ts` ya no existe: lo reemplazan los tests de aislamiento.
 
 ---
 
@@ -575,12 +627,12 @@ Se reemplaza por tests automáticos en el epic de testing, y el test de aislamie
 
 | Tema | Detalle | Cuándo se resuelve |
 |---|---|---|
-| `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, así que no se puede usar por accidente. | Epic 3: se agrega la columna con una migración y se registra en `TENANT_RULES`. |
-| Consultas raw | `$queryRaw` ignora la extensión. | Regla de equipo (sección 8). |
+| `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, y un test lo verifica. | Epic 3: se agrega la columna con una migración, se registra en `TENANT_RULES` y se **reemplaza** ese test por tests de aislamiento como los de `Socio`. |
+| Consultas raw | `$queryRaw` ignora la extensión, también dentro de una transacción. Un test lo documenta (si algún día se protege, va a fallar). | Regla de equipo (sección 8). |
 | Sin refresh tokens | El token dura 8 horas y no se puede revocar individualmente antes de que venza. Sí se corta el acceso desactivando al usuario, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
 | Recuperación de contraseña | Un admin puede resetear la contraseña de otro usuario (`/api/usuarios/:id/reset-password`), pero falta el flujo por mail para quien olvidó la suya. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
 | Sesiones abiertas tras cambiar la contraseña | Cambiar o resetear una contraseña no invalida los tokens ya emitidos (valen hasta 8 horas). Desactivar al usuario sí corta el acceso al instante. | Se evalúa una columna `passwordChangedAt` para rechazar tokens anteriores al cambio. |
-| Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente admins activos (requiere verificar antes `$transaction` con la extensión). |
+| Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente los admins activos; `$transaction` ya está verificada con la extensión. |
 | Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
 | Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |
 | Almacenamiento del token en el frontend | Sin definir. | Epic 1, parte de frontend. |
