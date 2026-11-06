@@ -23,6 +23,18 @@ function prismaErrorCode(err: unknown): string | undefined {
   return undefined;
 }
 
+// Errores 4xx que lanza Express o sus librerías (body-parser, por ejemplo con un JSON
+// mal formado): traen status y expose=true, y son culpa del cliente, no del servidor.
+function clientHttpError(err: unknown): { status: number; type?: unknown } | undefined {
+  if (typeof err === "object" && err !== null && "status" in err && "expose" in err) {
+    const { status, expose, type } = err as { status: unknown; expose: unknown; type?: unknown };
+    if (typeof status === "number" && status >= 400 && status < 500 && expose === true) {
+      return { status, type };
+    }
+  }
+  return undefined;
+}
+
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -33,6 +45,17 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ error: err.message });
+  }
+
+  const httpError = clientHttpError(err);
+  if (httpError) {
+    if (httpError.type === "entity.parse.failed") {
+      return res.status(400).json({ error: "El cuerpo de la solicitud no es un JSON válido" });
+    }
+    if (httpError.status === 413) {
+      return res.status(413).json({ error: "La solicitud es demasiado grande" });
+    }
+    return res.status(httpError.status).json({ error: "Solicitud inválida" });
   }
 
   const prismaCode = prismaErrorCode(err);
