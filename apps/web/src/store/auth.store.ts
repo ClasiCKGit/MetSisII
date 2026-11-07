@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { Perfil, Sesion } from "../features/auth/types";
+import type { Perfil, Sesion } from "@/features/auth/types";
 
 export type AuthStatus = "unauthenticated" | "checking" | "authenticated";
 

@@ -1,8 +1,8 @@
 import axios from "axios";
-import { env } from "../config/env";
-import { cerrarSesion } from "../features/auth/session";
-import { toApiError } from "../lib/api-error";
-import { useAuthStore } from "../store/auth.store";
+import { env } from "@/config/env";
+import { cerrarSesion } from "@/features/auth/session";
+import { toApiError } from "@/lib/api-error";
+import { useAuthStore } from "@/store/auth.store";
 
 export const apiClient = axios.create({
   baseURL: `${env.VITE_API_URL}/api`,

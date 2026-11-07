@@ -1,4 +1,4 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Placeholder: la gestión de usuarios se arma en el siguiente paso
 export function UsuariosPage() {

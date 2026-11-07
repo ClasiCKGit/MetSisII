@@ -1,5 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { useAuthStore } from "../store/auth.store";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuthStore } from "@/store/auth.store";
 
 export function DashboardPage() {
   // Dos selectores separados que devuelven valores simples: no hace falta useShallow
