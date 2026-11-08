@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -106,11 +107,14 @@ export function LoginPage() {
         </form>
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="flex-col gap-3">
         {/* El botón está fuera del <form>, por eso se asocia con el atributo form */}
         <Button type="submit" form="form-login" disabled={login.isPending} className="w-full">
           {login.isPending ? "Ingresando…" : "Ingresar"}
         </Button>
+        <Link to="/registro" className={buttonVariants({ variant: "link" })}>
+          Registrá tu gimnasio
+        </Link>
       </CardFooter>
     </Card>
   );

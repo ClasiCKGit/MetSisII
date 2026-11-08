@@ -1,0 +1,15 @@
+import { useMutation } from "@tanstack/react-query";
+import { changePassword } from "@/api/auth.api";
+import { toast } from "@/components/ui/toast";
+import type { ChangePasswordInput } from "../schemas";
+
+export function useChangePassword() {
+  return useMutation({
+    // El campo de confirmación es solo del formulario: la API no lo recibe
+    mutationFn: ({ currentPassword, newPassword }: ChangePasswordInput) =>
+      changePassword({ currentPassword, newPassword }),
+    onSuccess: () => {
+      toast.add({ type: "success", title: "Contraseña actualizada" });
+    },
+  });
+}
