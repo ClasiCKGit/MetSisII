@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
 import { cerrarSesion } from "@/features/auth/session";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 
 function enlace({ isActive }: { isActive: boolean }) {
