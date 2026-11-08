@@ -49,3 +49,8 @@ export function toApiError(error: unknown): ApiError {
 export function getErrorMessage(error: unknown): string {
   return toApiError(error).message;
 }
+
+// ¿El error vino de la API con ese código HTTP? (por ejemplo 409: el recurso ya existe)
+export function hasStatus(error: unknown, status: number): boolean {
+  return error instanceof ApiError && error.status === status;
+}
