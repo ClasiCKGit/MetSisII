@@ -1,11 +1,12 @@
 import type { RouteObject } from "react-router-dom";
 import { GuestOnly, RequireAuth, RequireRole } from "@/features/auth/components/guards";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { RegisterPage } from "@/features/auth/pages/RegisterPage";
+import { UsuariosPage } from "@/features/usuarios/pages/UsuariosPage";
 import { AppLayout } from "@/layouts/AppLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import { UsuariosPage } from "@/pages/UsuariosPage";
 
 // Las rutas se declaran como datos (no se crea el router acá) para poder reutilizarlas en main.tsx
 // con createBrowserRouter, y en los tests con createMemoryRouter.
@@ -16,7 +17,10 @@ export const routes: RouteObject[] = [
     children: [
       {
         element: <AuthLayout />,
-        children: [{ path: "/login", element: <LoginPage /> }],
+        children: [
+          { path: "/login", element: <LoginPage /> },
+          { path: "/registro", element: <RegisterPage /> },
+        ],
       },
     ],
   },
