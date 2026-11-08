@@ -24,3 +24,9 @@ export interface Perfil {
 export interface Sesion extends Perfil {
   token: string;
 }
+
+// Cuerpo de POST /api/auth/register-gimnasio
+export interface RegisterPayload {
+  gimnasio: { nombre: string; slug: string };
+  admin: { nombre: string; apellido: string; email: string; password: string };
+}
