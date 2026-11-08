@@ -70,6 +70,17 @@ npm run dev                            # API + web
 | `npm run db:seed` | Carga datos de prueba |
 | `npm run db:studio` | Interfaz visual de la base (localhost:5555) |
 
+## Frontend
+
+Aplicación React (Vite, Tailwind 4 y shadcn/ui sobre Base UI) en `apps/web`.
+
+```bash
+npm run dev:web          # http://localhost:5173
+npm run build -w apps/web
+```
+
+Requiere `apps/web/.env` con `VITE_API_URL=http://localhost:3000` (copiar de `.env.example`). Cómo funcionan la sesión, las rutas y las convenciones de Zustand y shadcn: `docs/frontend-auth.md`.
+
 ## Tecnologías elegidas.
 
 ### Backend

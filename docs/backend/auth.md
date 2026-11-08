@@ -122,7 +122,7 @@ Devuelve quién es el usuario logueado. Requiere el header `Authorization: Beare
 
 **Errores:** `401` token ausente, inválido o vencido, o usuario desactivado.
 
-**Para qué sirve:** el frontend lo llama al arrancar para restaurar la sesión después de recargar la página (el estado en memoria se pierde, el token guardado no), para mostrar los datos del usuario y para adaptar la interfaz al rol. Como los datos salen de la base en cada llamada, refleja cambios de rol o desactivaciones al instante.
+**Para qué sirve:** el frontend lo llama al abrir la app si hay un token guardado (`AuthBootstrap`), para saber quién es el usuario sin guardar sus datos en el navegador. Así el rol y el nombre siempre salen de la base. Un `401` en esta llamada significa que el token venció o el usuario fue desactivado, y el frontend cierra la sesión.
 
 ---
 
@@ -284,6 +284,8 @@ El payload se valida con Zod después de verificar la firma, en vez de confiar e
 **No hay refresh tokens.** Pasadas las 8 horas el usuario tiene que volver a iniciar sesión, y el cierre de sesión consiste en borrar el token del cliente.
 
 **Cambiar o resetear una contraseña no cierra las sesiones ya abiertas.** Los tokens emitidos antes siguen valiendo hasta que vencen (8 horas). Para cortar el acceso de inmediato hay que **desactivar al usuario**, que sí surte efecto en el acto.
+
+**Cómo lo usa el frontend:** el token se guarda en `localStorage` y el cliente HTTP lo envía en cada request. Ver `docs/frontend-auth.md`.
 
 ### Qué se rechaza con `401`
 
@@ -635,4 +637,4 @@ El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en 
 | Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente los admins activos; `$transaction` ya está verificada con la extensión. |
 | Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
 | Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |
-| Almacenamiento del token en el frontend | Sin definir. | Epic 1, parte de frontend. |
+| Almacenamiento del token en el frontend | Se guarda en `localStorage`. Una vulnerabilidad XSS podría leerlo; una cookie `httpOnly` es más segura pero exige cambios en el backend (cookies, CORS con credenciales, protección CSRF). | Decisión tomada; los motivos y cómo cambiarla están en `docs/frontend-auth.md`, sección 8. |
