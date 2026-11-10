@@ -2,7 +2,7 @@
 
 Documentación de la base de `apps/web`: cómo se maneja la sesión, cómo se llama a la API, cómo se protegen las rutas y qué convenciones seguir con Zustand, shadcn/ui y los formularios. La contraparte del backend está en `auth.md`.
 
-**Versiones de referencia:** React 19.3 (con React Compiler) · React Router 7.18 · Zustand 5.0 · TanStack Query 5.10 · axios 1.20 · React Hook Form 7.88 · Zod 4.6 · Tailwind 4.3 · Vite 8.3 · shadcn 4.21 sobre Base UI 1.8
+**Versiones de referencia:** React 19.3 (con React Compiler) · React Router 7.18 · Zustand 5.0 · TanStack Query 5.10 · axios 1.20 · React Hook Form 7.88 · Zod 4.6 · Tailwind 4.3 · Vite 8.3 · shadcn 4.21 sobre Base UI 1.8 · Vitest 5.1 · MSW 3.0
 
 ---
 
@@ -48,6 +48,8 @@ apps/web/src/
 ├── store/auth.store.ts             Store de Zustand
 └── main.tsx                        Punto de entrada
 ```
+
+Los tests viven aparte, en `apps/web/tests/`. Ver `docs/testing-frontend.md`.
 
 **Dependencias entre capas** (nunca al revés, para evitar importaciones circulares):
 
@@ -377,12 +379,15 @@ VITE_API_URL=http://localhost:3000
 - Solo las variables con prefijo `VITE_` llegan al navegador. **Nunca** poner secretos ahí.
 - Vite lee el `.env` al arrancar: después de cambiarlo hay que reiniciar el servidor.
 - La variable se valida con Zod en `config/env.ts`: si falta o no es una URL, la app lanza un error al cargar.
+- Los tests están incluidos en `tsconfig.app.json` (`"include": ["src", "tests"]`), así que `npm run build -w apps/web` también revisa sus tipos.
+- En `vite.config.ts` y `vitest.config.ts` se usa `import.meta.dirname` (no `__dirname`), y los imports entre archivos de configuración llevan extensión. Si no, Vite 8 avisa que su cargador de configuración nativo dejará de aceptarlos.
 
 ```bash
 npm run dev              # API y web
 npm run dev:web          # solo la web (http://localhost:5173)
 npm run build -w apps/web
 npm run lint
+npm test -w apps/web     # tests del frontend (no necesitan la API ni Postgres)
 ```
 
 La API tiene `cors()` abierto a cualquier origen; se restringe al dominio del frontend en el deploy (Epic 8).
@@ -410,6 +415,8 @@ Otras convenciones:
 ---
 
 ## 12. Verificación manual
+
+Casi todos estos casos están automatizados (ver `docs/testing-frontend.md`). Esta verificación manual sirve para revisar el aspecto visual y el comportamiento en un navegador real, que los tests no cubren.
 
 Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:5173`:
 
@@ -445,6 +452,8 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Error de CORS en la consola | La API no está accesible o rechaza el origen | Verificar que la API esté corriendo en la URL de `VITE_API_URL` |
 | Después de cambiar un rol sigue viéndose el menú viejo | El perfil se pide al abrir la app | Recargar la página |
 | Cerré sesión en una pestaña y la otra sigue abierta | `persist` no sincroniza pestañas | Se desloguea sola con el primer `401` |
+| `(!) Your Vite config uses features that are unsupported by configLoader: 'native'` | `__dirname` en `vite.config.ts`, o un import sin extensión entre archivos de configuración | Usar `import.meta.dirname` y poner la extensión (`"./vite.config.ts"`) |
+| Un test falla o se comporta de forma rara | Casi siempre es un handler faltante en la API falsa, un diálogo o aviso que se interpone, o estado que se filtra entre tests | Ver `docs/testing-frontend.md`, sección 13 |
 
 ---
 
@@ -456,7 +465,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Gestión de usuarios | `UsuariosPage` es un placeholder; faltan listado, alta, edición, desactivación y reseteo de contraseña |
 | Cambio de contraseña propia | La API ya lo soporta; falta la pantalla |
 | Notificaciones | Falta un sistema de avisos (por ejemplo `sonner`) para confirmar acciones |
-| Tests del frontend | No hay tests en el repo. Los flujos de esta base se verificaron con una suite descartable contra la API real; falta una suite permanente, simulando la API con MSW |
+| Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
 | Tamaño del bundle | El build avisa que supera los 500 kB; se resuelve con carga diferida por ruta cuando haya más pantallas |
 | Sincronización entre pestañas | Ver sección 6 |
 | Refresh tokens | No existen: pasadas las 8 horas hay que volver a iniciar sesión |

@@ -319,13 +319,14 @@ npm run lint
 npm run format:check
 npm run prisma:generate -w apps/api
 npm run build
+npm test
 ```
 
 Si pasan en local, pasan en GitHub.
 
 ### 6.5 Mejoras previstas
 
-- **Tests:** cuando existan (Vitest + Supertest), se agrega un job con un servicio de Postgres. El más importante es el que verifica el aislamiento entre gimnasios.
+- **Tests:** el job «Tests» corre npm test (API y frontend) con un servicio de Postgres. Si todavía no lo agregaste a ci.yml, el paso a paso está en testing.md, sección 9.
 - **Validación de commits y de nombres de rama** (secciones 3.6 y 2.5).
 - **Actualización de dependencias** con Dependabot o Renovate.
 

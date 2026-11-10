@@ -1,6 +1,6 @@
 # Testing (backend)
 
-Documentación de la suite de tests de `apps/api`: cómo correrla, cómo funciona por dentro, cómo escribir tests nuevos y qué protege.
+Documentación de la suite de tests de `apps/api`: cómo correrla, cómo funciona por dentro, cómo escribir tests nuevos y qué protege. Esta guía cubre el backend. El frontend tiene la suya: `docs/testing-frontend.md`.
 
 **Versiones de referencia:** Vitest 5.1.0 · supertest 7 · PostgreSQL 16 · Prisma 7.10.0 · Express 5.2.1 · Node ≥ 22.12
 
@@ -18,10 +18,10 @@ Documentación de la suite de tests de `apps/api`: cómo correrla, cómo funcion
 
 ## 2. Correr los tests
 
-Requisito: Postgres levantado (`npm run db:up`).
+Requisito para los tests de la API: Postgres levantado (`npm run db:up`).
 
 ```bash
-# Toda la suite (desde la raíz del repo)
+# API y frontend (desde la raíz del repo). El frontend no necesita Postgres
 npm test
 
 # Modo observador: re-ejecuta los tests afectados al guardar un archivo
@@ -29,6 +29,9 @@ npm run test:watch -w apps/api
 
 # Chequeo de tipos de código y tests
 npm run typecheck -w apps/api
+
+# Solo la API
+npm test -w apps/api
 ```
 
 Para correr una parte, ubicate en `apps/api`:
@@ -279,6 +282,7 @@ El workflow `.github/workflows/ci.yml` tiene un job **"Tests"**, separado de "Li
 - Levanta un **servicio de Postgres 16** (`postgres:16-alpine`) dentro del job.
 - Genera el cliente de Prisma (con una `DATABASE_URL` ficticia, porque generar no se conecta a nada).
 - Define `TEST_DATABASE_URL` apuntando a `fitmanager_test` y ejecuta `npm test`. La propia suite crea esa base y le aplica las migraciones.
+- `npm test` ejecuta también los tests del frontend, que no necesitan la base de datos.
 
 El check **"Tests"** debe figurar entre los obligatorios del ruleset de `main`, igual que "Lint y build".
 
@@ -302,7 +306,7 @@ El check **"Tests"** debe figurar entre los obligatorios del ruleset de `main`, 
 | Consultas raw | `$queryRaw` no pasa por el aislamiento. Un test lo documenta con el nombre `"las consultas raw NO están aisladas"`: si algún día se protege, va a fallar y habrá que actualizar `auth.md`. |
 | `Horario` | Está bloqueado en `req.db` porque todavía no tiene `gimnasioId`. Cuando se agregue y se registre en `TENANT_RULES`, hay que **reemplazar** el test `"Horario está bloqueado hasta que tenga gimnasioId"` por tests de aislamiento. |
 | Tiempos | No se miden; se verifica el mecanismo (sección 7). |
-| Frontend | Todavía no tiene tests. |
+| Frontend | Tiene su propia suite (Vitest + MSW) y su propia guía: `docs/testing-frontend.md`. |
 | Cobertura | No se mide ni hay un mínimo exigido. Se puede agregar más adelante con `@vitest/coverage-v8`. |
 
 ---

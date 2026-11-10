@@ -459,7 +459,7 @@ Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no
 - **Las respuestas de usuarios eligen campo por campo** (`select`): `passwordHash` nunca sale de la API.
 - **El aislamiento falla cerrado.** Un modelo sin regla en `TENANT_RULES` y las operaciones prohibidas sobre `Gimnasio` lanzan un error antes de llegar a la base.
 - **Los errores del cliente no se confunden con errores del servidor.** Un JSON roto o un cuerpo enorme responden `400` o `413` con un mensaje genérico, sin detalles internos. Antes respondían `500`, que además se registraba como error del servidor y en desarrollo mostraba el stack trace.
-- **Las defensas están probadas rompiéndolas.** La suite de tests se validó eliminando cada protección a propósito y comprobando que algún test falla (ver `docs/testing.md`, sección 8).
+- **Las defensas están probadas rompiéndolas.** La suite de tests se validó eliminando cada protección a propósito y comprobando que algún test falla (ver `docs/testing-backend.md`, sección 8).
 
 ---
 
@@ -491,7 +491,7 @@ app.use("/api/socios", sociosRouter);
 Dentro de un controller, `req.auth` y `req.db` están disponibles gracias a `src/types/express.d.ts`. **Solo existen en rutas detrás de `authenticate`**: en cualquier otra, los tipos dicen que están pero valen `undefined`.
 
 **Convención para los services.** Reciben el cliente y el usuario por parámetro (`listar(db)`, `crear(db, actor, input)`) en lugar de importar el `prisma` global; el controller les pasa `req.db` y `req.auth`. Así un service no puede usar por error un cliente sin filtro por gimnasio, y se puede probar con un cliente falso.
-**Todo endpoint nuevo viene con sus tests.** Como mínimo: sin sesión (`401`), rol insuficiente (`403`), datos inválidos (`400`), el camino feliz verificando también la base, y **aislamiento** (un recurso de otro gimnasio responde `404` y no se modifica). Hay una plantilla en `docs/testing.md`, sección 6.
+**Todo endpoint nuevo viene con sus tests.** Como mínimo: sin sesión (`401`), rol insuficiente (`403`), datos inválidos (`400`), el camino feliz verificando también la base, y **aislamiento** (un recurso de otro gimnasio responde `404` y no se modifica). Hay una plantilla en `docs/testing-backend.md`, sección 6.
 
 ---
 
@@ -525,7 +525,7 @@ apps/api/src/
     └── password.ts                 hashPassword, comparePassword y rondas de bcrypt
 ```
 
-Los tests viven aparte, en `apps/api/tests/`. Ver `docs/testing.md`.
+Los tests viven aparte, en `apps/api/tests/`. Ver `docs/testing-backend.md`.
 
 ---
 
@@ -621,7 +621,7 @@ npm test
 | `rate-limit.test.ts` | Límite de intentos |
 | `app.test.ts` | Errores genéricos de la app |
 
-El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en `docs/testing.md`. El script temporal `check-tenant.ts` ya no existe: lo reemplazan los tests de aislamiento.
+El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en `docs/testing-backend.md`. El script temporal `check-tenant.ts` ya no existe: lo reemplazan los tests de aislamiento.
 
 ---
 

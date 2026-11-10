@@ -77,9 +77,16 @@ Aplicación React (Vite, Tailwind 4 y shadcn/ui sobre Base UI) en `apps/web`.
 ```bash
 npm run dev:web          # http://localhost:5173
 npm run build -w apps/web
+npm test -w apps/web     # tests (no necesitan la API ni Postgres)
 ```
 
-Requiere `apps/web/.env` con `VITE_API_URL=http://localhost:3000` (copiar de `.env.example`). Cómo funcionan la sesión, las rutas y las convenciones de Zustand y shadcn: `docs/frontend-auth.md`.
+Requiere `apps/web/.env` con `VITE_API_URL=http://localhost:3000` (copiar de `.env.example`).
+
+**Pantallas actuales:** inicio de sesión, registro de gimnasio, inicio, gestión de usuarios (solo administradores) y cambio de contraseña.
+
+**Componentes de shadcn:** se agregan desde `apps/web` con `npx shadcn@latest add <nombre>`. Este proyecto usa Base UI: en los ejemplos hay que usar la prop `render` en lugar de `asChild`, y `toast` en lugar de `sonner`.
+
+Cómo funcionan la sesión, las rutas, los formularios y las convenciones de Zustand y shadcn: `docs/frontend-auth.md`. Cómo se prueba: `docs/testing-frontend.md`.
 
 ## Tecnologías elegidas.
 
