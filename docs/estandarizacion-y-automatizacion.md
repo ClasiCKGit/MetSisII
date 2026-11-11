@@ -4,7 +4,7 @@ Este documento reúne las reglas de trabajo del equipo de FitManager y las herra
 
 **Principio:** lo que se puede verificar con una herramienta, se verifica con una herramienta. Las reglas que dependen de una persona (por ejemplo, revisar un PR) se limitan a lo que una máquina no puede juzgar.
 
-Cada elemento está marcado con su estado: **Implementado**, **Recomendado** (decidido pero todavía sin configurar) o **Propuesto** (a discutir en el equipo). El resumen completo está en la [sección 12](#12-estado-y-pendientes).
+Cada elemento está marcado con su estado: **Implementado**, **Recomendado** (decidido pero todavía sin configurar) o **Propuesto** (a discutir en el equipo). El resumen completo está en la tabla de la [sección 1](#1-visión-general).
 
 ## Índice
 
@@ -343,7 +343,7 @@ Configurado en GitHub (**Settings → Rules → Rulesets**). Exige que el check 
 
 - Exigir **1 aprobación** como mínimo. Con cuatro integrantes, es la forma de que nadie integre código sin que otra persona lo haya leído.
 - **Bloquear force-push** y el borrado de `main`.
-- Usar **Squash and merge** como método de integración, para que `main` quede con un commit por PR y el título del PR sea el mensaje (ver 3.7).
+- Usar **Squash and merge** como método de integración, para que `main` quede con un commit por PR y el título del PR sea el mensaje.
 - Activar **"Automatically delete head branches"**, para que las ramas se borren solas al mergear.
 
 ### 7.3 Plantilla de Pull Request — Propuesto
