@@ -461,10 +461,6 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 
 | Tema | Detalle |
 |---|---|
-| Registro de gimnasio | La API ya lo soporta; falta la pantalla |
-| Gestión de usuarios | `UsuariosPage` es un placeholder; faltan listado, alta, edición, desactivación y reseteo de contraseña |
-| Cambio de contraseña propia | La API ya lo soporta; falta la pantalla |
-| Notificaciones | Falta un sistema de avisos (por ejemplo `sonner`) para confirmar acciones |
 | Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/frontend/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
 | Tamaño del bundle | El build avisa que supera los 500 kB; se resuelve con carga diferida por ruta cuando haya más pantallas |
 | Sincronización entre pestañas | Ver sección 6 |
