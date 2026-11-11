@@ -1,6 +1,6 @@
 # Testing (frontend)
 
-Documentación de la suite de tests de `apps/web`: cómo correrla, cómo funciona la API falsa, cómo escribir tests nuevos y qué protege. La del backend está en `testing-backend.md`.
+Documentación de la suite de tests de `apps/web`: cómo correrla, cómo funciona la API falsa, cómo escribir tests nuevos y qué protege. La del backend está en `docs/backend/testing-backend.md`.
 
 **Versiones de referencia:** Vitest 5.1 · MSW 3.0 · Testing Library (React 16, user-event 14, jest-dom 6) · jsdom 27 · React 19.3 · Node ≥ 22.12
 
