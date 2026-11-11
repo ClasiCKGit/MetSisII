@@ -328,7 +328,7 @@ El check **"Tests"** debe figurar entre los obligatorios del ruleset de `main`, 
 
 ---
 
-## 13. Antes de abrir un Pull Request
+## 13. Antes de mergear a `dev` o abrir un Pull Request
 
 ```bash
 npm run lint
