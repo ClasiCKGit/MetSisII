@@ -41,7 +41,7 @@ flowchart LR
 | Husky 9 | Ejecutar comandos en los hooks de Git | `.husky/` | Implementado |
 | lint-staged 16 | Lint y formato solo de los archivos del commit | `package.json` (`lint-staged`) | Implementado |
 | Configuración de VS Code | Mismo formato al guardar en todo el equipo | `.vscode/` | Implementado |
-| GitHub Actions | Validar lint, formato y build en cada PR | `.github/workflows/ci.yml` | Implementado |
+| GitHub Actions | Validar lint, formato, build y tests | `.github/workflows/ci.yml` | Implementado |
 | Ruleset de `main` | Impedir merges con el CI en rojo | GitHub → Settings → Rules | Implementado |
 | Docker Compose | Postgres idéntico para todos | `docker-compose.yml` | Implementado |
 | Validación de variables de entorno (Zod) | Fallar al arrancar si falta una variable | `apps/api/src/config/env.ts`, `apps/web/src/config/env.ts` | Implementado |
@@ -301,6 +301,8 @@ El job **"Lint y build"** ejecuta, en un entorno limpio:
 | Prisma Client | `npm run prisma:generate -w apps/api` | Errores en `schema.prisma`; deja generado el cliente que necesita el build |
 | Build | `npm run build` | Errores de TypeScript e imports rotos en API y web |
 
+El job **"Tests"** levanta un servicio de Postgres 16 y ejecuta `npm test` (API y frontend). El detalle está en `docs/backend/testing-backend.md`, sección 9.
+
 ### 6.3 Decisiones de configuración
 
 - **Node 22**, porque Vite 8 y Prisma 7 requieren `^20.19 || >=22.12`.
@@ -326,8 +328,7 @@ Si pasan en local, pasan en GitHub.
 
 ### 6.5 Mejoras previstas
 
-- **Tests:** el job «Tests» corre npm test (API y frontend) con un servicio de Postgres. Si todavía no lo agregaste a ci.yml, el paso a paso está en testing.md, sección 9.
-- **Validación de commits y de nombres de rama** (secciones 3.6 y 2.5).
+- **Validación de commits y de nombres de rama** (ver la tabla de la sección 1).
 - **Actualización de dependencias** con Dependabot o Renovate.
 
 ---
@@ -423,9 +424,9 @@ El equipo trabaja en Windows, donde Git puede convertir los saltos de línea a C
 * text=auto eol=lf
 ```
 
-### 8.6 Versión de Node
+### 8.6 Versión de Node — Implementado
 
-Vite 8 y Prisma 7 requieren `^20.19.0 || >=22.12.0`. Conviene que el campo `engines` del `package.json` raíz diga lo mismo (hoy dice `>=20`) y agregar un archivo `.nvmrc` con `22`, para que todos usen la versión del CI.
+Vite 8 y Prisma 7 requieren `^20.19.0 || >=22.12.0`, y Vitest 5 requiere Node ≥ 22.12. Por eso el campo `engines` del `package.json` raíz dice `>=22.12.0` y el archivo `.nvmrc` fija `22`, la misma versión que usa el CI.
 
 ---
 

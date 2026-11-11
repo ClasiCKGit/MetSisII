@@ -255,7 +255,7 @@ El job **"Lint y build"** ejecuta, en este orden:
 | Prisma Client | `npm run prisma:generate -w apps/api` | Errores en `schema.prisma`; deja generado el cliente que necesita el build |
 | Build | `npm run build` | Errores de TypeScript, imports rotos, tipos incompatibles en API y web |
 
-Todavía no corre tests, porque el proyecto aún no tiene ninguno. Cuando se agreguen, se suma un paso al mismo workflow.
+Los tests corren en un job aparte, **"Tests"**, con un servicio de Postgres 16 (ver `docs/backend/testing-backend.md`, sección 9).
 
 ### Cuándo corre
 
@@ -285,6 +285,7 @@ npm run lint
 npm run format:check
 npm run prisma:generate -w apps/api
 npm run build
+npm test                 # requiere Postgres levantado (npm run db:up)
 ```
 
 > `npm ci` borra `node_modules` y reinstala todo desde el lock. Algo más rápido para el día a día son los pasos 2 a 5.
