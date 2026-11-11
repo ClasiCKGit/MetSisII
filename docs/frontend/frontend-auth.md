@@ -49,7 +49,7 @@ apps/web/src/
 └── main.tsx                        Punto de entrada
 ```
 
-Los tests viven aparte, en `apps/web/tests/`. Ver `docs/testing-frontend.md`.
+Los tests viven aparte, en `apps/web/tests/`. Ver `docs/frontend/testing-frontend.md`.
 
 **Dependencias entre capas** (nunca al revés, para evitar importaciones circulares):
 
@@ -416,7 +416,7 @@ Otras convenciones:
 
 ## 12. Verificación manual
 
-Casi todos estos casos están automatizados (ver `docs/testing-frontend.md`). Esta verificación manual sirve para revisar el aspecto visual y el comportamiento en un navegador real, que los tests no cubren.
+Casi todos estos casos están automatizados (ver `docs/frontend/testing-frontend.md`). Esta verificación manual sirve para revisar el aspecto visual y el comportamiento en un navegador real, que los tests no cubren.
 
 Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:5173`:
 
@@ -453,7 +453,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Después de cambiar un rol sigue viéndose el menú viejo | El perfil se pide al abrir la app | Recargar la página |
 | Cerré sesión en una pestaña y la otra sigue abierta | `persist` no sincroniza pestañas | Se desloguea sola con el primer `401` |
 | `(!) Your Vite config uses features that are unsupported by configLoader: 'native'` | `__dirname` en `vite.config.ts`, o un import sin extensión entre archivos de configuración | Usar `import.meta.dirname` y poner la extensión (`"./vite.config.ts"`) |
-| Un test falla o se comporta de forma rara | Casi siempre es un handler faltante en la API falsa, un diálogo o aviso que se interpone, o estado que se filtra entre tests | Ver `docs/testing-frontend.md`, sección 13 |
+| Un test falla o se comporta de forma rara | Casi siempre es un handler faltante en la API falsa, un diálogo o aviso que se interpone, o estado que se filtra entre tests | Ver `docs/frontend/testing-frontend.md`, sección 13 |
 
 ---
 
@@ -461,11 +461,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 
 | Tema | Detalle |
 |---|---|
-| Registro de gimnasio | La API ya lo soporta; falta la pantalla |
-| Gestión de usuarios | `UsuariosPage` es un placeholder; faltan listado, alta, edición, desactivación y reseteo de contraseña |
-| Cambio de contraseña propia | La API ya lo soporta; falta la pantalla |
-| Notificaciones | Falta un sistema de avisos (por ejemplo `sonner`) para confirmar acciones |
-| Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
+| Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/frontend/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
 | Tamaño del bundle | El build avisa que supera los 500 kB; se resuelve con carga diferida por ruta cuando haya más pantallas |
 | Sincronización entre pestañas | Ver sección 6 |
 | Refresh tokens | No existen: pasadas las 8 horas hay que volver a iniciar sesión |

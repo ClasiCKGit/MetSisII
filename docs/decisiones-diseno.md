@@ -1,6 +1,6 @@
 # Decisiones de diseño — FitManager
 
-**Alcance del análisis:** backend (`apps/api`): Express 5, Prisma 7, Zod 4, PostgreSQL. El frontend todavía no se implemento.
+**Alcance del análisis:** backend (`apps/api`): Express 5, Prisma 7, Zod 4, PostgreSQL. El análisis se hizo antes de implementar el frontend (`apps/web`), que no está cubierto.
 
 Este documento sigue la estructura que pide la consigna. Después de un inventario general de patrones, presenta tres análisis, cada uno con las cinco secciones obligatorias: código analizado, diagnóstico, alternativas, decisión y evidencia con trade-offs. El **Análisis 1** es el análisis profundo.
 
@@ -120,7 +120,7 @@ flowchart LR
    ```
 
 3. Agregar `gimnasioId` a `Horario` y sumarlo a la tabla. Hallazgo 2. *Estado: pendiente; está planificado para el Epic 3.*
-4. Mantener la regla de equipo: **no usar `$queryRaw` ni el `prisma` global en código que atienda requests**. Hallazgo 4. *Estado: documentado en `docs/auth.md`.*
+4. Mantener la regla de equipo: **no usar `$queryRaw` ni el `prisma` global en código que atienda requests**. Hallazgo 4. *Estado: documentado en `docs/backend/auth.md`.*
 5. Dejar sin cambios los hallazgos 5 y 6. El archivo tiene unas 90 líneas y cada función es corta, así que dividirlo sería overengineering. Y el requisito de pasar `gimnasioId` en los `create` es un costo aceptable: hace explícito el dato y la extensión lo fuerza igual.
 
 ### 2.5 Evidencia y trade-offs

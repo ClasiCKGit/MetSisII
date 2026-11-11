@@ -1,6 +1,6 @@
 # Testing (backend)
 
-Documentación de la suite de tests de `apps/api`: cómo correrla, cómo funciona por dentro, cómo escribir tests nuevos y qué protege. Esta guía cubre el backend. El frontend tiene la suya: `docs/testing-frontend.md`.
+Documentación de la suite de tests de `apps/api`: cómo correrla, cómo funciona por dentro, cómo escribir tests nuevos y qué protege. Esta guía cubre el backend. El frontend tiene la suya: `docs/frontend/testing-frontend.md`.
 
 **Versiones de referencia:** Vitest 5.1.0 · supertest 7 · PostgreSQL 16 · Prisma 7.10.0 · Express 5.2.1 · Node ≥ 22.12
 
@@ -306,7 +306,7 @@ El check **"Tests"** debe figurar entre los obligatorios del ruleset de `main`, 
 | Consultas raw | `$queryRaw` no pasa por el aislamiento. Un test lo documenta con el nombre `"las consultas raw NO están aisladas"`: si algún día se protege, va a fallar y habrá que actualizar `auth.md`. |
 | `Horario` | Está bloqueado en `req.db` porque todavía no tiene `gimnasioId`. Cuando se agregue y se registre en `TENANT_RULES`, hay que **reemplazar** el test `"Horario está bloqueado hasta que tenga gimnasioId"` por tests de aislamiento. |
 | Tiempos | No se miden; se verifica el mecanismo (sección 7). |
-| Frontend | Tiene su propia suite (Vitest + MSW) y su propia guía: `docs/testing-frontend.md`. |
+| Frontend | Tiene su propia suite (Vitest + MSW) y su propia guía: `docs/frontend/testing-frontend.md`. |
 | Cobertura | No se mide ni hay un mínimo exigido. Se puede agregar más adelante con `@vitest/coverage-v8`. |
 
 ---
