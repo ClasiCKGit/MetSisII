@@ -4,3 +4,7 @@ build/
 .env
 .env.local
 apps/api/src/generated/
+
+# Archivos personales de agentes de IA
+CLAUDE.local.md
+.claude/settings.local.json
