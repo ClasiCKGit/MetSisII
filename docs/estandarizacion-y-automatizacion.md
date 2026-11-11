@@ -46,7 +46,7 @@ flowchart LR
 | Docker Compose | Postgres idéntico para todos | `docker-compose.yml` | Implementado |
 | Validación de variables de entorno (Zod) | Fallar al arrancar si falta una variable | `apps/api/src/config/env.ts`, `apps/web/src/config/env.ts` | Implementado |
 | Prisma Migrate | Esquema de la base versionado | `apps/api/prisma/` | Implementado |
-| `AGENTS.md` | Reglas para agentes de IA | Raíz del repo | Implementado |
+| `CLAUDE.md` | Contexto y reglas para agentes de IA | Raíz del repo | Implementado |
 | commitlint | Validar el formato de los mensajes de commit | `commitlint.config.mjs`, `.husky/commit-msg` | Recomendado |
 | Validación del nombre de rama | Rechazar ramas fuera del estándar | `.github/workflows/ci.yml` | Propuesto |
 | Plantilla de Pull Request | Que todos los PR digan lo mismo | `.github/pull_request_template.md` | Propuesto |
@@ -432,9 +432,9 @@ Vite 8 y Prisma 7 requieren `^20.19.0 || >=22.12.0`, y Vitest 5 requiere Node �
 
 ## 9. Agentes de IA
 
-Las reglas para trabajar con agentes (Claude Code, Cursor, Codex, Copilot, etc.) están en `AGENTS.md`, en la raíz. Define el contexto del proyecto, los comandos, las versiones y APIs a evitar, las reglas de multi-tenancy y tres niveles de permisos (hacer sin preguntar, preguntar primero, nunca).
+El contexto para agentes de IA está en `CLAUDE.md`, en la raíz, que Claude Code lee automáticamente. Resume los comandos, la arquitectura de la API y del frontend, las reglas de multi-tenancy, cómo se escriben los tests y las convenciones de ramas y commits. Si cambia algo de eso, se actualiza `CLAUDE.md` en el mismo cambio.
 
-- **Claude Code** lee `CLAUDE.md`. Para que use `AGENTS.md` en todas las versiones, el repo incluye un `CLAUDE.md` con una sola línea: `@AGENTS.md`.
+- Si se suman otros agentes (Cursor, Codex, Copilot), conviene mover el contenido a un `AGENTS.md` y dejar en `CLAUDE.md` una sola línea, `@AGENTS.md`, para mantener una única fuente.
 - Los archivos personales de agentes (`CLAUDE.local.md`, `.claude/settings.local.json`) están en `.gitignore`.
 - Las ramas y los commits que produce un agente siguen **este mismo estándar**.
 - Cada integrante es responsable de lo que sube, lo haya escrito un agente o no, y debe poder explicarlo.
