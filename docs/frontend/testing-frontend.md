@@ -318,7 +318,7 @@ Un test que pasa no prueba que sirva: también tiene que fallar cuando el códig
 
 ---
 
-## 14. Antes de abrir un Pull Request
+## 14. Antes de mergear a `dev` o abrir un Pull Request
 
 ```bash
 npm run lint

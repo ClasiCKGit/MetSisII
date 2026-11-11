@@ -57,7 +57,7 @@ npm ls --workspaces
 
 Como npm "hoistea" (sube) las dependencias comunes a un único `node_modules` en la raíz, es posible importar un paquete en `apps/api` que en realidad solo fue declarado en `apps/web`, y que igual funcione en tu máquina. **Esto es un bug latente**: se puede romper al buildear en Docker o si otro dev borra esa dependencia del otro workspace.
 
-Antes de abrir un PR, si agregaste un import nuevo, verificá que el paquete esté en el `package.json` correcto. Podés chequear dependencias no declaradas con:
+Antes de mergear a `dev` o de abrir un PR, si agregaste un import nuevo, verificá que el paquete esté en el `package.json` correcto. Podés chequear dependencias no declaradas con:
 
 ```bash
 npx depcheck apps/api
@@ -260,9 +260,9 @@ Los tests corren en un job aparte, **"Tests"**, con un servicio de Postgres 16 (
 ### Cuándo corre
 
 - En cada **Pull Request** con destino `main`.
-- En cada **push** a `main`.
+- En cada **push** a `main` y a `dev`.
 
-> El workflow también está configurado para `develop`, pero hoy no usamos esa rama. Si se incorpora, la regla de protección descripta abajo también hay que replicarla ahí.
+> A `dev` se mergea en local, sin Pull Request, así que ahí el CI corre después de integrar y no puede bloquear el merge. Por eso conviene correr los pasos de abajo antes de mergear.
 
 Si se sube un commit nuevo a un PR mientras hay una corrida en curso, la anterior se cancela automáticamente.
 
@@ -277,7 +277,7 @@ Los administradores del repo gestionan esta regla en **Settings → Rules → Ru
 
 ### Reproducir el CI en tu máquina
 
-Antes de abrir un PR, corré los mismos pasos que va a correr GitHub. Si pasan localmente, deberían pasar en CI:
+Antes de mergear a `dev` o de abrir un PR, corré los mismos pasos que va a correr GitHub. Si pasan localmente, deberían pasar en CI:
 
 ```bash
 npm ci

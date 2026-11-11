@@ -61,10 +61,10 @@ flowchart LR
 
 | Rama | Rol | Uso en FitManager |
 |---|---|---|
-| `main` | Rama principal, siempre estable y lista para producción. | **En uso.** Es la única rama permanente. |
-| `dev` | Rama de integración donde se juntan las features antes de pasar a `main` (aparece en Git Flow). | **En uso.** La vamos a empezar a usar a partir de ahora. |
+| `main` | Rama principal, siempre estable y lista para producción. | **En uso.** Solo recibe cambios desde `dev` (o un `hotfix/`) por Pull Request. |
+| `dev` | Rama de integración donde se juntan las features antes de pasar a `main` (aparece en Git Flow). | **En uso.** Las ramas de trabajo se mergean acá **en local, sin Pull Request**. |
 
-`main` está protegida: no se commitea directamente, todo entra por Pull Request (ver [sección 7](#7-protección-de-ramas-y-pull-requests)).
+`main` está protegida: no se commitea directamente, todo entra por Pull Request (ver [sección 7](#7-protección-de-ramas-y-pull-requests)). `dev` no usa Pull Requests: cada integrante mergea sus ramas en local y sube `dev`.
 
 ### 2.2 Ramas de trabajo
 
@@ -103,14 +103,14 @@ flowchart LR
     A[main] --> B[dev]
     B[dev]--> |Pull Request| A[main] 
     B[dev] -->|crear rama| C[feature/* · fix/* · chore/* ...]
-    C -->|Pull Request| D{CI en verde + revisión}
-    D -->|sí| B
+    C -->|lint, build y tests en local| D{¿pasan?}
+    D -->|sí: merge --no-ff en local + push| B
     D -->|no| C
     A -->|urgente| H[hotfix/*]
     H -->|Pull Request| A
 ```
 
-Las ramas de trabajo salen de `dev` y vuelven a `dev` por PR. Cuando hay una versión lista, se abre `release/x.y.z` desde `dev`, se ajusta la versión y el changelog, y se mergea a `main` (con tag) y de vuelta a `dev`. Los `hotfix/` salen de `main` y se mergean a `main` y a `dev`. No se justifica mientras no haya versiones publicadas.
+Las ramas de trabajo salen de `dev` y vuelven a `dev` con un `git merge --no-ff` en local (sin Pull Request); el `--no-ff` deja un commit de merge que agrupa los commits de la rama en el historial. Después se sube `dev` y el CI corre sobre ese push. A `main` se llega por Pull Request desde `dev`. Cuando hay una versión lista, se abre `release/x.y.z` desde `dev`, se ajusta la versión y el changelog, y se mergea a `main` (con tag) y de vuelta a `dev`. Los `hotfix/` salen de `main` y se mergean a `main` y a `dev`. No se justifica mientras no haya versiones publicadas.
 
 ---
 
@@ -200,7 +200,7 @@ refactor(seed): dividir main() en funciones por entidad
 - Separar los cambios de formato o de refactor de los cambios de comportamiento. Mezclarlos oculta el cambio real en el diff.
 - Si ya se modificaron varias cosas, usar `git add -p` para elegir qué entra en cada commit.
 - Una migración de Prisma y el código que la usa van **juntos**, porque no tienen sentido por separado.
-- Antes de abrir el PR, revisar el historial con `git log --oneline` y reordenar o unir commits con `git rebase -i` si hace falta.
+- Antes de mergear la rama a `dev`, revisar el historial con `git log --oneline` y reordenar o unir commits con `git rebase -i` si hace falta.
 
 ## 4. Hooks locales: Husky y lint-staged
 
@@ -285,7 +285,7 @@ La fuente de verdad es `.github/workflows/ci.yml`; este apartado resume qué hac
 ### 6.1 Cuándo corre
 
 - En cada **Pull Request** hacia `main`.
-- En cada **push** a `main`.
+- En cada **push** a `main` y a `dev`. Como a `dev` se mergea sin Pull Request, el CI corre **después** de integrar: si queda en rojo, se corrige en una rama nueva y se vuelve a mergear.
 
 Si se sube un commit nuevo a un PR mientras hay una corrida en curso, la anterior se cancela (`concurrency` con `cancel-in-progress`).
 
@@ -461,22 +461,24 @@ npm run lint
 npm run format:check
 npm run prisma:generate -w apps/api
 npm run build
+npm test
 
-# 5. Subir la rama y abrir el Pull Request
-git push -u origin feature/crud-socios
-```
-
-Después:
-
-1. Abrir el PR hacia `main` con título en formato Conventional Commits y la plantilla completa.
-2. Esperar el check **"Lint y build"**. Si falla, corregir en la misma rama y pushear de nuevo.
-3. Pedir revisión a otro integrante (obligatoria si toca migraciones, multi-tenancy o autenticación).
-4. Integrar con **Squash and merge** una vez aprobado y en verde.
-5. Borrar la rama y actualizar `main` en local:
-
-```bash
-git checkout main
+# 5. Mergear a dev en local y subirla
+git checkout dev
 git pull
-git branch -d feature/crud-socios
+git merge --no-ff ramiro/feature/crud-socios
+git push
+
+# 6. Borrar la rama
+git branch -d ramiro/feature/crud-socios
 ```
+
+Después del push, revisar que el CI de `dev` quede en verde (pestaña **Actions**). Si falla, corregir en una rama nueva y repetir los pasos.
+
+Para pasar a `main`:
+
+1. Abrir un PR de `dev` hacia `main` con título en formato Conventional Commits y la plantilla completa.
+2. Esperar los checks **"Lint y build"** y **"Tests"**.
+3. Pedir revisión a otro integrante (obligatoria si toca migraciones, multi-tenancy o autenticación).
+4. Integrar una vez aprobado y en verde, y actualizar `main` y `dev` en local.
 
