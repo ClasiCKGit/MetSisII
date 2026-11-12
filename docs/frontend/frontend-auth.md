@@ -124,6 +124,12 @@ sequenceDiagram
 4. El estado pasa a `authenticated`. `GuestOnly` detecta el cambio y redirige solo a la página que el usuario quería abrir. **Ningún componente navega a mano después del login.**
 5. Si la API rechaza las credenciales, se muestra su mensaje (`Credenciales inválidas`) y no se cierra ni redirige nada.
 
+### Registro de gimnasios habilitado o no
+
+`useAuthConfig` pide `GET /api/auth/config` (con `staleTime: Infinity`, porque solo cambia si se reinicia la API). `LoginPage` muestra el enlace "Registrá tu gimnasio" solo si la API confirma que el registro está abierto. `RegisterPage` muestra "Registro no disponible" si está cerrado; si la consulta falla (API caída) muestra el formulario igual, porque la que decide es la API al enviar.
+
+En los tests, `configurarRegistroGimnasios(false)` de `fake-api.ts` cierra el registro. Esos tests se saltean con `TEST_API=real`, porque ahí depende de cómo se levantó la API.
+
 ### Cerrar sesión
 
 `cerrarSesion()` (`features/auth/session.ts`) hace dos cosas: borra la sesión del store y **vacía la caché de TanStack Query**, para que el siguiente usuario que inicie sesión no vea datos del anterior. La usan el botón "Salir" y el interceptor de respuestas.
@@ -432,6 +438,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Token inválido | Cambiar el token en `localStorage` y recargar | Vuelve al login |
 | API caída | Apagar la API y recargar | "No pudimos conectar con el servidor" y "Reintentar" |
 | Cerrar sesión | "Salir" | Login con el gimnasio precargado |
+| Registro cerrado | `REGISTRO_GIMNASIOS_HABILITADO=false` en `apps/api/.env`, reiniciar la API y abrir `/login` y `/registro` | Sin enlace al registro; `/registro` muestra "Registro no disponible" |
 
 ---
 

@@ -35,9 +35,25 @@ El mismo email puede existir en dos gimnasios distintos (por ejemplo, alguien qu
 
 Prefijos: `/api/auth` (sesión y cuenta propia) y `/api/usuarios` (gestión del personal, solo `ADMIN`).
 
+### `GET /api/auth/config`
+
+Configuración pública que el frontend necesita antes de iniciar sesión. No requiere sesión.
+
+**Respuesta `200`**
+
+```json
+{ "registroGimnasiosHabilitado": true }
+```
+
+El frontend la usa para mostrar u ocultar el registro de gimnasios.
+
+---
+
 ### `POST /api/auth/register-gimnasio`
 
 Crea un gimnasio nuevo y su primer usuario administrador, en una sola transacción: si falla una de las dos cosas, no se crea ninguna.
+
+**Se puede apagar** con la variable de entorno `REGISTRO_GIMNASIOS_HABILITADO=false` (por defecto está habilitado). Apagado, la ruta responde `403` antes de validar el body o contar intentos, y los gimnasios existentes siguen funcionando normalmente. Pensado para producción: con la API pública y el registro abierto, cualquiera podría llenar la base de gimnasios. Lo implementa `requireRegistroHabilitado` (`middlewares/registro.middleware.ts`), que lee el valor en cada request.
 
 **Request**
 
@@ -77,7 +93,7 @@ Los campos `email`, `telefono` y `direccion` del gimnasio son opcionales.
 }
 ```
 
-**Errores:** `400` validación · `409` el slug ya está en uso.
+**Errores:** `400` validación · `403` registro deshabilitado (`El registro de gimnasios está deshabilitado`) · `409` el slug ya está en uso.
 
 ---
 
@@ -616,6 +632,8 @@ npm test
 |---|---|
 | `tenant.test.ts` | El aislamiento de `req.db`: lectura, escritura, borrado, `Gimnasio`, `Horario`, transacciones |
 | `auth.test.ts` | Registro, login, `/me`, tokens falsificados y cambio de contraseña |
+| `registro-habilitado.test.ts` | `GET /api/auth/config` y el registro con `REGISTRO_GIMNASIOS_HABILITADO` apagado |
+| `env.test.ts` | Interpretación de `REGISTRO_GIMNASIOS_HABILITADO` |
 | `usuarios.test.ts` | Gestión del personal y reglas del administrador |
 | `login-timing.test.ts` | Tiempo de respuesta constante del login |
 | `rate-limit.test.ts` | Límite de intentos |
@@ -637,4 +655,5 @@ El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en 
 | Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente los admins activos; `$transaction` ya está verificada con la extensión. |
 | Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
 | Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |
+| Registro de gimnasios abierto | Con `REGISTRO_GIMNASIOS_HABILITADO=true` cualquiera que llegue a la API puede crear un gimnasio; solo lo frena el límite de intentos. | Decisión tomada (FIT-47): en el deploy se define con la variable. Si hiciera falta abrirlo solo a algunos, se puede sumar un código de invitación. |
 | Almacenamiento del token en el frontend | Se guarda en `localStorage`. Una vulnerabilidad XSS podría leerlo; una cookie `httpOnly` es más segura pero exige cambios en el backend (cookies, CORS con credenciales, protección CSRF). | Decisión tomada; los motivos y cómo cambiarla están en `docs/frontend/frontend-auth.md`, sección 8. |

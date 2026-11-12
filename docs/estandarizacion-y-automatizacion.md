@@ -395,7 +395,7 @@ Con un archivo `CODEOWNERS` y la opción *Require review from Code Owners* del r
 | Archivo | Contenido |
 |---|---|
 | `.env` (raíz) | Credenciales y puerto de Postgres para Docker Compose |
-| `apps/api/.env` | `DATABASE_URL`, `PORT`, `JWT_SECRET`, `NODE_ENV` |
+| `apps/api/.env` | `DATABASE_URL`, `PORT`, `JWT_SECRET`, `NODE_ENV`, `REGISTRO_GIMNASIOS_HABILITADO` (opcional, `true` por defecto) |
 | `apps/web/.env` | `VITE_API_URL` |
 
 ### 8.2 Postgres con Docker Compose
