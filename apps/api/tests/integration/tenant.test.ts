@@ -5,6 +5,7 @@ import { crearActividadConHorario, crearGimnasio, crearSocio } from "../helpers/
 
 type Gimnasio = Awaited<ReturnType<typeof crearGimnasio>>;
 type Socio = Awaited<ReturnType<typeof crearSocio>>;
+type Actividad = Awaited<ReturnType<typeof crearActividadConHorario>>;
 
 describe("aislamiento entre gimnasios (req.db)", () => {
   let gimnasioA: Gimnasio;
@@ -205,13 +206,55 @@ describe("aislamiento entre gimnasios (req.db)", () => {
     );
   });
 
-  describe("modelos sin registrar", () => {
-    // Horario todavía no tiene gimnasioId, así que no está en TENANT_RULES y la extensión
-    // lo bloquea en lugar de dejar pasar consultas sin filtro.
-    // CUANDO EL EPIC 3 AGREGUE gimnasioId A Horario y lo registre, reemplazar este test
-    // por tests de aislamiento como los de Socio.
-    it("Horario está bloqueado hasta que tenga gimnasioId", async () => {
-      await expect(dbA.horario.findMany()).rejects.toThrow(/no está registrado en TENANT_RULES/);
+  describe("Horario (aislado por gimnasioId)", () => {
+    let actividadA: Actividad;
+    let actividadB: Actividad;
+
+    beforeEach(async () => {
+      actividadA = await crearActividadConHorario(gimnasioA.id);
+      actividadB = await crearActividadConHorario(gimnasioB.id);
+    });
+
+    it("findMany devuelve solo los horarios del propio gimnasio", async () => {
+      const horarios = await dbA.horario.findMany();
+      expect(horarios.map((h) => h.id)).toEqual([actividadA.horarios[0].id]);
+    });
+
+    it("findUnique por el id de otro gimnasio devuelve null", async () => {
+      const ajeno = actividadB.horarios[0];
+      expect(await dbA.horario.findUnique({ where: { id: ajeno.id } })).toBeNull();
+    });
+    it("update de un horario ajeno falla con P2025 y no lo modifica", async () => {
+      const ajeno = actividadB.horarios[0];
+
+      await expect(
+        dbA.horario.update({ where: { id: ajeno.id }, data: { horaInicio: "10:00" } })
+      ).rejects.toMatchObject({ code: "P2025" });
+
+      const intacto = await prisma.horario.findUniqueOrThrow({ where: { id: ajeno.id } });
+      expect(intacto.horaInicio).toBe(ajeno.horaInicio);
+    });
+
+    it("delete de un horario ajeno falla con P2025 y no lo borra", async () => {
+      const ajeno = actividadB.horarios[0];
+
+      await expect(dbA.horario.delete({ where: { id: ajeno.id } })).rejects.toMatchObject({
+        code: "P2025",
+      });
+      expect(await prisma.horario.findUnique({ where: { id: ajeno.id } })).not.toBeNull();
+    });
+
+    it("create fuerza el gimnasio del cliente, aunque se pase el de otro", async () => {
+      const creado = await dbA.horario.create({
+        data: {
+          gimnasioId: gimnasioB.id,
+          actividadId: actividadA.id,
+          diaSemana: "MARTES",
+          horaInicio: "10:00",
+          horaFin: "11:00",
+        },
+      });
+      expect(creado.gimnasioId).toBe(gimnasioA.id);
     });
   });
 
@@ -240,9 +283,6 @@ describe("aislamiento entre gimnasios (req.db)", () => {
     });
 
     it("$transaction interactiva mantiene los bloqueos de la extensión", async () => {
-      await expect(dbA.$transaction((tx) => tx.horario.findMany())).rejects.toThrow(
-        /no está registrado en TENANT_RULES/
-      );
       await expect(
         dbA.$transaction((tx) => tx.gimnasio.delete({ where: { id: gimnasioA.id } }))
       ).rejects.toThrow(/no está permitida/);

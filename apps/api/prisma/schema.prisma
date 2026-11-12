@@ -33,6 +33,7 @@ model Gimnasio {
   profesores     Profesor[]
   actividades    Actividad[]
   actividadProfesores ActividadProfesor[]
+  horarios       Horario[]
   tiposMembresia TipoMembresia[]
   membresias     Membresia[]
   pagos          Pago[]
@@ -179,15 +180,18 @@ enum DiaSemana {
 
 model Horario {
   id                  String    @id @default(uuid())
+  gimnasioId          String
   actividadId         String
   diaSemana           DiaSemana
   horaInicio          String
   horaFin             String
   actividadProfesorId String?
 
+  gimnasio          Gimnasio           @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
   actividad         Actividad          @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   actividadProfesor ActividadProfesor? @relation(fields: [actividadProfesorId], references: [id], onDelete: SetNull)
 
+  @@index([gimnasioId])
   @@index([actividadId])
   @@map("horarios")
 }

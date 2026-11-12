@@ -90,6 +90,7 @@ async function main() {
   await prisma.horario.createMany({
     data: [
       {
+        gimnasioId: gimnasio.id,
         actividadId: musculacion.id,
         diaSemana: "LUNES",
         horaInicio: "08:00",
@@ -97,6 +98,7 @@ async function main() {
         actividadProfesorId: vinculoCarlos.id,
       },
       {
+        gimnasioId: gimnasio.id,
         actividadId: musculacion.id,
         diaSemana: "MIERCOLES",
         horaInicio: "08:00",
@@ -104,13 +106,20 @@ async function main() {
         actividadProfesorId: vinculoCarlos.id,
       },
       {
+        gimnasioId: gimnasio.id,
         actividadId: musculacion.id,
         diaSemana: "VIERNES",
         horaInicio: "08:00",
         horaFin: "22:00",
         actividadProfesorId: vinculoDiego.id,
       },
-      { actividadId: musculacion.id, diaSemana: "SABADO", horaInicio: "09:00", horaFin: "13:00" }, // sin profesor fijo asignado
+      {
+        gimnasioId: gimnasio.id,
+        actividadId: musculacion.id,
+        diaSemana: "SABADO",
+        horaInicio: "09:00",
+        horaFin: "13:00",
+      }, // sin profesor fijo asignado
     ],
   });
 
@@ -140,6 +149,7 @@ async function main() {
   await prisma.horario.createMany({
     data: [
       {
+        gimnasioId: gimnasio.id,
         actividadId: jiujitsu.id,
         diaSemana: "MARTES",
         horaInicio: "19:00",
@@ -147,6 +157,7 @@ async function main() {
         actividadProfesorId: vinculoMarina.id,
       },
       {
+        gimnasioId: gimnasio.id,
         actividadId: jiujitsu.id,
         diaSemana: "JUEVES",
         horaInicio: "19:00",
@@ -342,6 +353,7 @@ async function main() {
   await prisma.horario.createMany({
     data: [
       {
+        gimnasioId: gimnasio2.id,
         actividadId: crossfit.id,
         diaSemana: "LUNES",
         horaInicio: "18:00",
@@ -349,6 +361,7 @@ async function main() {
         actividadProfesorId: vinculoSofia.id,
       },
       {
+        gimnasioId: gimnasio2.id,
         actividadId: crossfit.id,
         diaSemana: "MIERCOLES",
         horaInicio: "18:00",
