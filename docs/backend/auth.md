@@ -139,7 +139,9 @@ Cambia la contraseña del usuario logueado. Requiere `Authorization: Bearer <tok
 }
 ```
 
-**Respuesta `204`**, sin cuerpo.
+**Respuesta `200`:** una sesión nueva, con la misma forma que el login (`token`, `usuario`, `gimnasio`).
+
+El cambio **cierra todas las sesiones abiertas del usuario, incluida la que hizo el pedido** (ver la sección 6). Por eso la respuesta trae un token nuevo: el cliente tiene que reemplazar el que tenía, o el próximo request le va a dar `401`.
 
 **Errores:** `400` validación, contraseña actual incorrecta o nueva igual a la actual · `401` sin sesión · `429` demasiados intentos.
 
@@ -156,7 +158,7 @@ Todas las rutas requieren `Authorization: Bearer <token>` y rol `ADMIN` (un `REC
 | `GET /api/usuarios` | Lista los usuarios del gimnasio, ordenados por apellido y nombre | `200` |
 | `POST /api/usuarios` | Crea un usuario | `201` |
 | `PATCH /api/usuarios/:id` | Actualiza nombre, apellido, rol o `activo` | `200` |
-| `POST /api/usuarios/:id/reset-password` | Fija una contraseña nueva a **otro** usuario | `204` |
+| `POST /api/usuarios/:id/reset-password` | Fija una contraseña nueva a **otro** usuario y cierra sus sesiones | `204` |
 
 **Forma de un usuario en las respuestas** (nunca incluye `passwordHash`):
 
@@ -188,6 +190,7 @@ Todas las rutas requieren `Authorization: Bearer <token>` y rol `ADMIN` (un `REC
 **Reglas**
 
 - **Un admin no puede desactivarse ni cambiar su propio rol** (`409`). Esto garantiza que el gimnasio siempre tenga al menos un administrador activo: quien hace la llamada es un admin activo (lo verifica `authenticate`) y no puede dejar de serlo por su cuenta.
+- **Resetear una contraseña cierra todas las sesiones abiertas de ese usuario**: sus tokens anteriores dan `401` y tiene que volver a iniciar sesión con la contraseña nueva. La sesión del admin que la resetea no se ve afectada.
 - **No se puede resetear la contraseña propia** (`409`): se usa `POST /api/auth/change-password`, que exige la contraseña actual.
 - **El email no se puede modificar.** Un campo no permitido (`email`, `passwordHash`, `gimnasioId`) se rechaza con `400`.
 - **Crear un usuario con un email que ya existe en el gimnasio** responde `409`, aunque el existente esté desactivado.
@@ -241,7 +244,7 @@ sequenceDiagram
     A->>DB: buscar usuario por gimnasio y email
     A->>A: bcrypt.compare (contra hash real o ficticio)
     alt credenciales válidas y activas
-        A->>A: firmar JWT con sub y gid
+        A->>A: firmar JWT con sub, gid y ver
         A-->>C: 200 con token, usuario y gimnasio
     else cualquier falla
         A-->>C: 401 Credenciales inválidas
@@ -259,7 +262,7 @@ sequenceDiagram
 
     C->>M: request con Authorization Bearer token
     M->>M: verificar firma y vencimiento
-    M->>DB: buscar usuario activo de gimnasio activo
+    M->>DB: buscar usuario activo de gimnasio activo con la misma tokenVersion
     M->>M: completar req.auth y req.db
     M->>H: next
     H->>DB: consultas con req.db (filtradas por gimnasio)
@@ -275,15 +278,23 @@ sequenceDiagram
 | Algoritmo | `HS256` (se fija al firmar y al verificar) |
 | Duración | 8 horas |
 | Secreto | Variable de entorno `JWT_SECRET` (validada en `config/env.ts`) |
-| Payload | `sub` = id del usuario · `gid` = id del gimnasio · más `iat` y `exp` automáticos |
+| Payload | `sub` = id del usuario · `gid` = id del gimnasio · `ver` = `tokenVersion` del usuario al emitirlo · más `iat` y `exp` automáticos |
 
 El token **no incluye el rol ni datos personales**. El rol se lee de la base en cada request (ver `authenticate`), de modo que desactivar a un usuario o cambiarle el rol tiene efecto inmediato y no al vencer el token.
+
+### Cierre de sesiones con `tokenVersion`
+
+`Usuario` tiene una columna `tokenVersion` (entero, empieza en `0`) que viaja en el token como `ver`. `authenticate` solo acepta el token si su `ver` coincide con la versión actual del usuario en la base. Cambiar la contraseña propia o resetear la de otro usuario la incrementa en el mismo `update` que guarda el hash nuevo, y con eso **todos los tokens emitidos antes dejan de valer en el acto**.
+
+- No suma consultas: `authenticate` ya buscaba al usuario en cada request, y la versión es una condición más del mismo `where`.
+- Se eligió frente a una columna `passwordChangedAt` comparada con el `iat` del token porque el `iat` tiene precisión de segundos (un token emitido en el mismo segundo que el cambio es ambiguo) y porque un contador sirve para cualquier motivo de cierre, no solo la contraseña. Un futuro "cerrar todas mis sesiones" solo tendría que incrementarlo.
+- Los tokens emitidos antes de esta columna no traen `ver` y se rechazan: al desplegar el cambio, todos vuelven a iniciar sesión una vez.
 
 El payload se valida con Zod después de verificar la firma, en vez de confiar en lo que devuelve la librería.
 
 **No hay refresh tokens.** Pasadas las 8 horas el usuario tiene que volver a iniciar sesión, y el cierre de sesión consiste en borrar el token del cliente.
 
-**Cambiar o resetear una contraseña no cierra las sesiones ya abiertas.** Los tokens emitidos antes siguen valiendo hasta que vencen (8 horas). Para cortar el acceso de inmediato hay que **desactivar al usuario**, que sí surte efecto en el acto.
+**Cambiar o resetear una contraseña cierra las sesiones ya abiertas** del usuario (ver arriba). Desactivarlo también corta el acceso en el acto.
 
 **Cómo lo usa el frontend:** el token se guarda en `localStorage` y el cliente HTTP lo envía en cada request. Ver `docs/frontend/frontend-auth.md`.
 
@@ -299,9 +310,10 @@ Todos estos casos están cubiertos por tests (`tests/integration/auth.test.ts`):
 | Token vencido | `Token inválido o expirado` |
 | Firmado con otro secreto | `Token inválido o expirado` |
 | Algoritmo `none` (sin firma) | `Token inválido o expirado` |
-| Sin `sub` o `gid` en el payload | `Token inválido o expirado` |
+| Sin `sub`, `gid` o `ver` en el payload (incluye los tokens anteriores a `tokenVersion`) | `Token inválido o expirado` |
 | Firma válida, pero el `gid` no es el gimnasio del usuario | `Usuario inactivo o inexistente` |
 | Usuario desactivado o eliminado | `Usuario inactivo o inexistente` |
+| `ver` distinto de la `tokenVersion` actual (se cambió o reseteó la contraseña) | `Usuario inactivo o inexistente` |
 | Gimnasio desactivado | `Usuario inactivo o inexistente` |
 
 ---
@@ -314,10 +326,10 @@ Todos en `src/middlewares/`.
 
 1. Exige el header `Authorization: Bearer <token>`.
 2. Verifica la firma y el vencimiento del token.
-3. Busca en la base al usuario, exigiendo que **él y su gimnasio estén activos**.
+3. Busca en la base al usuario, exigiendo que **él y su gimnasio estén activos** y que su `tokenVersion` sea la del token.
 4. Completa `req.auth` (usuario, rol, gimnasio) y `req.db` (cliente limitado al gimnasio).
 
-Hace una consulta indexada por request. Es el precio de que las desactivaciones y los cambios de rol sean inmediatos.
+Hace una consulta indexada por request. Es el precio de que las desactivaciones, los cambios de rol y los cambios de contraseña sean inmediatos.
 
 ### `requireRole(...roles)`
 
@@ -595,7 +607,7 @@ curl -s -X POST http://localhost:3000/api/auth/change-password \
   -d '{"currentPassword":"admin123","newPassword":"otra-clave-123"}'
 ```
 
-El último comando cambia la contraseña de Ana en la base de desarrollo. Para volver a `admin123`, correr `npm run db:seed`.
+El último comando cambia la contraseña de Ana en la base de desarrollo y devuelve un token nuevo: el `$TOKEN` anterior deja de servir. Para volver a `admin123`, correr `npm run db:seed`.
 
 Casos de error que conviene probar:
 
@@ -631,9 +643,8 @@ El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en 
 |---|---|---|
 | `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, y un test lo verifica. | Epic 3: se agrega la columna con una migración, se registra en `TENANT_RULES` y se **reemplaza** ese test por tests de aislamiento como los de `Socio`. |
 | Consultas raw | `$queryRaw` ignora la extensión, también dentro de una transacción. Un test lo documenta (si algún día se protege, va a fallar). | Regla de equipo (sección 8). |
-| Sin refresh tokens | El token dura 8 horas y no se puede revocar individualmente antes de que venza. Sí se corta el acceso desactivando al usuario, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
+| Sin refresh tokens | El token dura 8 horas y no se puede revocar un token puntual antes de que venza. Sí se cortan todas las sesiones de un usuario desactivándolo o cambiando su contraseña, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
 | Recuperación de contraseña | Un admin puede resetear la contraseña de otro usuario (`/api/usuarios/:id/reset-password`), pero falta el flujo por mail para quien olvidó la suya. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
-| Sesiones abiertas tras cambiar la contraseña | Cambiar o resetear una contraseña no invalida los tokens ya emitidos (valen hasta 8 horas). Desactivar al usuario sí corta el acceso al instante. | Se evalúa una columna `passwordChangedAt` para rechazar tokens anteriores al cambio. |
 | Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente los admins activos; `$transaction` ya está verificada con la extensión. |
 | Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
 | Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |

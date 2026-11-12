@@ -17,10 +17,11 @@ export async function getMe(): Promise<Perfil> {
   return data;
 }
 
-// La API responde 204 (sin cuerpo)
+// La API cierra todas las sesiones del usuario (incluida la actual) y devuelve una nueva
 export async function changePassword(input: {
   currentPassword: string;
   newPassword: string;
-}): Promise<void> {
-  await apiClient.post("/auth/change-password", input);
+}): Promise<Sesion> {
+  const { data } = await apiClient.post<Sesion>("/auth/change-password", input);
+  return data;
 }

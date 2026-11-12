@@ -93,6 +93,13 @@ function sesionDe(usuario: FakeUsuario, gimnasio: FakeGimnasio) {
   };
 }
 
+// Imita el incremento de Usuario.tokenVersion: invalida todos los tokens del usuario
+function cerrarSesionesDe(usuarioId: string): void {
+  for (const [token, sesion] of estado.sesiones) {
+    if (sesion.usuarioId === usuarioId) estado.sesiones.delete(token);
+  }
+}
+
 type Autenticado = { usuario: FakeUsuario; gimnasio: FakeGimnasio };
 
 // Imita el middleware authenticate: devuelve el usuario, o la respuesta de error que corresponda
@@ -243,7 +250,9 @@ export function crearHandlers(apiUrl: string) {
         return error(400, "La nueva contraseña tiene que ser distinta de la actual");
       }
       actual.usuario.password = nueva;
-      return sinContenido();
+      // Se cierran todas las sesiones (incluida la actual) y se entrega una nueva
+      cerrarSesionesDe(actual.usuario.id);
+      return respuesta(200, sesionDe(actual.usuario, actual.gimnasio));
     }),
 
     http.get(`${base}/usuarios`, ({ request }) => {
@@ -348,6 +357,7 @@ export function crearHandlers(apiUrl: string) {
       if (!objetivo) return error(404, "Usuario no encontrado");
 
       objetivo.password = password;
+      cerrarSesionesDe(objetivo.id);
       return sinContenido();
     }),
   ];

@@ -124,6 +124,10 @@ sequenceDiagram
 4. El estado pasa a `authenticated`. `GuestOnly` detecta el cambio y redirige solo a la página que el usuario quería abrir. **Ningún componente navega a mano después del login.**
 5. Si la API rechaza las credenciales, se muestra su mensaje (`Credenciales inválidas`) y no se cierra ni redirige nada.
 
+### Cambiar la contraseña propia
+
+`POST /api/auth/change-password` cierra todas las sesiones del usuario, incluida la actual, y responde con una sesión nueva. `useChangePassword` la guarda con `setSession`: si no lo hiciera, el token viejo daría `401` en el próximo request y el cliente cerraría la sesión. Las otras sesiones del usuario (otra pestaña con otro login, otro dispositivo) se cierran solas en su próximo request.
+
 ### Cerrar sesión
 
 `cerrarSesion()` (`features/auth/session.ts`) hace dos cosas: borra la sesión del store y **vacía la caché de TanStack Query**, para que el siguiente usuario que inicie sesión no vea datos del anterior. La usan el botón "Salir" y el interceptor de respuestas.
@@ -432,6 +436,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Token inválido | Cambiar el token en `localStorage` y recargar | Vuelve al login |
 | API caída | Apagar la API y recargar | "No pudimos conectar con el servidor" y "Reintentar" |
 | Cerrar sesión | "Salir" | Login con el gimnasio precargado |
+| Cambiar la contraseña | "Cambiar contraseña" con la actual correcta | "Contraseña actualizada" y sigue adentro; otro navegador con una sesión del mismo usuario vuelve al login en el próximo request |
 
 ---
 

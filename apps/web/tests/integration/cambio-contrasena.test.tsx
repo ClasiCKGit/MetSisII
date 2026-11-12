@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useAuthStore } from "@/store/auth.store";
-import { apiLoginStatus, conSesion, nuevoGimnasio } from "../helpers/api";
+import { apiLoginStatus, apiMeStatus, conSesion, nuevoGimnasio } from "../helpers/api";
 import { renderApp, type Usuario } from "../helpers/render";
 import { esperarQueSeCierreElDialogo } from "../helpers/dialogo";
 
@@ -69,6 +69,13 @@ describe("cambio de contraseña propia", () => {
     await esperarQueSeCierreElDialogo();
     expect(await apiLoginStatus(g.slug, g.email, "nueva-clave-123")).toBe(200);
     expect(await apiLoginStatus(g.slug, g.email, g.password)).toBe(401);
+
+    // El token viejo quedó invalidado y la sesión sigue abierta con el nuevo
+    const tokenNuevo = useAuthStore.getState().token;
+    expect(tokenNuevo).not.toBe(g.token);
+    expect(await apiMeStatus(g.token)).toBe(401);
+    expect(await apiMeStatus(tokenNuevo as string)).toBe(200);
+    expect(screen.getByRole("button", { name: "Cambiar contraseña" })).toBeInTheDocument();
 
     // Al volver a abrirlo, el formulario está vacío (no quedan los datos anteriores)
     const otraVez = await abrirDialogo(user);

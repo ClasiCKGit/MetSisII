@@ -12,11 +12,22 @@ import type { AuthContext } from "./auth.types";
 const DUMMY_HASH = bcrypt.hashSync("fitmanager-dummy-password", BCRYPT_ROUNDS);
 
 function buildSession(
-  usuario: { id: string; email: string; nombre: string; apellido: string; rol: string },
+  usuario: {
+    id: string;
+    email: string;
+    nombre: string;
+    apellido: string;
+    rol: string;
+    tokenVersion: number;
+  },
   gimnasio: { id: string; nombre: string; slug: string }
 ) {
   return {
-    token: signToken({ usuarioId: usuario.id, gimnasioId: gimnasio.id }),
+    token: signToken({
+      usuarioId: usuario.id,
+      gimnasioId: gimnasio.id,
+      tokenVersion: usuario.tokenVersion,
+    }),
     usuario: {
       id: usuario.id,
       email: usuario.email,
@@ -73,6 +84,10 @@ export async function login({ gimnasioSlug, email, password }: LoginInput) {
   return buildSession(usuario, gimnasio);
 }
 
+/**
+ * Cambia la contraseña propia e invalida todas las sesiones abiertas del usuario
+ * (incluida la actual). Devuelve una sesión nueva para que quien la cambió siga adentro.
+ */
 export async function changePassword(
   db: TenantClient,
   actor: AuthContext,
@@ -95,8 +110,10 @@ export async function changePassword(
     throw new AppError(400, "La nueva contraseña tiene que ser distinta de la actual");
   }
 
-  await db.usuario.update({
+  const actualizado = await db.usuario.update({
     where: { id: actor.usuarioId },
-    data: { passwordHash: await hashPassword(newPassword) },
+    data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
   });
+
+  return buildSession(actualizado, actor.gimnasio);
 }

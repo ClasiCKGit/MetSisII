@@ -194,9 +194,10 @@ describe("gestión de usuarios", () => {
     expect(await apiMeStatus(tokenCarla)).toBe(200);
   });
 
-  it("restablece la contraseña de otro usuario: avisa, y la nueva funciona", async () => {
+  it("restablece la contraseña de otro usuario: avisa, la nueva funciona y cierra sus sesiones", async () => {
     const g = await nuevoGimnasio();
     const carla = await conCarla(g);
+    const tokenCarla = await apiLoginToken(g.slug, carla.email, carla.password);
     await conSesion(g.token);
     const { user } = renderApp("/usuarios");
 
@@ -219,5 +220,7 @@ describe("gestión de usuarios", () => {
     expect(await screen.findByText("Contraseña restablecida")).toBeInTheDocument();
     expect(await apiLoginStatus(g.slug, carla.email, "reseteada-123")).toBe(200);
     expect(await apiLoginStatus(g.slug, carla.email, carla.password)).toBe(401);
+    expect(await apiMeStatus(tokenCarla)).toBe(401);
+    expect(await apiMeStatus(g.token)).toBe(200);
   });
 });
