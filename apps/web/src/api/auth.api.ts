@@ -1,4 +1,4 @@
-import type { Perfil, RegisterPayload, Sesion } from "@/features/auth/types";
+import type { AuthConfig, Perfil, RegisterPayload, Sesion } from "@/features/auth/types";
 import type { LoginInput } from "@/features/auth/schemas";
 import { apiClient } from "@/lib/api-client";
 
@@ -9,6 +9,11 @@ export async function login(input: LoginInput): Promise<Sesion> {
 
 export async function registerGimnasio(payload: RegisterPayload): Promise<Sesion> {
   const { data } = await apiClient.post<Sesion>("/auth/register-gimnasio", payload);
+  return data;
+}
+
+export async function getAuthConfig(): Promise<AuthConfig> {
+  const { data } = await apiClient.get<AuthConfig>("/auth/config");
   return data;
 }
 

@@ -15,10 +15,12 @@ import {
 import { FieldGroup } from "@/components/ui/field";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { slugify } from "@/lib/slugify";
+import { useAuthConfig } from "../hooks/useAuthConfig";
 import { useRegister } from "../hooks/useRegister";
 import { registerSchema, type RegisterInput } from "../schemas";
 
 export function RegisterPage() {
+  const config = useAuthConfig();
   const registro = useRegister();
   // Mientras el usuario no escriba el identificador a mano, se completa solo a partir del nombre
   const [slugEditadoAMano, setSlugEditadoAMano] = useState(false);
@@ -56,6 +58,14 @@ export function RegisterPage() {
   }
 
   const errorGeneral = registro.error && !hasStatus(registro.error, 409);
+
+  if (config.isPending) {
+    return <p className="text-sm text-muted-foreground">Cargando…</p>;
+  }
+  // Si la consulta falla (API caída) se muestra el formulario igual: la API decide al enviar
+  if (config.data?.registroGimnasiosHabilitado === false) {
+    return <RegistroCerrado />;
+  }
 
   return (
     <Card className="w-full max-w-md">
@@ -132,6 +142,25 @@ export function RegisterPage() {
         </Button>
         <Link to="/login" className={buttonVariants({ variant: "link" })}>
           Ya tengo una cuenta
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function RegistroCerrado() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Registro no disponible</CardTitle>
+        <CardDescription>
+          Por ahora no se pueden registrar gimnasios nuevos. Si tu gimnasio ya usa FitManager,
+          pedile una cuenta a su administrador.
+        </CardDescription>
+      </CardHeader>
+      <CardFooter>
+        <Link to="/login" className={buttonVariants({ variant: "link" })}>
+          Ir a iniciar sesión
         </Link>
       </CardFooter>
     </Card>

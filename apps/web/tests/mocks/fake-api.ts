@@ -32,12 +32,20 @@ const estado = {
   gimnasios: [] as FakeGimnasio[],
   usuarios: [] as FakeUsuario[],
   sesiones: new Map<string, { usuarioId: string }>(),
+  // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
+  registroHabilitado: true,
 };
 
 export function resetFakeApi(): void {
   estado.gimnasios.length = 0;
   estado.usuarios.length = 0;
   estado.sesiones.clear();
+  estado.registroHabilitado = true;
+}
+
+// Solo para la API falsa: en la real se cambia con la variable de entorno al levantarla
+export function configurarRegistroGimnasios(habilitado: boolean): void {
+  estado.registroHabilitado = habilitado;
 }
 
 // ───────── utilidades ─────────
@@ -174,7 +182,14 @@ export function crearHandlers(apiUrl: string) {
       return respuesta(200, sesionDe(usuario, gimnasio));
     }),
 
+    http.get(`${base}/auth/config`, () =>
+      respuesta(200, { registroGimnasiosHabilitado: estado.registroHabilitado })
+    ),
+
     http.post(`${base}/auth/register-gimnasio`, async ({ request }) => {
+      if (!estado.registroHabilitado) {
+        return error(403, "El registro de gimnasios está deshabilitado");
+      }
       const cuerpo = await leerJson(request);
       const gimnasio = cuerpo?.gimnasio as Record<string, unknown> | undefined;
       const admin = cuerpo?.admin as Record<string, unknown> | undefined;

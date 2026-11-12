@@ -25,6 +25,11 @@ export interface Sesion extends Perfil {
   token: string;
 }
 
+// Respuesta de GET /api/auth/config (pública, sin sesión)
+export interface AuthConfig {
+  registroGimnasiosHabilitado: boolean;
+}
+
 // Cuerpo de POST /api/auth/register-gimnasio
 export interface RegisterPayload {
   gimnasio: { nombre: string; slug: string };
