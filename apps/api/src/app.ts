@@ -6,6 +6,7 @@ import { logger } from "./config/logger";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
 import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
+import { profesoresRouter } from "./modules/profesores/profesores.routes";
 
 export function createApp() {
   const app = express();
@@ -23,7 +24,7 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/usuarios", usuariosRouter);
   // app.use("/api/socios", sociosRouter);
-  // app.use("/api/profesores", profesoresRouter);
+  app.use("/api/profesores", profesoresRouter);
   // app.use("/api/actividades", actividadesRouter);
   // app.use("/api/pagos", pagosRouter);
 
