@@ -74,7 +74,9 @@ export async function crearActividadConHorario(gimnasioId: string) {
     data: {
       gimnasioId,
       nombre: `Actividad ${n}`,
-      horarios: { create: [{ diaSemana: "LUNES", horaInicio: "18:00", horaFin: "19:00" }] },
+      horarios: {
+        create: [{ gimnasioId, diaSemana: "LUNES", horaInicio: "18:00", horaFin: "19:00" }],
+      },
     },
     include: { horarios: true },
   });

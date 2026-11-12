@@ -9,7 +9,6 @@ interface TenantRule {
   forbidden?: readonly string[];
 }
 
-// TODO: Agregar columna gimnasioId en Horario (epic 4).
 const TENANT_RULES: Record<string, TenantRule> = {
   // Un gimnasio solo ve y modifica su propio registro. Crear o borrar gimnasios
   // no se hace desde req.db: el alta es el onboarding y el borrado es lógico.
@@ -25,6 +24,7 @@ const TENANT_RULES: Record<string, TenantRule> = {
   TipoMembresia: { field: "gimnasioId" },
   Membresia: { field: "gimnasioId" },
   Pago: { field: "gimnasioId" },
+  Horario: { field: "gimnasioId" },
 };
 
 // Agrega la condición del tenant con AND, sin pisar lo que ya pidió quien llama.

@@ -304,7 +304,6 @@ El check **"Tests"** debe figurar entre los obligatorios del ruleset de `main`, 
 |---|---|
 | Los archivos corren de a uno | Comparten una sola base y el truncado afectaría a los otros. Si la suite crece mucho, se puede dar un esquema por proceso. |
 | Consultas raw | `$queryRaw` no pasa por el aislamiento. Un test lo documenta con el nombre `"las consultas raw NO están aisladas"`: si algún día se protege, va a fallar y habrá que actualizar `auth.md`. |
-| `Horario` | Está bloqueado en `req.db` porque todavía no tiene `gimnasioId`. Cuando se agregue y se registre en `TENANT_RULES`, hay que **reemplazar** el test `"Horario está bloqueado hasta que tenga gimnasioId"` por tests de aislamiento. |
 | Tiempos | No se miden; se verifica el mecanismo (sección 7). |
 | Frontend | Tiene su propia suite (Vitest + MSW) y su propia guía: `docs/frontend/testing-frontend.md`. |
 | Cobertura | No se mide ni hay un mínimo exigido. Se puede agregar más adelante con `@vitest/coverage-v8`. |
