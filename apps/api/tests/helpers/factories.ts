@@ -80,6 +80,20 @@ export async function crearProfesor(gimnasioId: string, datos: DatosProfesor = {
   });
 }
 
+interface DatosActividad {
+  nombre?: string;
+  descripcion?: string;
+  cupo?: number;
+  activa?: boolean;
+}
+
+export async function crearActividad(gimnasioId: string, datos: DatosActividad = {}) {
+  const n = siguiente();
+  return prisma.actividad.create({
+    data: { gimnasioId, nombre: `Actividad ${n}`, ...datos },
+  });
+}
+
 // Una actividad con un horario, para probar relaciones y modelos sin aislar todavía
 export async function crearActividadConHorario(gimnasioId: string) {
   const n = siguiente();
