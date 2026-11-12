@@ -1,5 +1,11 @@
 import type { Request, Response } from "express";
+import { env } from "../../config/env";
 import * as authService from "./auth.service";
+
+/** Configuración pública que el frontend necesita antes de iniciar sesión. */
+export function config(_req: Request, res: Response) {
+  res.json({ registroGimnasiosHabilitado: env.REGISTRO_GIMNASIOS_HABILITADO });
+}
 
 export async function registerGimnasio(req: Request, res: Response) {
   const session = await authService.registerGimnasio(req.body);

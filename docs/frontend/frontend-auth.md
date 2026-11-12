@@ -128,6 +128,12 @@ sequenceDiagram
 
 `POST /api/auth/change-password` cierra todas las sesiones del usuario, incluida la actual, y responde con una sesión nueva. `useChangePassword` la guarda con `setSession`: si no lo hiciera, el token viejo daría `401` en el próximo request y el cliente cerraría la sesión. Las otras sesiones del usuario (otra pestaña con otro login, otro dispositivo) se cierran solas en su próximo request.
 
+### Registro de gimnasios habilitado o no
+
+`useAuthConfig` pide `GET /api/auth/config` (con `staleTime: Infinity`, porque solo cambia si se reinicia la API). `LoginPage` muestra el enlace "Registrá tu gimnasio" solo si la API confirma que el registro está abierto. `RegisterPage` muestra "Registro no disponible" si está cerrado; si la consulta falla (API caída) muestra el formulario igual, porque la que decide es la API al enviar.
+
+En los tests, `configurarRegistroGimnasios(false)` de `fake-api.ts` cierra el registro. Esos tests se saltean con `TEST_API=real`, porque ahí depende de cómo se levantó la API.
+
 ### Cerrar sesión
 
 `cerrarSesion()` (`features/auth/session.ts`) hace dos cosas: borra la sesión del store y **vacía la caché de TanStack Query**, para que el siguiente usuario que inicie sesión no vea datos del anterior. La usan el botón "Salir" y el interceptor de respuestas.
@@ -437,6 +443,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | API caída | Apagar la API y recargar | "No pudimos conectar con el servidor" y "Reintentar" |
 | Cerrar sesión | "Salir" | Login con el gimnasio precargado |
 | Cambiar la contraseña | "Cambiar contraseña" con la actual correcta | "Contraseña actualizada" y sigue adentro; otro navegador con una sesión del mismo usuario vuelve al login en el próximo request |
+| Registro cerrado | `REGISTRO_GIMNASIOS_HABILITADO=false` en `apps/api/.env`, reiniciar la API y abrir `/login` y `/registro` | Sin enlace al registro; `/registro` muestra "Registro no disponible" |
 
 ---
 

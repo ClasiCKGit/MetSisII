@@ -1,8 +1,11 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth.store";
 import { apiLoginStatus, nuevoGimnasio } from "../helpers/api";
+import { USANDO_API_REAL } from "../helpers/modo";
 import { renderApp } from "../helpers/render";
+import { configurarRegistroGimnasios } from "../mocks/fake-api";
 
 describe("registro de gimnasio", () => {
   it("el identificador se completa solo desde el nombre, hasta que se edita a mano", async () => {
@@ -106,5 +109,49 @@ describe("registro de gimnasio", () => {
     expect(router.state.location.pathname).toBe("/registro");
     await user.click(await screen.findByRole("link", { name: "Ya tengo una cuenta" }));
     expect(router.state.location.pathname).toBe("/login");
+  });
+});
+
+// Con la API real depende de cómo se la levantó (REGISTRO_GIMNASIOS_HABILITADO): solo con la falsa
+describe.skipIf(USANDO_API_REAL)("registro de gimnasios deshabilitado", () => {
+  it("el login no muestra el enlace al registro", async () => {
+    configurarRegistroGimnasios(false);
+    renderApp("/login");
+
+    // Se espera a que llegue la configuración: si el enlace fuera a aparecer, ya estaría
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["auth", "config"])?.status).toBe("success")
+    );
+    expect(screen.getByRole("button", { name: "Ingresar" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Registrá tu gimnasio" })).not.toBeInTheDocument();
+  });
+
+  it("/registro avisa que no está disponible, sin formulario, y lleva al login", async () => {
+    configurarRegistroGimnasios(false);
+    const { user, router } = renderApp("/registro");
+
+    expect(await screen.findByText("Registro no disponible")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nombre del gimnasio")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Ir a iniciar sesión" }));
+    expect(router.state.location.pathname).toBe("/login");
+  });
+
+  it("si se cierra con el formulario abierto, muestra el error de la API y no inicia sesión", async () => {
+    const { user } = renderApp("/registro");
+    await user.type(await screen.findByLabelText("Nombre del gimnasio"), "Gimnasio Tardío");
+    await user.type(screen.getByLabelText("Tu nombre"), "Ana");
+    await user.type(screen.getByLabelText("Tu apellido"), "Pérez");
+    await user.type(screen.getByLabelText("Email"), "ana@tardio.com");
+    await user.type(screen.getByLabelText("Contraseña"), "clave-segura-123");
+    await user.type(screen.getByLabelText("Repetir contraseña"), "clave-segura-123");
+
+    configurarRegistroGimnasios(false);
+    await user.click(screen.getByRole("button", { name: "Crear gimnasio" }));
+
+    expect(
+      await screen.findByText("El registro de gimnasios está deshabilitado")
+    ).toBeInTheDocument();
+    expect(useAuthStore.getState().token).toBeNull();
   });
 });

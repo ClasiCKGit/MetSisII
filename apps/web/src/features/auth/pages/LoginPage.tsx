@@ -14,12 +14,14 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
+import { useAuthConfig } from "../hooks/useAuthConfig";
 import { useLogin } from "../hooks/useLogin";
 import { loginSchema, type LoginInput } from "../schemas";
 
 export function LoginPage() {
   const ultimoSlug = useAuthStore((state) => state.ultimoSlug);
   const login = useLogin();
+  const config = useAuthConfig();
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -112,9 +114,12 @@ export function LoginPage() {
         <Button type="submit" form="form-login" disabled={login.isPending} className="w-full">
           {login.isPending ? "Ingresando…" : "Ingresar"}
         </Button>
-        <Link to="/registro" className={buttonVariants({ variant: "link" })}>
-          Registrá tu gimnasio
-        </Link>
+        {/* Solo si la API confirma que el registro está abierto (FIT-47) */}
+        {config.data?.registroGimnasiosHabilitado && (
+          <Link to="/registro" className={buttonVariants({ variant: "link" })}>
+            Registrá tu gimnasio
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
