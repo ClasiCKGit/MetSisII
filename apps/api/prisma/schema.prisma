@@ -58,6 +58,9 @@ model Usuario {
   apellido     String
   rol          RolUsuario @default(RECEPCIONISTA)
   activo       Boolean    @default(true)
+  // Viaja en el JWT. Se incrementa al cambiar o resetear la contraseña, y los
+  // tokens emitidos con una versión anterior dejan de ser válidos.
+  tokenVersion Int        @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 

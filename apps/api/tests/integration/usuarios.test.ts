@@ -318,6 +318,20 @@ describe("POST /api/usuarios/:id/reset-password", () => {
     expect((await login(PASSWORD)).status).toBe(401);
   });
 
+  it("cierra todas las sesiones abiertas del usuario reseteado, pero no la del admin", async () => {
+    const { a } = await crearEscenario();
+    const usuario = await crearUsuario(a.gimnasio.id);
+    const sesionDelUsuario = tokenDe(usuario);
+    const me = (token: string) => request(app).get("/api/auth/me").set(conToken(token));
+
+    expect((await reset(a.token, usuario.id, { password: "reseteada-123" })).status).toBe(204);
+
+    expect((await me(sesionDelUsuario)).status).toBe(401);
+    expect((await me(a.token)).status).toBe(200);
+    const enBase = await prisma.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
+    expect(enBase.tokenVersion).toBe(usuario.tokenVersion + 1);
+  });
+
   it("no permite resetear la propia contraseña por esta vía (409)", async () => {
     const { a } = await crearEscenario();
     const res = await reset(a.token, a.admin.id, { password: "reseteada-123" });
@@ -335,6 +349,8 @@ describe("POST /api/usuarios/:id/reset-password", () => {
     expect(res.status).toBe(404);
     const intacto = await prisma.usuario.findUniqueOrThrow({ where: { id: b.admin.id } });
     expect(await comparePassword(PASSWORD, intacto.passwordHash)).toBe(true);
+    expect(intacto.tokenVersion).toBe(b.admin.tokenVersion);
+    expect((await request(app).get("/api/auth/me").set(conToken(b.token))).status).toBe(200);
   });
 
   it("responde 404 para un id inexistente y 400 para uno con formato inválido", async () => {

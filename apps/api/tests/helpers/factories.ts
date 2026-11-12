@@ -95,8 +95,12 @@ export async function crearEscenario() {
 }
 
 // Token válido para un usuario, sin pasar por el login
-export function tokenDe(usuario: { id: string; gimnasioId: string }): string {
-  return signToken({ usuarioId: usuario.id, gimnasioId: usuario.gimnasioId });
+export function tokenDe(usuario: { id: string; gimnasioId: string; tokenVersion: number }): string {
+  return signToken({
+    usuarioId: usuario.id,
+    gimnasioId: usuario.gimnasioId,
+    tokenVersion: usuario.tokenVersion,
+  });
 }
 
 export function conToken(token: string) {

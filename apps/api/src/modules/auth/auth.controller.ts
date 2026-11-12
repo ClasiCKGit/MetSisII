@@ -18,6 +18,6 @@ export function me(req: Request, res: Response) {
 }
 
 export async function changePassword(req: Request, res: Response) {
-  await authService.changePassword(req.db, req.auth, req.body);
-  res.status(204).send();
+  const session = await authService.changePassword(req.db, req.auth, req.body);
+  res.json(session);
 }

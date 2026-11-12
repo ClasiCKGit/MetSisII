@@ -239,7 +239,7 @@ describe("GET /api/auth/me y validación del token", () => {
 
     it("vencido", async () => {
       const { a } = await crearEscenario();
-      const vencido = jwt.sign({ gid: a.gimnasio.id }, JWT_SECRET, {
+      const vencido = jwt.sign({ gid: a.gimnasio.id, ver: 0 }, JWT_SECRET, {
         subject: a.admin.id,
         expiresIn: -10,
       });
@@ -249,7 +249,7 @@ describe("GET /api/auth/me y validación del token", () => {
 
     it("firmado con otro secreto", async () => {
       const { a } = await crearEscenario();
-      const ajeno = jwt.sign({ gid: a.gimnasio.id }, "otro-secreto-distinto", {
+      const ajeno = jwt.sign({ gid: a.gimnasio.id, ver: 0 }, "otro-secreto-distinto", {
         subject: a.admin.id,
       });
       const res = await request(app).get("/api/auth/me").set(conToken(ajeno));
@@ -258,7 +258,7 @@ describe("GET /api/auth/me y validación del token", () => {
 
     it("con el algoritmo 'none' (sin firma)", async () => {
       const { a } = await crearEscenario();
-      const sinFirma = jwt.sign({ gid: a.gimnasio.id }, "", {
+      const sinFirma = jwt.sign({ gid: a.gimnasio.id, ver: 0 }, "", {
         algorithm: "none",
         subject: a.admin.id,
       });
@@ -266,7 +266,7 @@ describe("GET /api/auth/me y validación del token", () => {
       expect(res.status).toBe(401);
     });
 
-    it("sin los datos que la API espera (sub y gid)", async () => {
+    it("sin los datos que la API espera (sub, gid y ver)", async () => {
       const incompleto = jwt.sign({ cualquier: "cosa" }, JWT_SECRET);
       const res = await request(app).get("/api/auth/me").set(conToken(incompleto));
       expect(res.status).toBe(401);
@@ -275,8 +275,17 @@ describe("GET /api/auth/me y validación del token", () => {
     it("de un usuario que declara pertenecer a OTRO gimnasio", async () => {
       const { a, b } = await crearEscenario();
       // Firmado con el secreto correcto, pero el gimnasio del token no es el del usuario
-      const falsificado = jwt.sign({ gid: b.gimnasio.id }, JWT_SECRET, { subject: a.admin.id });
+      const falsificado = jwt.sign({ gid: b.gimnasio.id, ver: 0 }, JWT_SECRET, {
+        subject: a.admin.id,
+      });
       const res = await request(app).get("/api/auth/me").set(conToken(falsificado));
+      expect(res.status).toBe(401);
+    });
+
+    it("emitido antes de que existiera la versión del token (sin ver)", async () => {
+      const { a } = await crearEscenario();
+      const viejo = jwt.sign({ gid: a.gimnasio.id }, JWT_SECRET, { subject: a.admin.id });
+      const res = await request(app).get("/api/auth/me").set(conToken(viejo));
       expect(res.status).toBe(401);
     });
   });
@@ -314,6 +323,21 @@ describe("GET /api/auth/me y validación del token", () => {
       expect(res.status).toBe(401);
     });
 
+    it("un token con una versión anterior a la del usuario pierde el acceso", async () => {
+      const { a } = await crearEscenario();
+      const recepcion = await crearUsuario(a.gimnasio.id);
+      const token = tokenDe(recepcion);
+
+      await prisma.usuario.update({
+        where: { id: recepcion.id },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
+      const res = await request(app).get("/api/auth/me").set(conToken(token));
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe("Usuario inactivo o inexistente");
+    });
+
     it("un cambio de rol se refleja de inmediato", async () => {
       const { a } = await crearEscenario();
       const recepcion = await crearUsuario(a.gimnasio.id);
@@ -342,8 +366,7 @@ describe("POST /api/auth/change-password", () => {
       currentPassword: PASSWORD,
       newPassword: "contraseña-nueva-789",
     });
-    expect(res.status).toBe(204);
-    expect(res.text).toBe("");
+    expect(res.status).toBe(200);
 
     const login = (password: string) =>
       request(app)
@@ -352,6 +375,58 @@ describe("POST /api/auth/change-password", () => {
 
     expect((await login("contraseña-nueva-789")).status).toBe(200);
     expect((await login(PASSWORD)).status).toBe(401);
+  });
+
+  it("devuelve una sesión nueva y cierra todas las sesiones abiertas del usuario", async () => {
+    const { a } = await crearEscenario();
+    const usuario = await crearUsuario(a.gimnasio.id);
+    const tokenActual = tokenDe(usuario);
+    const otraSesion = tokenDe(usuario);
+    const me = (token: string) => request(app).get("/api/auth/me").set(conToken(token));
+
+    const res = await cambiar(tokenActual, {
+      currentPassword: PASSWORD,
+      newPassword: "contraseña-nueva-789",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.usuario).toMatchObject({ id: usuario.id, email: usuario.email });
+    expect(res.body.gimnasio).toEqual({
+      id: a.gimnasio.id,
+      nombre: a.gimnasio.nombre,
+      slug: a.gimnasio.slug,
+    });
+    expect(JSON.stringify(res.body)).not.toContain("passwordHash");
+
+    expect((await me(tokenActual)).status).toBe(401);
+    expect((await me(otraSesion)).status).toBe(401);
+    expect((await me(res.body.token)).status).toBe(200);
+
+    const enBase = await prisma.usuario.findUniqueOrThrow({ where: { id: usuario.id } });
+    expect(enBase.tokenVersion).toBe(usuario.tokenVersion + 1);
+  });
+
+  it("no cierra las sesiones de otros usuarios del gimnasio", async () => {
+    const { a } = await crearEscenario();
+    const usuario = await crearUsuario(a.gimnasio.id);
+
+    await cambiar(tokenDe(usuario), { currentPassword: PASSWORD, newPassword: "nueva-123456" });
+
+    expect((await request(app).get("/api/auth/me").set(conToken(a.token))).status).toBe(200);
+  });
+
+  it("si el cambio falla, la sesión sigue abierta y la versión no cambia", async () => {
+    const { a } = await crearEscenario();
+
+    const res = await cambiar(a.token, {
+      currentPassword: "incorrecta",
+      newPassword: "nueva-123456",
+    });
+
+    expect(res.status).toBe(400);
+    expect((await request(app).get("/api/auth/me").set(conToken(a.token))).status).toBe(200);
+    const enBase = await prisma.usuario.findUniqueOrThrow({ where: { id: a.admin.id } });
+    expect(enBase.tokenVersion).toBe(a.admin.tokenVersion);
   });
 
   it("con la contraseña actual incorrecta responde 400 (no 401, para no cerrar la sesión)", async () => {
@@ -389,5 +464,6 @@ describe("POST /api/auth/change-password", () => {
 
     const deB = await prisma.usuario.findUniqueOrThrow({ where: { id: b.admin.id } });
     expect(await comparePassword(PASSWORD, deB.passwordHash)).toBe(true);
+    expect(deB.tokenVersion).toBe(b.admin.tokenVersion);
   });
 });

@@ -75,6 +75,7 @@ export async function actualizar(
   return db.usuario.update({ where: { id }, data: input, select: usuarioSelect });
 }
 
+/** Fija una contraseña nueva a otro usuario y cierra todas sus sesiones abiertas. */
 export async function resetearPassword(
   db: TenantClient,
   actor: AuthContext,
@@ -97,6 +98,6 @@ export async function resetearPassword(
 
   await db.usuario.update({
     where: { id },
-    data: { passwordHash: await hashPassword(password) },
+    data: { passwordHash: await hashPassword(password), tokenVersion: { increment: 1 } },
   });
 }
