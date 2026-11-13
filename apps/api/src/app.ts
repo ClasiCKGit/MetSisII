@@ -8,6 +8,7 @@ import { authRouter } from "./modules/auth/auth.routes";
 import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 import { profesoresRouter } from "./modules/profesores/profesores.routes";
 import { actividadesRouter } from "./modules/actividades/actividades.routes";
+import { horariosRouter } from "./modules/horarios/horarios.routes";
 
 export function createApp() {
   const app = express();
@@ -27,6 +28,7 @@ export function createApp() {
   // app.use("/api/socios", sociosRouter);
   app.use("/api/profesores", profesoresRouter);
   app.use("/api/actividades", actividadesRouter);
+  app.use("/api/horarios", horariosRouter);
   // app.use("/api/pagos", pagosRouter);
 
   app.use(notFoundHandler);
