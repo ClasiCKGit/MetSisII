@@ -344,4 +344,3 @@ Las factories nuevas (`crearProfesor`, `crearActividad`, `crearVinculo` y `crear
 | Superposición de horarios | No se valida: una actividad puede tener dos horarios que se pisan el mismo día. Se reevalúa si hace falta (ver `docs/decisiones-diseno.md`, horas como `String`). |
 | Bajas y dependencias | Dar de baja una actividad no toca sus horarios ni sus asignaciones, y dar de baja un profesor no lo quita de los horarios donde estaba. Tampoco se impide asignar a un horario la asignación de un profesor dado de baja. |
 | Sin filtros en los listados | `GET /api/profesores` y `GET /api/actividades` devuelven todo, activos e inactivos, sin paginación. El filtrado queda del lado del cliente. |
-| Validación repetida | `horarios.service.ts` llama dos veces a `verificarVinculo` en `actualizar`. No cambia el resultado; queda para un refactor. |
