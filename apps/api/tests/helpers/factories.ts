@@ -94,6 +94,10 @@ export async function crearActividad(gimnasioId: string, datos: DatosActividad =
   });
 }
 
+export async function crearVinculo(gimnasioId: string, actividadId: string, profesorId: string) {
+  return prisma.actividadProfesor.create({ data: { gimnasioId, actividadId, profesorId } });
+}
+
 // Una actividad con un horario, para probar relaciones y modelos sin aislar todavía
 export async function crearActividadConHorario(gimnasioId: string) {
   const n = siguiente();

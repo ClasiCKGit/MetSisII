@@ -2,7 +2,11 @@ import { Router } from "express";
 import { authenticate, requireRole } from "../../middlewares/auth.middleware";
 import { validateBody } from "../../middlewares/validate.middleware";
 import * as actividadesController from "./actividades.controller";
-import { actualizarActividadSchema, crearActividadSchema } from "./actividades.schema";
+import {
+  actualizarActividadSchema,
+  crearActividadSchema,
+  vincularProfesorSchema,
+} from "./actividades.schema";
 
 export const actividadesRouter = Router();
 
@@ -22,4 +26,16 @@ actividadesRouter.patch(
   requireRole("ADMIN"),
   validateBody(actualizarActividadSchema),
   actividadesController.actualizar
+);
+actividadesRouter.get("/:id/profesores", actividadesController.listarProfesores);
+actividadesRouter.post(
+  "/:id/profesores",
+  requireRole("ADMIN"),
+  validateBody(vincularProfesorSchema),
+  actividadesController.vincularProfesor
+);
+actividadesRouter.delete(
+  "/:id/profesores/:profesorId",
+  requireRole("ADMIN"),
+  actividadesController.desvincularProfesor
 );
