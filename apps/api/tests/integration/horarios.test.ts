@@ -272,6 +272,37 @@ describe("POST /api/horarios", () => {
     expect((await enviar({ horaInicio: "10:00", horaFin: "09:00" })).status).toBe(400);
     expect((await enviar({ horaInicio: "10:00", horaFin: "10:00" })).status).toBe(400);
   });
+  it("responde 409 si el profesor está asignado a otra actividad, aunque sea del mismo gimnasio", async () => {
+    const { a } = await crearEscenario();
+    const yoga = await crearActividad(a.gimnasio.id);
+    const boxeo = await crearActividad(a.gimnasio.id);
+    const profesor = await crearProfesor(a.gimnasio.id);
+    const vinculoBoxeo = await crearVinculo(a.gimnasio.id, boxeo.id, profesor.id);
+
+    const res = await request(app)
+      .post(URL)
+      .set(conToken(a.token))
+      .send({ ...base, actividadId: yoga.id, actividadProfesorId: vinculoBoxeo.id });
+
+    expect(res.status).toBe(409);
+    expect(await prisma.horario.count({ where: { actividadId: yoga.id } })).toBe(0);
+  });
+
+  it("un profesor que da dos actividades solo se asigna con el vínculo de cada una", async () => {
+    const { a } = await crearEscenario();
+    const yoga = await crearActividad(a.gimnasio.id);
+    const boxeo = await crearActividad(a.gimnasio.id);
+    const profesor = await crearProfesor(a.gimnasio.id);
+    const vinculoYoga = await crearVinculo(a.gimnasio.id, yoga.id, profesor.id);
+    await crearVinculo(a.gimnasio.id, boxeo.id, profesor.id);
+
+    const res = await request(app)
+      .post(URL)
+      .set(conToken(a.token))
+      .send({ ...base, actividadId: yoga.id, actividadProfesorId: vinculoYoga.id });
+
+    expect(res.status).toBe(201);
+  });
 });
 
 describe("PATCH /api/horarios/:id", () => {
@@ -376,6 +407,24 @@ describe("PATCH /api/horarios/:id", () => {
     expect((await enviar({ actividadId: otra.id })).status).toBe(400);
     expect((await enviar({ gimnasioId: b.gimnasio.id })).status).toBe(400);
     expect((await enviar({})).status).toBe(400);
+  });
+
+  it("responde 409 al asignar un profesor de otra actividad, y no modifica el horario", async () => {
+    const { a } = await crearEscenario();
+    const yoga = await crearActividad(a.gimnasio.id);
+    const boxeo = await crearActividad(a.gimnasio.id);
+    const profesor = await crearProfesor(a.gimnasio.id);
+    const vinculoBoxeo = await crearVinculo(a.gimnasio.id, boxeo.id, profesor.id);
+    const horarioYoga = await crearHorario(a.gimnasio.id, yoga.id);
+
+    const res = await request(app)
+      .patch(`${URL}/${horarioYoga.id}`)
+      .set(conToken(a.token))
+      .send({ actividadProfesorId: vinculoBoxeo.id });
+
+    expect(res.status).toBe(409);
+    const intacto = await prisma.horario.findUniqueOrThrow({ where: { id: horarioYoga.id } });
+    expect(intacto.actividadProfesorId).toBeNull();
   });
 });
 

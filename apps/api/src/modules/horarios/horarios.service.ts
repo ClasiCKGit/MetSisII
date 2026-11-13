@@ -18,10 +18,13 @@ export async function obtener(db: TenantClient, id: string) {
   return horario;
 }
 
-async function verificarVinculo(db: TenantClient, vinculoId: string) {
+async function verificarVinculo(db: TenantClient, vinculoId: string, actividadId: string) {
   const vinculo = await db.actividadProfesor.findUnique({ where: { id: vinculoId } });
   if (!vinculo) {
     throw new AppError(404, "La asignación de profesor no existe");
+  }
+  if (vinculo.actividadId !== actividadId) {
+    throw new AppError(409, "El profesor no está asignado a la actividad de este horario");
   }
 }
 
@@ -31,7 +34,7 @@ export async function crear(db: TenantClient, actor: AuthContext, input: CrearHo
     throw new AppError(404, "Actividad no encontrada");
   }
   if (input.actividadProfesorId) {
-    await verificarVinculo(db, input.actividadProfesorId);
+    await verificarVinculo(db, input.actividadProfesorId, input.actividadId);
   }
   if (!actividad.activa) {
     throw new AppError(409, "La actividad está dada de baja");
@@ -42,6 +45,9 @@ export async function crear(db: TenantClient, actor: AuthContext, input: CrearHo
 
 export async function actualizar(db: TenantClient, id: string, input: ActualizarHorarioInput) {
   const actual = await obtener(db, id);
+  if (input.actividadProfesorId) {
+    await verificarVinculo(db, input.actividadProfesorId, actual.actividadId);
+  }
 
   const horaInicio = input.horaInicio ?? actual.horaInicio;
   const horaFin = input.horaFin ?? actual.horaFin;
@@ -50,7 +56,7 @@ export async function actualizar(db: TenantClient, id: string, input: Actualizar
   }
 
   if (input.actividadProfesorId) {
-    await verificarVinculo(db, input.actividadProfesorId);
+    await verificarVinculo(db, input.actividadProfesorId, actual.actividadId);
   }
 
   return db.horario.update({ where: { id }, data: input });
