@@ -12,6 +12,7 @@ erDiagram
     GIMNASIO ||--o{ MEMBRESIA : tiene
     GIMNASIO ||--o{ PAGO : tiene
     GIMNASIO ||--o{ ACTIVIDAD_PROFESOR : tiene
+    GIMNASIO ||--o{ HORARIO : tiene
 
     ACTIVIDAD ||--o{ ACTIVIDAD_PROFESOR : "es dada por"
     PROFESOR  ||--o{ ACTIVIDAD_PROFESOR : "dicta"
@@ -55,11 +56,13 @@ erDiagram
     }
     ACTIVIDAD_PROFESOR {
         string id PK
+        string gimnasioId FK
         string actividadId FK
         string profesorId FK
     }
     HORARIO {
         string id PK
+        string gimnasioId FK
         string actividadId FK
         string actividadProfesorId FK "nullable"
         enum diaSemana
@@ -99,7 +102,7 @@ Es la raíz del árbol de tenant. Tiene `onDelete: Cascade` hacia casi todas sus
 Una actividad puede tener varios profesores, y un profesor puede dar varias actividades. `ActividadProfesor` es la tabla intermedia que resuelve esa relación — cada fila es "este profesor da esta actividad". Tiene un `@@unique([actividadId, profesorId])` para que no se pueda vincular el mismo profesor dos veces a la misma actividad.
 
 **`Horario` → `Actividad` (obligatorio) y → `ActividadProfesor` (opcional)**
-Un horario siempre pertenece a una actividad. Opcionalmente, puede estar asociado a un vínculo `ActividadProfesor` puntual — esto permite que un horario tenga un profesor específico asignado (ej: "lunes 18hs, da Carlos") o que quede "general", sin profesor fijo (`actividadProfesorId: null`). La base no valida por sí sola que el profesor asignado a un horario realmente dé esa actividad en particular — esa consistencia (`actividadProfesor.actividadId === horario.actividadId`) se valida a nivel de service.
+Un horario siempre pertenece a una actividad. Opcionalmente, puede estar asociado a un vínculo `ActividadProfesor` puntual — esto permite que un horario tenga un profesor específico asignado (ej: "lunes 18hs, da Carlos") o que quede "general", sin profesor fijo (`actividadProfesorId: null`). La base no valida por sí sola que el profesor asignado a un horario realmente dé esa actividad en particular — esa consistencia (`actividadProfesor.actividadId === horario.actividadId`) se valida a nivel de service (`verificarVinculo` en `horarios.service.ts`, ver `docs/backend/profesores-actividades-horarios.md`).
 
 **`TipoMembresia` → `Actividad`**
 Los tipos de membresía son específicos de cada actividad, no genéricos del gimnasio. "Mensual" en Musculación y "Mensual" en Jiujitsu son dos registros distintos, con su propio precio y duración — así cada actividad se maneja comercialmente por separado.

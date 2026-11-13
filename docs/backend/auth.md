@@ -9,7 +9,7 @@ Documentación del módulo de autenticación de `apps/api`: cómo se registra un
 ## 1. Resumen
 
 - FitManager es **multi-tenant**: varios gimnasios comparten la misma base de datos. Cada gimnasio es un *tenant*.
-- Las tablas de negocio llevan una columna `gimnasioId`, y toda consulta tiene que filtrar por ella. La excepción temporal es `Horario` (ver sección 14).
+- Las tablas de negocio llevan una columna `gimnasioId`, y toda consulta tiene que filtrar por ella.
 - La autenticación usa **JWT** (HS256, 8 horas). El token identifica al usuario y a su gimnasio.
 - El filtrado por gimnasio **no se escribe a mano en cada query**: lo hace un cliente de Prisma especial (`req.db`) que agrega el `gimnasioId` automáticamente.
 - Hay dos roles: `ADMIN` y `RECEPCIONISTA`. Los profesores y los socios no tienen usuario en el sistema. Solo los `ADMIN` gestionan al personal (crear usuarios, cambiar roles, desactivar y resetear contraseñas); cualquier usuario puede cambiar su propia contraseña.
@@ -406,8 +406,7 @@ Cada modelo que se puede usar desde `req.db` tiene un renglón en la tabla `TENA
 | Modelo | Columna de aislamiento | Restricciones |
 |---|---|---|
 | `Gimnasio` | `id` | Solo se puede **leer y actualizar el propio registro**. `create`, `createMany`, `upsert`, `delete` y `deleteMany` están prohibidos. |
-| `Usuario`, `Socio`, `Profesor`, `Actividad`, `ActividadProfesor`, `TipoMembresia`, `Membresia`, `Pago` | `gimnasioId` | Ninguna |
-| `Horario` | — (todavía no tiene `gimnasioId`) | **No registrado:** usarlo lanza un error |
+| `Usuario`, `Socio`, `Profesor`, `Actividad`, `ActividadProfesor`, `Horario`, `TipoMembresia`, `Membresia`, `Pago` | `gimnasioId` | Ninguna |
 
 Por qué `Gimnasio` tiene esas restricciones: el alta de un gimnasio es el onboarding (que usa el `prisma` global), y un borrado físico arrastraría en cascada todos sus datos. El borrado es siempre lógico, con el campo `activo`.
 
@@ -659,7 +658,6 @@ El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en 
 
 | Tema | Detalle | Cuándo se resuelve |
 |---|---|---|
-| `Horario` sin aislamiento | La tabla no tiene `gimnasioId`. Hasta resolverlo, `req.db.horario` lanza un error porque el modelo no está en `TENANT_RULES`, y un test lo verifica. | Epic 3: se agrega la columna con una migración, se registra en `TENANT_RULES` y se **reemplaza** ese test por tests de aislamiento como los de `Socio`. |
 | Consultas raw | `$queryRaw` ignora la extensión, también dentro de una transacción. Un test lo documenta (si algún día se protege, va a fallar). | Regla de equipo (sección 8). |
 | Sin refresh tokens | El token dura 8 horas y no se puede revocar un token puntual antes de que venza. Sí se cortan todas las sesiones de un usuario desactivándolo o cambiando su contraseña, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
 | Recuperación de contraseña | Un admin puede resetear la contraseña de otro usuario (`/api/usuarios/:id/reset-password`), pero falta el flujo por mail para quien olvidó la suya. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
