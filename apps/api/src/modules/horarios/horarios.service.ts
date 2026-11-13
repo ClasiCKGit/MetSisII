@@ -55,10 +55,6 @@ export async function actualizar(db: TenantClient, id: string, input: Actualizar
     throw new AppError(400, "La hora de inicio debe ser anterior a la de fin");
   }
 
-  if (input.actividadProfesorId) {
-    await verificarVinculo(db, input.actividadProfesorId, actual.actividadId);
-  }
-
   return db.horario.update({ where: { id }, data: input });
 }
 
