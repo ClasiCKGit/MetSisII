@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FitManager: app web multi-tenant de gestión de gimnasios. Monorepo con npm workspaces: `apps/api` (Express 5 + Prisma 7 + Zod 4 + Postgres), `apps/web` (React 19 + Vite 8 + Tailwind 4 + shadcn/ui sobre Base UI), `packages/shared` (vacío por ahora). Código, mensajes de error, textos de UI, nombres de tests y commits van **en español**.
 
-La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `frontend/frontend-auth.md`, `frontend/testing-frontend.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
+La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `frontend/frontend-auth.md`, `frontend/testing-frontend.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
 
 ## Comandos
 
@@ -52,7 +52,7 @@ El CI (`.github/workflows/ci.yml`) corre lint, format:check, prisma:generate, bu
   2. Usar ids escalares (`socioId: "..."`), **nunca `connect`** (choca con el `gimnasioId` que agrega la extensión).
   3. Validar con `req.db` los ids que llegan en el body antes de referenciarlos; si es de otro gimnasio da `null` → 404.
   4. `$queryRaw` no pasa por la extensión: evitarlo o filtrar por `gimnasioId` a mano.
-  5. Modelo nuevo → registrarlo en `TENANT_RULES` (y si no tiene `gimnasioId`, primero una migración). `Horario` todavía no tiene `gimnasioId` y no está registrado.
+  5. Modelo nuevo → registrarlo en `TENANT_RULES` (y si no tiene `gimnasioId`, primero una migración).
   6. `Gimnasio` solo se lee/actualiza el propio; el borrado es lógico (`activo`).
 - `req.db.$transaction` mantiene el aislamiento.
 
