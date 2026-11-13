@@ -45,3 +45,15 @@ export const idParamsSchema = z.object({
 
 export type CrearActividadInput = z.infer<typeof crearActividadSchema>;
 export type ActualizarActividadInput = z.infer<typeof actualizarActividadSchema>;
+
+export const vincularProfesorSchema = z.object({
+  profesorId: z.uuid("El id del profesor no es válido"),
+});
+
+// Para las rutas /actividades/:id/profesores/:profesorId
+export const vinculoParamsSchema = z.object({
+  id: z.uuid("El id no es válido"),
+  profesorId: z.uuid("El id del profesor no es válido"),
+});
+
+export type VincularProfesorInput = z.infer<typeof vincularProfesorSchema>;
