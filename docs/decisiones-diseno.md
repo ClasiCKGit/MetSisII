@@ -119,7 +119,7 @@ flowchart LR
    };
    ```
 
-3. Agregar `gimnasioId` a `Horario` y sumarlo a la tabla. Hallazgo 2. *Estado: pendiente; está planificado para el Epic 3.*
+3. Agregar `gimnasioId` a `Horario` y sumarlo a la tabla. Hallazgo 2. *Estado: implementado en FIT-54 (Epic 3).*
 4. Mantener la regla de equipo: **no usar `$queryRaw` ni el `prisma` global en código que atienda requests**. Hallazgo 4. *Estado: documentado en `docs/backend/auth.md`.*
 5. Dejar sin cambios los hallazgos 5 y 6. El archivo tiene unas 90 líneas y cada función es corta, así que dividirlo sería overengineering. Y el requisito de pasar `gimnasioId` en los `create` es un costo aceptable: hace explícito el dato y la extensión lo fuerza igual.
 
@@ -301,7 +301,7 @@ Se anotan para evaluar cuando llegue cada epic, **no** como cambios decididos. S
 | Capa de servicio sin Repository (Prisma como data mapper) | Implementado |
 | Restringir `Gimnasio` en `req.db` | Pendiente |
 | Tabla `modelo → campo` en lugar de `TENANT_MODELS` | Pendiente |
-| `gimnasioId` en `Horario` | Pendiente (Epic 3) |
+| `gimnasioId` en `Horario` | Implementado (FIT-54) |
 | Refactor de `seed.ts` con guarda de entorno | Pendiente |
 | Inyección del cliente por parámetro en services de negocio | Acordado, a confirmar con el primer módulo |
 | Builder de datos de prueba | Diferido al epic de testing |

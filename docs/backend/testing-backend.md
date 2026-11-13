@@ -115,6 +115,10 @@ apps/api/
     │   ├── tenant.test.ts          32 tests
     │   ├── auth.test.ts            41 tests
     │   ├── usuarios.test.ts        35 tests
+    │   ├── profesores.test.ts      16 tests
+    │   ├── actividades.test.ts     18 tests
+    │   ├── actividad-profesores.test.ts 17 tests
+    │   ├── horarios.test.ts        31 tests
     │   ├── login-timing.test.ts     3 tests
     │   └── app.test.ts              5 tests
     └── unit/
@@ -123,9 +127,13 @@ apps/api/
 
 | Archivo | Qué comprueba |
 |---|---|
-| `tenant.test.ts` | El aislamiento de `req.db`: cada operación de Prisma (`findMany`, `findUnique`, `update`, `delete`, `upsert`, `groupBy`…) sobre el modelo `Socio`; las restricciones de `Gimnasio`; el bloqueo de `Horario`; `include` de relaciones; transacciones; y la limitación conocida de las consultas raw. |
+| `tenant.test.ts` | El aislamiento de `req.db`: cada operación de Prisma (`findMany`, `findUnique`, `update`, `delete`, `upsert`, `groupBy`…) sobre el modelo `Socio`; las restricciones de `Gimnasio`; el aislamiento de `Horario`; `include` de relaciones; transacciones; y la limitación conocida de las consultas raw. |
 | `auth.test.ts` | Registro de gimnasios, login, `/me`, validación de tokens y cambio de contraseña. |
 | `usuarios.test.ts` | Gestión del personal: acceso por rol, listado, alta, actualización, reglas del administrador y reseteo de contraseña. |
+| `profesores.test.ts` | CRUD de profesores: acceso por rol, listado, alta, actualización, baja lógica y aislamiento. |
+| `actividades.test.ts` | CRUD de actividades: lo mismo, más el cupo opcional. |
+| `actividad-profesores.test.ts` | Asignar y quitar profesores de una actividad: repetidos, bajas, aislamiento y efecto sobre los horarios. |
+| `horarios.test.ts` | CRUD de horarios: formato y orden de las horas, filtro por actividad, profesor asignado (FIT-59) y aislamiento. |
 | `login-timing.test.ts` | Que el login ejecuta `bcrypt` aunque el usuario no exista (ver sección 7). |
 | `app.test.ts` | `/health`, rutas inexistentes, JSON mal formado, cuerpo demasiado grande y headers de helmet. |
 | `rate-limit.test.ts` | El límite de intentos: 20 por ventana en producción, sin molestar en desarrollo ni en tests. |
@@ -141,6 +149,10 @@ Las factories crean registros reales en la base de tests. Todas las contraseñas
 | `crearGimnasio(datos?)` | Un gimnasio. Acepta `nombre`, `slug` y `activo`. |
 | `crearUsuario(gimnasioId, datos?)` | Un usuario (`RECEPCIONISTA` por defecto). Acepta `email`, `nombre`, `apellido`, `rol`, `activo` y `password` (para uno con contraseña distinta de `PASSWORD`). |
 | `crearSocio(gimnasioId, datos?)` | Un socio con DNI único. |
+| `crearProfesor(gimnasioId, datos?)` | Un profesor con apellido único. Acepta `nombre`, `apellido` y `activo`. |
+| `crearActividad(gimnasioId, datos?)` | Una actividad con nombre único. Acepta `nombre`, `descripcion`, `cupo` y `activa`. |
+| `crearVinculo(gimnasioId, actividadId, profesorId)` | Una asignación profesor-actividad (`ActividadProfesor`). |
+| `crearHorario(gimnasioId, actividadId, datos?)` | Un horario (lunes de 18:00 a 19:00 por defecto). Acepta `diaSemana`, `horaInicio`, `horaFin` y `actividadProfesorId`. |
 | `crearActividadConHorario(gimnasioId)` | Una actividad con un horario. |
 | `crearEscenario()` | **Dos gimnasios, cada uno con un administrador y su token.** Es el punto de partida de casi todos los tests de aislamiento: devuelve `{ a, b }` y cada lado tiene `gimnasio`, `admin` y `token`. |
 | `tokenDe(usuario)` | Un token válido, sin pasar por el login. |
