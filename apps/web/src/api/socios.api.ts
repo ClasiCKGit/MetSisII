@@ -25,3 +25,8 @@ export async function actualizarSocio(
   const { data } = await apiClient.patch<Socio>(`/socios/${id}`, cambios);
   return data;
 }
+
+export async function obtenerSocio(id: string): Promise<Socio> {
+  const { data } = await apiClient.get<Socio>(`/socios/${id}`);
+  return data;
+}

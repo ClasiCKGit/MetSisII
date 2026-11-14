@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +48,11 @@ export function SociosTable({
 
           return (
             <TableRow key={socio.id}>
-              <TableCell>{nombreCompleto}</TableCell>
+              <TableCell>
+                <Link to={`/socios/${socio.id}`} className="font-medium hover:underline">
+                  {nombreCompleto}
+                </Link>
+              </TableCell>
               <TableCell>{socio.dni}</TableCell>
               <TableCell>{socio.email ?? "—"}</TableCell>
               <TableCell>{socio.telefono ?? "—"}</TableCell>

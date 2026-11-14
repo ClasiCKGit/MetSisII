@@ -1,5 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { actualizarSocio, crearSocio, listarSocios, type FiltrosSocios } from "@/api/socios.api";
+import {
+  actualizarSocio,
+  crearSocio,
+  listarSocios,
+  obtenerSocio,
+  type FiltrosSocios,
+} from "@/api/socios.api";
 import type { SocioInput } from "../schemas";
 
 const SOCIOS_KEY = ["socios"] as const;
@@ -12,6 +18,14 @@ export function useSocios(filtros: FiltrosSocios) {
     queryKey: [...SOCIOS_KEY, filtros],
     queryFn: () => listarSocios(filtros),
     placeholderData: keepPreviousData,
+  });
+}
+
+// Un socio por id. Al editarlo, la invalidación de SOCIOS_KEY también refresca esta consulta.
+export function useSocio(id: string) {
+  return useQuery({
+    queryKey: [...SOCIOS_KEY, "detalle", id],
+    queryFn: () => obtenerSocio(id),
   });
 }
 

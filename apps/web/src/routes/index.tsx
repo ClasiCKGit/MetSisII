@@ -8,6 +8,7 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SociosPage } from "@/features/socios/pages/SociosPage";
+import { SocioDetallePage } from "@/features/socios/pages/SocioDetallePage";
 
 // Las rutas se declaran como datos (no se crea el router acá) para poder reutilizarlas en main.tsx
 // con createBrowserRouter, y en los tests con createMemoryRouter.
@@ -34,6 +35,8 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "socios", element: <SociosPage /> },
+          { path: "socios", element: <SociosPage /> },
+          { path: "socios/:id", element: <SocioDetallePage /> },
           {
             // Solo administradores
             element: <RequireRole roles={["ADMIN"]} />,
