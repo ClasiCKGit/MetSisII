@@ -89,6 +89,31 @@ export async function apiListarProfesores(token: string): Promise<ProfesorDePrue
   return (await res.json()) as ProfesorDePrueba[];
 }
 
+export interface ActividadDePrueba {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  cupo: number | null;
+  activa: boolean;
+}
+
+export async function apiCrearActividad(
+  token: string,
+  datos: { nombre: string; descripcion?: string; cupo?: number }
+): Promise<ActividadDePrueba> {
+  const res = await fetch(`${API}/actividades`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as ActividadDePrueba;
+}
+
+export async function apiListarActividades(token: string): Promise<ActividadDePrueba[]> {
+  const res = await fetch(`${API}/actividades`, { headers: conToken(token) });
+  return (await res.json()) as ActividadDePrueba[];
+}
+
 export async function apiActualizarUsuario(
   token: string,
   id: string,
