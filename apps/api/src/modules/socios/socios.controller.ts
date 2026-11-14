@@ -19,10 +19,10 @@ export async function create(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   const { id } = socioIdParamSchema.parse(req.params);
-  res.json(await sociosService.updateSocio(req.db, id, req.body));
+  res.json(await sociosService.updateSocio(req.db, req.auth, id, req.body));
 }
 
 export async function deactivate(req: Request, res: Response) {
   const { id } = socioIdParamSchema.parse(req.params);
-  res.json(await sociosService.deactivateSocio(req.db, id));
+  res.json(await sociosService.deactivateSocio(req.db, req.auth, id));
 }
