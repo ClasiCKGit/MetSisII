@@ -28,9 +28,22 @@ interface FakeUsuario {
   createdAt: string;
 }
 
+interface FakeProfesor {
+  id: string;
+  gimnasioId: string;
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  email: string | null;
+  telefono: string | null;
+  especialidad: string | null;
+  activo: boolean;
+}
+
 const estado = {
   gimnasios: [] as FakeGimnasio[],
   usuarios: [] as FakeUsuario[],
+  profesores: [] as FakeProfesor[],
   sesiones: new Map<string, { usuarioId: string }>(),
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
@@ -39,6 +52,7 @@ const estado = {
 export function resetFakeApi(): void {
   estado.gimnasios.length = 0;
   estado.usuarios.length = 0;
+  estado.profesores.length = 0;
   estado.sesiones.clear();
   estado.registroHabilitado = true;
 }
@@ -134,6 +148,28 @@ function autenticarAdmin(request: Request): Autenticado | Response {
   }
   return resultado;
 }
+
+// Un campo opcional del profesor puede faltar, ser null o ser un texto dentro del largo permitido
+const opcionalValido = (valor: unknown, max: number) =>
+  valor === undefined ||
+  valor === null ||
+  (typeof valor === "string" && valor.trim().length <= max);
+
+const emailOpcionalValido = (valor: unknown) =>
+  valor === undefined ||
+  valor === null ||
+  (typeof valor === "string" && /^\S+@\S+\.\S+$/.test(valor.trim()));
+
+const opcionalesDeProfesorValidos = (cuerpo: Record<string, unknown>) =>
+  opcionalValido(cuerpo.dni, 20) &&
+  emailOpcionalValido(cuerpo.email) &&
+  opcionalValido(cuerpo.telefono, 30) &&
+  opcionalValido(cuerpo.especialidad, 80);
+
+const textoOpcional = (valor: unknown): string | null =>
+  typeof valor === "string" ? valor.trim() : null;
+const emailOpcional = (valor: unknown): string | null =>
+  typeof valor === "string" ? valor.trim().toLowerCase() : null;
 
 const crearUsuario = (datos: Omit<FakeUsuario, "id" | "createdAt" | "activo">): FakeUsuario => {
   const usuario: FakeUsuario = {
@@ -374,6 +410,92 @@ export function crearHandlers(apiUrl: string) {
       objetivo.password = password;
       cerrarSesionesDe(objetivo.id);
       return sinContenido();
+    }),
+    // Cualquier usuario con sesión puede consultar; solo los administradores modifican
+    http.get(`${base}/profesores`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const lista = estado.profesores
+        .filter((p) => p.gimnasioId === actual.gimnasio.id)
+        .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre));
+      return respuesta(200, lista);
+    }),
+
+    http.post(`${base}/profesores`, async ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        !texto(cuerpo.nombre).trim() ||
+        !texto(cuerpo.apellido).trim() ||
+        !opcionalesDeProfesorValidos(cuerpo)
+      ) {
+        return errorDeValidacion();
+      }
+
+      const creado: FakeProfesor = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        nombre: texto(cuerpo.nombre).trim(),
+        apellido: texto(cuerpo.apellido).trim(),
+        dni: textoOpcional(cuerpo.dni),
+        email: emailOpcional(cuerpo.email),
+        telefono: textoOpcional(cuerpo.telefono),
+        especialidad: textoOpcional(cuerpo.especialidad),
+        activo: true,
+      };
+      estado.profesores.push(creado);
+      return respuesta(201, creado);
+    }),
+
+    http.patch(`${base}/profesores/:id`, async ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      const permitidos = [
+        "nombre",
+        "apellido",
+        "dni",
+        "email",
+        "telefono",
+        "especialidad",
+        "activo",
+      ];
+      if (
+        !cuerpo ||
+        !Object.keys(cuerpo).length ||
+        Object.keys(cuerpo).some((k) => !permitidos.includes(k)) ||
+        (cuerpo.nombre !== undefined && !texto(cuerpo.nombre).trim()) ||
+        (cuerpo.apellido !== undefined && !texto(cuerpo.apellido).trim()) ||
+        (cuerpo.activo !== undefined && typeof cuerpo.activo !== "boolean") ||
+        !opcionalesDeProfesorValidos(cuerpo)
+      ) {
+        return errorDeValidacion();
+      }
+
+      // Otro gimnasio y "no existe" se ven igual: 404
+      const objetivo = estado.profesores.find(
+        (p) => p.id === id && p.gimnasioId === actual.gimnasio.id
+      );
+      if (!objetivo) return error(404, "Profesor no encontrado");
+
+      if (typeof cuerpo.nombre === "string") objetivo.nombre = cuerpo.nombre.trim();
+      if (typeof cuerpo.apellido === "string") objetivo.apellido = cuerpo.apellido.trim();
+      // null borra el dato; si el campo no viene, no se toca
+      if (cuerpo.dni !== undefined) objetivo.dni = textoOpcional(cuerpo.dni);
+      if (cuerpo.email !== undefined) objetivo.email = emailOpcional(cuerpo.email);
+      if (cuerpo.telefono !== undefined) objetivo.telefono = textoOpcional(cuerpo.telefono);
+      if (cuerpo.especialidad !== undefined) {
+        objetivo.especialidad = textoOpcional(cuerpo.especialidad);
+      }
+      if (typeof cuerpo.activo === "boolean") objetivo.activo = cuerpo.activo;
+      return respuesta(200, objetivo);
     }),
   ];
 }
