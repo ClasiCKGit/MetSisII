@@ -47,12 +47,19 @@ interface FakeActividad {
   cupo: number | null;
   activa: boolean;
 }
+interface FakeVinculo {
+  id: string;
+  gimnasioId: string;
+  actividadId: string;
+  profesorId: string;
+}
 
 const estado = {
   gimnasios: [] as FakeGimnasio[],
   usuarios: [] as FakeUsuario[],
   profesores: [] as FakeProfesor[],
   actividades: [] as FakeActividad[],
+  vinculos: [] as FakeVinculo[],
   sesiones: new Map<string, { usuarioId: string }>(),
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
@@ -63,6 +70,7 @@ export function resetFakeApi(): void {
   estado.usuarios.length = 0;
   estado.profesores.length = 0;
   estado.actividades.length = 0;
+  estado.vinculos.length = 0;
   estado.sesiones.clear();
   estado.registroHabilitado = true;
 }
@@ -191,6 +199,11 @@ const descripcionValida = (valor: unknown) =>
   valor === undefined ||
   valor === null ||
   (typeof valor === "string" && valor.trim().length <= 500);
+
+const vinculoConProfesor = (vinculo: FakeVinculo) => ({
+  ...vinculo,
+  profesor: estado.profesores.find((p) => p.id === vinculo.profesorId),
+});
 
 const crearUsuario = (datos: Omit<FakeUsuario, "id" | "createdAt" | "activo">): FakeUsuario => {
   const usuario: FakeUsuario = {
@@ -593,6 +606,91 @@ export function crearHandlers(apiUrl: string) {
       }
       if (typeof cuerpo.activa === "boolean") objetivo.activa = cuerpo.activa;
       return respuesta(200, objetivo);
+    }),
+    http.get(`${base}/actividades/:id`, ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const actividad = estado.actividades.find(
+        (a) => a.id === id && a.gimnasioId === actual.gimnasio.id
+      );
+      return actividad ? respuesta(200, actividad) : error(404, "Actividad no encontrada");
+    }),
+
+    http.get(`${base}/actividades/:id/profesores`, ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+      if (!estado.actividades.some((a) => a.id === id && a.gimnasioId === actual.gimnasio.id)) {
+        return error(404, "Actividad no encontrada");
+      }
+
+      const lista = estado.vinculos
+        .filter((v) => v.actividadId === id && v.gimnasioId === actual.gimnasio.id)
+        .map(vinculoConProfesor)
+        .sort(
+          (a, b) =>
+            (a.profesor?.apellido ?? "").localeCompare(b.profesor?.apellido ?? "") ||
+            (a.profesor?.nombre ?? "").localeCompare(b.profesor?.nombre ?? "")
+        );
+      return respuesta(200, lista);
+    }),
+
+    // Mismo orden que en el service real: primero lo que no existe en este gimnasio (404)
+    // y después lo que existe pero no se puede (409)
+    http.post(`${base}/actividades/:id/profesores`, async ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      if (!cuerpo || !UUID.test(texto(cuerpo.profesorId))) return errorDeValidacion();
+      const profesorId = texto(cuerpo.profesorId);
+
+      const actividad = estado.actividades.find(
+        (a) => a.id === id && a.gimnasioId === actual.gimnasio.id
+      );
+      if (!actividad) return error(404, "Actividad no encontrada");
+      const profesor = estado.profesores.find(
+        (p) => p.id === profesorId && p.gimnasioId === actual.gimnasio.id
+      );
+      if (!profesor) return error(404, "Profesor no encontrado");
+
+      if (!actividad.activa) return error(409, "La actividad está dada de baja");
+      if (!profesor.activo) return error(409, "El profesor está dado de baja");
+      if (estado.vinculos.some((v) => v.actividadId === id && v.profesorId === profesorId)) {
+        return error(409, "El profesor ya está asignado a esta actividad");
+      }
+
+      const vinculo: FakeVinculo = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        actividadId: id,
+        profesorId,
+      };
+      estado.vinculos.push(vinculo);
+      return respuesta(201, vinculoConProfesor(vinculo));
+    }),
+
+    http.delete(`${base}/actividades/:id/profesores/:profesorId`, ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      const profesorId = String(params.profesorId);
+      if (!UUID.test(id) || !UUID.test(profesorId)) return errorDeValidacion();
+
+      const posicion = estado.vinculos.findIndex(
+        (v) =>
+          v.actividadId === id && v.profesorId === profesorId && v.gimnasioId === actual.gimnasio.id
+      );
+      if (posicion === -1) return error(404, "El profesor no está asignado a esta actividad");
+
+      estado.vinculos.splice(posicion, 1);
+      return sinContenido();
     }),
   ];
 }
