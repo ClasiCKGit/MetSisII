@@ -113,6 +113,50 @@ export async function apiListarActividades(token: string): Promise<ActividadDePr
   const res = await fetch(`${API}/actividades`, { headers: conToken(token) });
   return (await res.json()) as ActividadDePrueba[];
 }
+export interface VinculoDePrueba {
+  id: string;
+  actividadId: string;
+  profesorId: string;
+}
+
+export async function apiVincularProfesor(
+  token: string,
+  actividadId: string,
+  profesorId: string
+): Promise<VinculoDePrueba> {
+  const res = await fetch(`${API}/actividades/${actividadId}/profesores`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify({ profesorId }),
+  });
+  return (await res.json()) as VinculoDePrueba;
+}
+
+export async function apiListarVinculos(
+  token: string,
+  actividadId: string
+): Promise<VinculoDePrueba[]> {
+  const res = await fetch(`${API}/actividades/${actividadId}/profesores`, {
+    headers: conToken(token),
+  });
+  return (await res.json()) as VinculoDePrueba[];
+}
+
+export async function apiDesactivarProfesor(token: string, id: string): Promise<void> {
+  await fetch(`${API}/profesores/${id}`, {
+    method: "PATCH",
+    headers: conToken(token),
+    body: JSON.stringify({ activo: false }),
+  });
+}
+
+export async function apiDesactivarActividad(token: string, id: string): Promise<void> {
+  await fetch(`${API}/actividades/${id}`, {
+    method: "PATCH",
+    headers: conToken(token),
+    body: JSON.stringify({ activa: false }),
+  });
+}
 
 export async function apiActualizarUsuario(
   token: string,

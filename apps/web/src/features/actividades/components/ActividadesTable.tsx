@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -52,7 +53,9 @@ export function ActividadesTable({
         {actividades.map((actividad) => (
           <TableRow key={actividad.id}>
             <TableCell>
-              <div>{actividad.nombre}</div>
+              <Link to={`/actividades/${actividad.id}`} className="hover:underline">
+                {actividad.nombre}
+              </Link>
               {actividad.descripcion && (
                 <div className="text-xs text-muted-foreground">{actividad.descripcion}</div>
               )}
