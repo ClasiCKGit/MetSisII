@@ -55,6 +55,40 @@ export async function apiCrearUsuario(
   return { id: creado.id, email: creado.email, password };
 }
 
+export interface ProfesorDePrueba {
+  id: string;
+  nombre: string;
+  apellido: string;
+  dni: string | null;
+  email: string | null;
+  telefono: string | null;
+  especialidad: string | null;
+  activo: boolean;
+}
+
+export async function apiCrearProfesor(
+  token: string,
+  datos: {
+    nombre: string;
+    apellido: string;
+    especialidad?: string;
+    email?: string;
+    telefono?: string;
+  }
+): Promise<ProfesorDePrueba> {
+  const res = await fetch(`${API}/profesores`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as ProfesorDePrueba;
+}
+
+export async function apiListarProfesores(token: string): Promise<ProfesorDePrueba[]> {
+  const res = await fetch(`${API}/profesores`, { headers: conToken(token) });
+  return (await res.json()) as ProfesorDePrueba[];
+}
+
 export async function apiActualizarUsuario(
   token: string,
   id: string,
