@@ -39,11 +39,20 @@ interface FakeProfesor {
   especialidad: string | null;
   activo: boolean;
 }
+interface FakeActividad {
+  id: string;
+  gimnasioId: string;
+  nombre: string;
+  descripcion: string | null;
+  cupo: number | null;
+  activa: boolean;
+}
 
 const estado = {
   gimnasios: [] as FakeGimnasio[],
   usuarios: [] as FakeUsuario[],
   profesores: [] as FakeProfesor[],
+  actividades: [] as FakeActividad[],
   sesiones: new Map<string, { usuarioId: string }>(),
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
@@ -53,6 +62,7 @@ export function resetFakeApi(): void {
   estado.gimnasios.length = 0;
   estado.usuarios.length = 0;
   estado.profesores.length = 0;
+  estado.actividades.length = 0;
   estado.sesiones.clear();
   estado.registroHabilitado = true;
 }
@@ -170,6 +180,17 @@ const textoOpcional = (valor: unknown): string | null =>
   typeof valor === "string" ? valor.trim() : null;
 const emailOpcional = (valor: unknown): string | null =>
   typeof valor === "string" ? valor.trim().toLowerCase() : null;
+
+// El cupo puede faltar, ser null (sin límite) o ser un entero mayor a 0. Un texto no vale.
+const cupoValido = (valor: unknown) =>
+  valor === undefined ||
+  valor === null ||
+  (typeof valor === "number" && Number.isInteger(valor) && valor > 0);
+
+const descripcionValida = (valor: unknown) =>
+  valor === undefined ||
+  valor === null ||
+  (typeof valor === "string" && valor.trim().length <= 500);
 
 const crearUsuario = (datos: Omit<FakeUsuario, "id" | "createdAt" | "activo">): FakeUsuario => {
   const usuario: FakeUsuario = {
@@ -495,6 +516,82 @@ export function crearHandlers(apiUrl: string) {
         objetivo.especialidad = textoOpcional(cuerpo.especialidad);
       }
       if (typeof cuerpo.activo === "boolean") objetivo.activo = cuerpo.activo;
+      return respuesta(200, objetivo);
+    }),
+    // Cualquier usuario con sesión puede consultar; solo los administradores modifican
+    http.get(`${base}/actividades`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const lista = estado.actividades
+        .filter((a) => a.gimnasioId === actual.gimnasio.id)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      return respuesta(200, lista);
+    }),
+
+    http.post(`${base}/actividades`, async ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        !texto(cuerpo.nombre).trim() ||
+        texto(cuerpo.nombre).trim().length > 80 ||
+        !descripcionValida(cuerpo.descripcion) ||
+        !cupoValido(cuerpo.cupo)
+      ) {
+        return errorDeValidacion();
+      }
+
+      const creada: FakeActividad = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        nombre: texto(cuerpo.nombre).trim(),
+        descripcion: textoOpcional(cuerpo.descripcion),
+        cupo: typeof cuerpo.cupo === "number" ? cuerpo.cupo : null,
+        activa: true,
+      };
+      estado.actividades.push(creada);
+      return respuesta(201, creada);
+    }),
+
+    http.patch(`${base}/actividades/:id`, async ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      const permitidos = ["nombre", "descripcion", "cupo", "activa"];
+      if (
+        !cuerpo ||
+        !Object.keys(cuerpo).length ||
+        Object.keys(cuerpo).some((k) => !permitidos.includes(k)) ||
+        (cuerpo.nombre !== undefined &&
+          (!texto(cuerpo.nombre).trim() || texto(cuerpo.nombre).trim().length > 80)) ||
+        (cuerpo.activa !== undefined && typeof cuerpo.activa !== "boolean") ||
+        !descripcionValida(cuerpo.descripcion) ||
+        !cupoValido(cuerpo.cupo)
+      ) {
+        return errorDeValidacion();
+      }
+
+      // Otro gimnasio y "no existe" se ven igual: 404
+      const objetivo = estado.actividades.find(
+        (a) => a.id === id && a.gimnasioId === actual.gimnasio.id
+      );
+      if (!objetivo) return error(404, "Actividad no encontrada");
+
+      if (typeof cuerpo.nombre === "string") objetivo.nombre = cuerpo.nombre.trim();
+      // null borra el dato; si el campo no viene, no se toca
+      if (cuerpo.descripcion !== undefined) {
+        objetivo.descripcion = textoOpcional(cuerpo.descripcion);
+      }
+      if (cuerpo.cupo !== undefined) {
+        objetivo.cupo = typeof cuerpo.cupo === "number" ? cuerpo.cupo : null;
+      }
+      if (typeof cuerpo.activa === "boolean") objetivo.activa = cuerpo.activa;
       return respuesta(200, objetivo);
     }),
   ];

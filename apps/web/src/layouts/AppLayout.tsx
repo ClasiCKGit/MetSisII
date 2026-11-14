@@ -36,6 +36,9 @@ export function AppLayout() {
             <NavLink to="/profesores" className={enlace}>
               Profesores
             </NavLink>
+            <NavLink to="/actividades" className={enlace}>
+              Actividades
+            </NavLink>
             {usuario?.rol === "ADMIN" && (
               <NavLink to="/usuarios" className={enlace}>
                 Usuarios
