@@ -56,7 +56,10 @@ describe("gestión de usuarios", () => {
     await conSesion(g.token);
     renderApp("/usuarios");
 
-    await screen.findByText("Ana Admin");
+    // Se espera la fila de la tabla y no solo el texto: "Ana Admin" también está en la barra
+    // lateral, que aparece antes de que llegue la lista. Sin esperar la lista, la aserción de
+    // abajo no probaría nada y la petición quedaría en vuelo al terminar el test.
+    await screen.findByRole("row", { name: /Ana Admin/ });
     expect(screen.queryByText("Ajeno Otro")).not.toBeInTheDocument();
   });
 
