@@ -6,7 +6,7 @@ import {
   obtenerSocio,
   type FiltrosSocios,
 } from "@/api/socios.api";
-import type { SocioInput } from "../schemas";
+import type { SocioCambios } from "../schemas";
 
 const SOCIOS_KEY = ["socios"] as const;
 
@@ -43,13 +43,8 @@ export function useCrearSocio() {
 export function useActualizarSocio() {
   const invalidar = useInvalidarSocios();
   return useMutation({
-    mutationFn: ({
-      id,
-      cambios,
-    }: {
-      id: string;
-      cambios: Partial<SocioInput> & { activo?: boolean };
-    }) => actualizarSocio(id, cambios),
+    mutationFn: ({ id, cambios }: { id: string; cambios: SocioCambios }) =>
+      actualizarSocio(id, cambios),
     onSuccess: invalidar,
   });
 }

@@ -1,6 +1,7 @@
+import { PlusIcon, SearchIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { EncabezadoPantalla } from "@/components/shared/EncabezadoPantalla";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { toast } from "@/components/ui/toast";
@@ -70,25 +71,36 @@ export function SociosPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Socios</h1>
-          <p className="text-sm text-muted-foreground">Las personas que entrenan en el gimnasio.</p>
-        </div>
-        <Button onClick={() => setCreando(true)}>Nuevo socio</Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <EncabezadoPantalla
+        titulo="Socios"
+        descripcion="Las personas que entrenan en el gimnasio."
+        accion={
+          <Button size="lg" onClick={() => setCreando(true)}>
+            <PlusIcon aria-hidden="true" />
+            Nuevo socio
+          </Button>
+        }
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
-          type="search"
-          placeholder="Buscar por nombre, apellido o DNI"
-          aria-label="Buscar socios"
-          value={busqueda}
-          onChange={(event) => setBusqueda(event.target.value)}
-        />
+        <div className="relative flex-1">
+          <SearchIcon
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            placeholder="Buscar por nombre, apellido o DNI"
+            aria-label="Buscar socios"
+            className="pl-9"
+            value={busqueda}
+            onChange={(event) => setBusqueda(event.target.value)}
+          />
+        </div>
         <NativeSelect
           aria-label="Filtrar por estado"
+          className="w-full sm:w-44"
           value={estado}
           onChange={(event) => setEstado(event.target.value as FiltroEstado)}
         >
@@ -98,47 +110,39 @@ export function SociosPage() {
         </NativeSelect>
       </div>
 
-      <Card>
-        <CardContent className="px-2">
-          {isPending && (
-            <p role="status" className="p-4 text-sm text-muted-foreground">
-              Cargando socios…
-            </p>
-          )}
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {isPending && (
+          <p role="status" className="p-4 text-sm text-muted-foreground">
+            Cargando socios…
+          </p>
+        )}
 
-          {error && (
-            <div role="alert" className="flex flex-col items-start gap-3 p-4">
-              <p className="text-sm text-destructive">{getErrorMessage(error)}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void refetch()}
-                disabled={isFetching}
-              >
-                Reintentar
-              </Button>
-            </div>
-          )}
+        {error && (
+          <div role="alert" className="flex flex-col items-start gap-3 p-4">
+            <p className="text-sm text-destructive">{getErrorMessage(error)}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+            >
+              Reintentar
+            </Button>
+          </div>
+        )}
 
-          {socios && socios.length === 0 && (
-            <p role="status" className="p-4 text-sm text-muted-foreground">
-              No hay socios que coincidan con la búsqueda.
-            </p>
-          )}
-
-          {socios && socios.length > 0 && (
-            <SociosTable
-              socios={socios}
-              esAdmin={esAdmin}
-              idCambiandoEstado={
-                cambioDeEstado.isPending ? (cambioDeEstado.variables?.id ?? null) : null
-              }
-              onEditar={setEditando}
-              onCambiarEstado={cambiarEstado}
-            />
-          )}
-        </CardContent>
-      </Card>
+        {socios && (
+          <SociosTable
+            socios={socios}
+            esAdmin={esAdmin}
+            idCambiandoEstado={
+              cambioDeEstado.isPending ? (cambioDeEstado.variables?.id ?? null) : null
+            }
+            onEditar={setEditando}
+            onCambiarEstado={cambiarEstado}
+          />
+        )}
+      </div>
 
       <CrearSocioDialog abierto={creando} onAbiertoChange={setCreando} />
       <EditarSocioDialog socio={editando} onCerrar={() => setEditando(null)} />

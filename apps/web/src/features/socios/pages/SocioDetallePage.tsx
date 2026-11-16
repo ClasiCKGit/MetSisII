@@ -1,18 +1,38 @@
-import { useState } from "react";
+import { PencilIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+import { EstadoActivo } from "@/components/shared/EstadoActivo";
+import { Iniciales } from "@/components/shared/Iniciales";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
 
+const VOLVER = (
+  <Link
+    to="/socios"
+    className="w-fit text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+  >
+    ← Volver a socios
+  </Link>
+);
+
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <div>
-      <dt className="text-sm text-muted-foreground">{etiqueta}</dt>
+    <div className="flex flex-col gap-1">
+      <dt className="rotulo">{etiqueta}</dt>
       <dd>{valor}</dd>
     </div>
+  );
+}
+
+/** Bloque del detalle con su título, en el mismo contenedor que las tablas. */
+function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="font-heading text-lg font-black tracking-tight uppercase">{titulo}</h2>
+      <div className="rounded-xl border bg-card p-4 sm:p-5">{children}</div>
+    </section>
   );
 }
 
@@ -31,90 +51,77 @@ export function SocioDetallePage() {
   const { data: socio, isPending, error, refetch, isFetching } = useSocio(id);
   const [editando, setEditando] = useState(false);
 
-  return (
-    <div className="flex flex-col gap-4">
-      <Link to="/socios" className="text-sm text-muted-foreground hover:underline">
-        ← Volver a socios
-      </Link>
+  if (isPending) {
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Cargando socio…
+      </p>
+    );
+  }
 
-      {isPending && (
-        <p role="status" className="text-sm text-muted-foreground">
-          Cargando socio…
+  if (error) {
+    return (
+      <div role="alert" className="flex flex-col items-start gap-3">
+        <p className="text-sm text-destructive">
+          {hasStatus(error, 404) ? "No encontramos a ese socio." : getErrorMessage(error)}
         </p>
-      )}
+        {!hasStatus(error, 404) && (
+          <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+            Reintentar
+          </Button>
+        )}
+        {VOLVER}
+      </div>
+    );
+  }
 
-      {error && (
-        <div role="alert" className="flex flex-col items-start gap-3">
-          <p className="text-sm text-destructive">
-            {hasStatus(error, 404) ? "No encontramos a ese socio." : getErrorMessage(error)}
-          </p>
-          {!hasStatus(error, 404) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void refetch()}
-              disabled={isFetching}
-            >
-              Reintentar
-            </Button>
-          )}
-        </div>
-      )}
-
-      {socio && (
-        <>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold">
-                {socio.nombre} {socio.apellido}
-              </h1>
-              <Badge variant={socio.activo ? "secondary" : "outline"}>
-                {socio.activo ? "Activo" : "Inactivo"}
-              </Badge>
-            </div>
-            <Button onClick={() => setEditando(true)}>Editar</Button>
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        {VOLVER}
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Iniciales
+              nombre={socio.nombre}
+              apellido={socio.apellido}
+              className="size-12 text-base"
+            />
+            <h1 className="titulo-pantalla">
+              {socio.nombre} {socio.apellido}
+            </h1>
+            <EstadoActivo activo={socio.activo} />
           </div>
+          <Button size="lg" onClick={() => setEditando(true)}>
+            <PencilIcon aria-hidden="true" />
+            Editar
+          </Button>
+        </header>
+      </div>
 
-          <Card>
-            <CardContent className="flex flex-col gap-4">
-              <h2 className="font-medium">Datos personales</h2>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <Dato etiqueta="DNI" valor={socio.dni} />
-                <Dato etiqueta="Email" valor={socio.email ?? "—"} />
-                <Dato etiqueta="Teléfono" valor={socio.telefono ?? "—"} />
-                <Dato
-                  etiqueta="Fecha de nacimiento"
-                  valor={formatearNacimiento(socio.fechaNacimiento)}
-                />
-                <Dato etiqueta="Fecha de ingreso" valor={formatearIngreso(socio.fechaIngreso)} />
-              </dl>
-            </CardContent>
-          </Card>
+      <Seccion titulo="Datos personales">
+        <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <Dato etiqueta="DNI" valor={socio.dni} />
+          <Dato etiqueta="Email" valor={socio.email ?? "—"} />
+          <Dato etiqueta="Teléfono" valor={socio.telefono ?? "—"} />
+          <Dato etiqueta="Fecha de nacimiento" valor={formatearNacimiento(socio.fechaNacimiento)} />
+          <Dato etiqueta="Fecha de ingreso" valor={formatearIngreso(socio.fechaIngreso)} />
+        </dl>
+      </Seccion>
 
-          <Card>
-            <CardContent className="flex flex-col gap-2">
-              <h2 className="font-medium">Membresías</h2>
-              <p className="text-sm text-muted-foreground">
-                Todavía no disponible: se completa cuando esté listo el módulo de membresías.
-              </p>
-            </CardContent>
-          </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Seccion titulo="Membresías">
+          <p className="text-sm text-muted-foreground">
+            Todavía no disponible: se completa cuando esté listo el módulo de membresías.
+          </p>
+        </Seccion>
+        <Seccion titulo="Historial de pagos">
+          <p className="text-sm text-muted-foreground">
+            Todavía no disponible: se completa cuando esté listo el módulo de pagos.
+          </p>
+        </Seccion>
+      </div>
 
-          <Card>
-            <CardContent className="flex flex-col gap-2">
-              <h2 className="font-medium">Historial de pagos</h2>
-              <p className="text-sm text-muted-foreground">
-                Todavía no disponible: se completa cuando esté listo el módulo de pagos.
-              </p>
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      <EditarSocioDialog
-        socio={editando ? (socio ?? null) : null}
-        onCerrar={() => setEditando(false)}
-      />
+      <EditarSocioDialog socio={editando ? socio : null} onCerrar={() => setEditando(false)} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { toast } from "@/components/ui/toast";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { useActualizarSocio, useCrearSocio } from "../hooks/useSocios";
-import { aSocioInput, socioSchema, type SocioFormValues } from "../schemas";
+import { aSocioCambios, aSocioInput, socioSchema, type SocioFormValues } from "../schemas";
 import type { Socio } from "../types";
 
 function PieDelFormulario({ enviando, textoEnviar }: { enviando: boolean; textoEnviar: string }) {
@@ -166,7 +166,7 @@ function EditarSocioForm({ socio, onDone }: { socio: Socio; onDone: () => void }
 
   function enviar(valores: SocioFormValues) {
     actualizar.mutate(
-      { id: socio.id, cambios: aSocioInput(valores) },
+      { id: socio.id, cambios: aSocioCambios(valores) },
       {
         onSuccess: () => {
           toast.add({ type: "success", title: "Socio actualizado" });

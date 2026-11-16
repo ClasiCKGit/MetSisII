@@ -1,4 +1,4 @@
-import type { SocioInput } from "@/features/socios/schemas";
+import type { SocioCambios, SocioInput } from "@/features/socios/schemas";
 import type { Socio } from "@/features/socios/types";
 import { apiClient } from "@/lib/api-client";
 
@@ -18,10 +18,7 @@ export async function crearSocio(input: SocioInput): Promise<Socio> {
 }
 
 // PATCH: solo se envían los campos que cambian
-export async function actualizarSocio(
-  id: string,
-  cambios: Partial<SocioInput> & { activo?: boolean }
-): Promise<Socio> {
+export async function actualizarSocio(id: string, cambios: SocioCambios): Promise<Socio> {
   const { data } = await apiClient.patch<Socio>(`/socios/${id}`, cambios);
   return data;
 }
