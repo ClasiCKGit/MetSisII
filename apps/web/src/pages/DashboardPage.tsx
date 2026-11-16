@@ -9,32 +9,48 @@ import {
   WalletIcon,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "cn";
 import { Link } from "react-router-dom";
+import { useResumen } from "@/features/dashboard/hooks/useResumen";
+import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
 
 interface TarjetaMetricaProps {
   titulo: string;
   icono: LucideIcon;
-  // Hasta que exista el módulo que la alimenta, la métrica muestra este aviso en lugar del valor
-  pendiente: string;
+  // Sin valor (cargando, con error o sin módulo que la alimente) se muestra un guion
+  valor?: number;
+  detalle: string;
 }
 
-/** Tarjeta de una métrica del gimnasio. Por ahora solo muestra el estado "sin datos todavía". */
-function TarjetaMetrica({ titulo, icono: Icono, pendiente }: TarjetaMetricaProps) {
+/** Tarjeta de una métrica del gimnasio: el número grande y, debajo, qué significa o por qué falta. */
+function TarjetaMetrica({ titulo, icono: Icono, valor, detalle }: TarjetaMetricaProps) {
   return (
-    <article className="flex flex-col gap-5 rounded-2xl border bg-card p-6">
+    <article aria-label={titulo} className="flex flex-col gap-5 rounded-2xl border bg-card p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="rotulo text-card-foreground/80">{titulo}</h2>
         <span className="inline-flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary-soft-foreground">
           <Icono aria-hidden="true" className="size-5" />
         </span>
       </div>
-      <p className="font-heading text-6xl leading-none font-black tracking-tight text-muted-foreground">
-        —
+      <p
+        className={cn(
+          "font-heading text-6xl leading-none font-black tracking-tight tabular-nums",
+          valor === undefined && "text-muted-foreground"
+        )}
+      >
+        {valor ?? "—"}
       </p>
-      <p className="text-sm text-muted-foreground">{pendiente}</p>
+      <p className="text-sm text-muted-foreground">{detalle}</p>
     </article>
   );
+}
+
+/** Texto de la tarjeta de socios según el estado de la consulta. */
+function detalleSocios(cargando: boolean, error: unknown): string {
+  if (cargando) return "Cargando…";
+  if (error) return `No se pudo calcular: ${getErrorMessage(error)}`;
+  return "Socios que no están dados de baja.";
 }
 
 interface AccesoRapidoProps {
@@ -63,6 +79,7 @@ export function DashboardPage() {
   // Dos selectores separados que devuelven valores simples: no hace falta useShallow
   const nombre = useAuthStore((state) => state.usuario?.nombre);
   const rol = useAuthStore((state) => state.usuario?.rol);
+  const resumen = useResumen();
   const hoy = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
 
   return (
@@ -78,13 +95,14 @@ export function DashboardPage() {
       <section aria-label="Métricas del gimnasio" className="grid gap-5 lg:grid-cols-2">
         <TarjetaMetrica
           titulo="Socios activos"
-          icono={UsersIcon}
-          pendiente="Se va a calcular cuando esté disponible la gestión de socios."
+          icono={IdCardIcon}
+          valor={resumen.data?.sociosActivos}
+          detalle={detalleSocios(resumen.isPending, resumen.error)}
         />
         <TarjetaMetrica
           titulo="Ingresos del mes"
           icono={WalletIcon}
-          pendiente="Se va a calcular cuando esté disponible el registro de pagos."
+          detalle="Se va a calcular cuando esté disponible el registro de pagos."
         />
       </section>
 

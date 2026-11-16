@@ -6,6 +6,7 @@ import {
   obtenerSocio,
   type FiltrosSocios,
 } from "@/api/socios.api";
+import { DASHBOARD_KEY } from "@/features/dashboard/hooks/useResumen";
 import type { SocioCambios } from "../schemas";
 
 const SOCIOS_KEY = ["socios"] as const;
@@ -29,10 +30,15 @@ export function useSocio(id: string) {
   });
 }
 
-// Invalidar con la clave base marca como "vieja" la lista de todos los filtros a la vez
+// Invalidar con la clave base marca como "vieja" la lista de todos los filtros a la vez.
+// También el resumen del inicio, que cuenta los socios activos.
 function useInvalidarSocios() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: SOCIOS_KEY });
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: SOCIOS_KEY }),
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY }),
+    ]);
 }
 
 export function useCrearSocio() {
