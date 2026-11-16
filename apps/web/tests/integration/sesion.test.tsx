@@ -97,7 +97,9 @@ describe("login", () => {
 
     expect(await screen.findByText("Hola, Ana")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
-    expect(screen.getByText(`${g.nombre} · Ana Admin`)).toBeInTheDocument();
+    // La barra lateral muestra el gimnasio y el usuario con sesión
+    expect(screen.getByText(g.nombre)).toBeInTheDocument();
+    expect(screen.getByText("Ana Admin")).toBeInTheDocument();
 
     const guardado = JSON.parse(localStorage.getItem("fitmanager-auth")!);
     expect(Object.keys(guardado.state).sort()).toEqual(["token", "ultimoSlug"]);
