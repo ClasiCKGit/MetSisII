@@ -9,6 +9,7 @@ import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 import { profesoresRouter } from "./modules/profesores/profesores.routes";
 import { actividadesRouter } from "./modules/actividades/actividades.routes";
 import { horariosRouter } from "./modules/horarios/horarios.routes";
+import { sociosRouter } from "./modules/socios/socios.routes";
 
 export function createApp() {
   const app = express();
@@ -25,7 +26,7 @@ export function createApp() {
   // Acá se van a montar las rutas de cada módulo a medida que se implementen:
   app.use("/api/auth", authRouter);
   app.use("/api/usuarios", usuariosRouter);
-  // app.use("/api/socios", sociosRouter);
+  app.use("/api/socios", sociosRouter);
   app.use("/api/profesores", profesoresRouter);
   app.use("/api/actividades", actividadesRouter);
   app.use("/api/horarios", horariosRouter);
