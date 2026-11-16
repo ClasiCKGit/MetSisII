@@ -150,6 +150,8 @@ En los tests, `configurarRegistroGimnasios(false)` de `fake-api.ts` cierra el re
 
 En login y registro un `401` significa "credenciales incorrectas", no "sesión vencida": por eso están excluidos.
 
+Además, solo cierra la sesión un `401` de una petición que salió **con el token actual**. Si la respuesta llega tarde y mientras tanto la sesión cambió (se cerró y se abrió otra), ese `401` es de la sesión vieja y se ignora: sin esta regla, una petición lenta podía echar al login a quien acababa de entrar. En los tests pasaba lo mismo entre un test y el siguiente (ver `tests/unit/api-client.test.ts`).
+
 > Los interceptores de **request** de axios se ejecutan en orden inverso al de registro (el último registrado corre primero). Los de **response**, en orden directo.
 
 ### Errores (`lib/api-error.ts`)
