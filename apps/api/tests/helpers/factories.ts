@@ -58,6 +58,7 @@ interface DatosSocio {
   nombre?: string;
   apellido?: string;
   dni?: string;
+  activo?: boolean;
 }
 
 export async function crearSocio(gimnasioId: string, datos: DatosSocio = {}) {

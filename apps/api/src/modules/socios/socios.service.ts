@@ -52,7 +52,17 @@ export async function createSocio(db: TenantClient, actor: AuthContext, input: C
   }
 }
 
-export async function updateSocio(db: TenantClient, id: string, input: UpdateSocioInput) {
+// Recepción puede editar los datos de un socio, pero dar de baja o reactivar es de administradores
+export async function updateSocio(
+  db: TenantClient,
+  actor: AuthContext,
+  id: string,
+  input: UpdateSocioInput
+) {
+  if (input.activo !== undefined && actor.rol !== "ADMIN") {
+    throw new AppError(403, "Solo un administrador puede dar de baja o reactivar socios");
+  }
+
   try {
     return await db.socio.update({ where: { id }, data: input });
   } catch (error) {
@@ -67,7 +77,6 @@ export async function updateSocio(db: TenantClient, id: string, input: UpdateSoc
   }
 }
 
-// Baja lógica: se marca como inactivo en vez de borrar la fila.
-export async function deactivateSocio(db: TenantClient, id: string) {
-  return updateSocio(db, id, { activo: false });
+export async function deactivateSocio(db: TenantClient, actor: AuthContext, id: string) {
+  return updateSocio(db, actor, id, { activo: false });
 }
