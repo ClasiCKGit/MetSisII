@@ -30,10 +30,17 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     const apiError = toApiError(error);
-    const url = axios.isAxiosError(error) ? (error.config?.url ?? "") : "";
+    const config = axios.isAxiosError(error) ? error.config : undefined;
+    const url = config?.url ?? "";
     const eraRutaSinSesion = RUTAS_SIN_SESION.some((ruta) => url.endsWith(ruta));
 
-    if (apiError.status === 401 && !eraRutaSinSesion) {
+    // Solo cierra la sesión un 401 de una petición hecha con el token actual. Una respuesta
+    // que llega tarde, de una sesión que ya se cerró, no debe cerrar la que se abrió después.
+    const { token } = useAuthStore.getState();
+    const eraDeLaSesionActual =
+      token !== null && config?.headers.get("Authorization") === `Bearer ${token}`;
+
+    if (apiError.status === 401 && !eraRutaSinSesion && eraDeLaSesionActual) {
       cerrarSesion();
     }
     return Promise.reject(apiError);

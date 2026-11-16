@@ -726,6 +726,17 @@ export function crearHandlers(apiUrl: string) {
       estado.vinculos.splice(posicion, 1);
       return sinContenido();
     }),
+    // Métricas del inicio: cualquier usuario con sesión, solo con datos de su gimnasio
+    http.get(`${base}/dashboard/resumen`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const sociosActivos = estado.socios.filter(
+        (s) => s.gimnasioId === actual.gimnasio.id && s.activo
+      ).length;
+      return respuesta(200, { sociosActivos });
+    }),
+
     // ───── socios: cualquier usuario con sesión consulta, da de alta y edita; la baja es de ADMIN
     http.get(`${base}/socios`, ({ request }) => {
       const actual = autenticar(request);
