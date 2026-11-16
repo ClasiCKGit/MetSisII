@@ -47,6 +47,19 @@ interface FakeActividad {
   cupo: number | null;
   activa: boolean;
 }
+interface FakeSocio {
+  id: string;
+  gimnasioId: string;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  email: string | null;
+  telefono: string | null;
+  fechaNacimiento: string | null;
+  fechaIngreso: string;
+  activo: boolean;
+  createdAt: string;
+}
 interface FakeVinculo {
   id: string;
   gimnasioId: string;
@@ -60,6 +73,7 @@ const estado = {
   profesores: [] as FakeProfesor[],
   actividades: [] as FakeActividad[],
   vinculos: [] as FakeVinculo[],
+  socios: [] as FakeSocio[],
   sesiones: new Map<string, { usuarioId: string }>(),
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
@@ -71,6 +85,7 @@ export function resetFakeApi(): void {
   estado.profesores.length = 0;
   estado.actividades.length = 0;
   estado.vinculos.length = 0;
+  estado.socios.length = 0;
   estado.sesiones.clear();
   estado.registroHabilitado = true;
 }
@@ -199,6 +214,25 @@ const descripcionValida = (valor: unknown) =>
   valor === undefined ||
   valor === null ||
   (typeof valor === "string" && valor.trim().length <= 500);
+
+// Socios: el DNI es obligatorio (7 u 8 dígitos) y la fecha de nacimiento no puede ser futura
+const DNI_SOCIO = /^\d{7,8}$/;
+const DNI_DUPLICADO = "Ya existe un socio con ese DNI en este gimnasio";
+const fechaOpcionalValida = (valor: unknown) =>
+  valor === undefined ||
+  valor === null ||
+  (typeof valor === "string" &&
+    !Number.isNaN(new Date(valor).getTime()) &&
+    new Date(valor) <= new Date());
+const opcionalesDeSocioValidos = (cuerpo: Record<string, unknown>) =>
+  emailOpcionalValido(cuerpo.email) &&
+  opcionalValido(cuerpo.telefono, 30) &&
+  fechaOpcionalValida(cuerpo.fechaNacimiento);
+// La API guarda la fecha como medianoche UTC y la devuelve en ISO
+const fechaOpcional = (valor: unknown): string | null =>
+  typeof valor === "string" ? new Date(valor).toISOString() : null;
+const dniRepetido = (gimnasioId: string, dni: string, excepto?: string) =>
+  estado.socios.some((s) => s.gimnasioId === gimnasioId && s.dni === dni && s.id !== excepto);
 
 const vinculoConProfesor = (vinculo: FakeVinculo) => ({
   ...vinculo,
@@ -691,6 +725,144 @@ export function crearHandlers(apiUrl: string) {
 
       estado.vinculos.splice(posicion, 1);
       return sinContenido();
+    }),
+    // ───── socios: cualquier usuario con sesión consulta, da de alta y edita; la baja es de ADMIN
+    http.get(`${base}/socios`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const params = new URL(request.url).searchParams;
+      const activo = params.get("activo");
+      if (activo !== null && activo !== "true" && activo !== "false") return errorDeValidacion();
+      const q = params.get("q")?.trim().toLowerCase();
+
+      const lista = estado.socios
+        .filter((s) => s.gimnasioId === actual.gimnasio.id)
+        .filter((s) => activo === null || s.activo === (activo === "true"))
+        .filter(
+          (s) =>
+            !q ||
+            s.nombre.toLowerCase().includes(q) ||
+            s.apellido.toLowerCase().includes(q) ||
+            s.dni.includes(q)
+        )
+        .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre));
+      return respuesta(200, lista);
+    }),
+
+    http.get(`${base}/socios/:id`, ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const socio = estado.socios.find((s) => s.id === id && s.gimnasioId === actual.gimnasio.id);
+      return socio ? respuesta(200, socio) : error(404, "Socio no encontrado");
+    }),
+
+    http.post(`${base}/socios`, async ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        !texto(cuerpo.nombre).trim() ||
+        !texto(cuerpo.apellido).trim() ||
+        !DNI_SOCIO.test(texto(cuerpo.dni).trim()) ||
+        !opcionalesDeSocioValidos(cuerpo)
+      ) {
+        return errorDeValidacion();
+      }
+
+      const dni = texto(cuerpo.dni).trim();
+      if (dniRepetido(actual.gimnasio.id, dni)) return error(409, DNI_DUPLICADO);
+
+      const ahora = new Date().toISOString();
+      const creado: FakeSocio = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        nombre: texto(cuerpo.nombre).trim(),
+        apellido: texto(cuerpo.apellido).trim(),
+        dni,
+        email: emailOpcional(cuerpo.email),
+        telefono: textoOpcional(cuerpo.telefono),
+        fechaNacimiento: fechaOpcional(cuerpo.fechaNacimiento),
+        fechaIngreso: ahora,
+        activo: true,
+        createdAt: ahora,
+      };
+      estado.socios.push(creado);
+      return respuesta(201, creado);
+    }),
+
+    http.patch(`${base}/socios/:id`, async ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      const permitidos = [
+        "nombre",
+        "apellido",
+        "dni",
+        "email",
+        "telefono",
+        "fechaNacimiento",
+        "activo",
+      ];
+      if (
+        !cuerpo ||
+        !Object.keys(cuerpo).length ||
+        Object.keys(cuerpo).some((k) => !permitidos.includes(k)) ||
+        (cuerpo.nombre !== undefined && !texto(cuerpo.nombre).trim()) ||
+        (cuerpo.apellido !== undefined && !texto(cuerpo.apellido).trim()) ||
+        (cuerpo.dni !== undefined && !DNI_SOCIO.test(texto(cuerpo.dni).trim())) ||
+        (cuerpo.activo !== undefined && typeof cuerpo.activo !== "boolean") ||
+        !opcionalesDeSocioValidos(cuerpo)
+      ) {
+        return errorDeValidacion();
+      }
+      if (cuerpo.activo !== undefined && actual.usuario.rol !== "ADMIN") {
+        return error(403, "Solo un administrador puede dar de baja o reactivar socios");
+      }
+
+      // Otro gimnasio y "no existe" se ven igual: 404
+      const objetivo = estado.socios.find(
+        (s) => s.id === id && s.gimnasioId === actual.gimnasio.id
+      );
+      if (!objetivo) return error(404, "Socio no encontrado");
+
+      if (typeof cuerpo.dni === "string") {
+        const dni = cuerpo.dni.trim();
+        if (dniRepetido(actual.gimnasio.id, dni, objetivo.id)) return error(409, DNI_DUPLICADO);
+        objetivo.dni = dni;
+      }
+      if (typeof cuerpo.nombre === "string") objetivo.nombre = cuerpo.nombre.trim();
+      if (typeof cuerpo.apellido === "string") objetivo.apellido = cuerpo.apellido.trim();
+      // null borra el dato; si el campo no viene, no se toca
+      if (cuerpo.email !== undefined) objetivo.email = emailOpcional(cuerpo.email);
+      if (cuerpo.telefono !== undefined) objetivo.telefono = textoOpcional(cuerpo.telefono);
+      if (cuerpo.fechaNacimiento !== undefined) {
+        objetivo.fechaNacimiento = fechaOpcional(cuerpo.fechaNacimiento);
+      }
+      if (typeof cuerpo.activo === "boolean") objetivo.activo = cuerpo.activo;
+      return respuesta(200, objetivo);
+    }),
+
+    http.delete(`${base}/socios/:id`, ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const objetivo = estado.socios.find(
+        (s) => s.id === id && s.gimnasioId === actual.gimnasio.id
+      );
+      if (!objetivo) return error(404, "Socio no encontrado");
+      objetivo.activo = false;
+      return respuesta(200, objetivo);
     }),
   ];
 }

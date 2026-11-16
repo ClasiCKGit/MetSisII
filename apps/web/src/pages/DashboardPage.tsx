@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   ContactIcon,
   DumbbellIcon,
+  IdCardIcon,
   UsersIcon,
   WalletIcon,
   type LucideIcon,
@@ -92,6 +93,7 @@ export function DashboardPage() {
           Accesos rápidos
         </h2>
         <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+          <AccesoRapido to="/socios" etiqueta="Ver socios" icono={IdCardIcon} />
           {rol === "ADMIN" && (
             <AccesoRapido to="/usuarios" etiqueta="Gestionar usuarios" icono={UsersIcon} />
           )}

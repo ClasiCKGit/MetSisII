@@ -25,7 +25,7 @@ export const socioSchema = z.object({
 
 export type SocioFormValues = z.infer<typeof socioSchema>;
 
-// Lo que espera la API
+// Lo que espera la API al crear: los opcionales vacíos se omiten
 export interface SocioInput {
   nombre: string;
   apellido: string;
@@ -33,6 +33,17 @@ export interface SocioInput {
   email?: string;
   telefono?: string;
   fechaNacimiento?: string;
+}
+
+// Al editar, null borra un dato opcional (omitirlo lo dejaría como estaba)
+export interface SocioCambios {
+  nombre?: string;
+  apellido?: string;
+  dni?: string;
+  email?: string | null;
+  telefono?: string | null;
+  fechaNacimiento?: string | null;
+  activo?: boolean;
 }
 
 // La API rechaza los strings vacíos en email y fechaNacimiento, así que se omiten
@@ -44,5 +55,17 @@ export function aSocioInput(valores: SocioFormValues): SocioInput {
     email: valores.email || undefined,
     telefono: valores.telefono || undefined,
     fechaNacimiento: valores.fechaNacimiento || undefined,
+  };
+}
+
+// Edición: un campo opcional que quedó vacío se manda como null para borrarlo en la API
+export function aSocioCambios(valores: SocioFormValues): SocioCambios {
+  return {
+    nombre: valores.nombre,
+    apellido: valores.apellido,
+    dni: valores.dni,
+    email: valores.email || null,
+    telefono: valores.telefono || null,
+    fechaNacimiento: valores.fechaNacimiento || null,
   };
 }

@@ -3,6 +3,7 @@ import {
   ContactIcon,
   DumbbellIcon,
   HouseIcon,
+  IdCardIcon,
   LogOutIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -30,6 +31,7 @@ interface ItemMenu {
 
 const MENU: ItemMenu[] = [
   { to: "/", etiqueta: "Inicio", icono: HouseIcon },
+  { to: "/socios", etiqueta: "Socios", icono: IdCardIcon },
   { to: "/usuarios", etiqueta: "Usuarios", icono: UsersIcon, roles: ["ADMIN"] },
   { to: "/profesores", etiqueta: "Profesores", icono: ContactIcon },
   { to: "/actividades", etiqueta: "Actividades", icono: DumbbellIcon },

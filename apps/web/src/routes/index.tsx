@@ -38,7 +38,6 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "socios", element: <SociosPage /> },
-          { path: "socios", element: <SociosPage /> },
           { path: "socios/:id", element: <SocioDetallePage /> },
           {
             // Solo administradores
