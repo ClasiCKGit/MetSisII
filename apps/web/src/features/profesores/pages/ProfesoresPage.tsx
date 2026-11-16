@@ -1,6 +1,7 @@
+import { PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { EncabezadoPantalla } from "@/components/shared/EncabezadoPantalla";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
@@ -41,50 +42,53 @@ export function ProfesoresPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Profesores</h1>
-          <p className="text-sm text-muted-foreground">Quienes dan clases en el gimnasio.</p>
-        </div>
-        {puedeEditar && <Button onClick={() => setCreando(true)}>Nuevo profesor</Button>}
+    <div className="flex flex-col gap-6">
+      <EncabezadoPantalla
+        titulo="Profesores"
+        descripcion="Quienes dan clases en el gimnasio."
+        accion={
+          puedeEditar && (
+            <Button size="lg" onClick={() => setCreando(true)}>
+              <PlusIcon aria-hidden="true" />
+              Nuevo profesor
+            </Button>
+          )
+        }
+      />
+
+      <div className="overflow-hidden rounded-xl border bg-card">
+        {isPending && (
+          <p role="status" className="p-4 text-sm text-muted-foreground">
+            Cargando profesores…
+          </p>
+        )}
+
+        {error && (
+          <div role="alert" className="flex flex-col items-start gap-3 p-4">
+            <p className="text-sm text-destructive">{getErrorMessage(error)}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+            >
+              Reintentar
+            </Button>
+          </div>
+        )}
+
+        {profesores && (
+          <ProfesoresTable
+            profesores={profesores}
+            puedeEditar={puedeEditar}
+            idCambiandoEstado={
+              cambioDeEstado.isPending ? (cambioDeEstado.variables?.id ?? null) : null
+            }
+            onEditar={setEditando}
+            onCambiarEstado={cambiarEstado}
+          />
+        )}
       </div>
-
-      <Card>
-        <CardContent className="px-2">
-          {isPending && (
-            <p role="status" className="p-4 text-sm text-muted-foreground">
-              Cargando profesores…
-            </p>
-          )}
-
-          {error && (
-            <div role="alert" className="flex flex-col items-start gap-3 p-4">
-              <p className="text-sm text-destructive">{getErrorMessage(error)}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void refetch()}
-                disabled={isFetching}
-              >
-                Reintentar
-              </Button>
-            </div>
-          )}
-
-          {profesores && (
-            <ProfesoresTable
-              profesores={profesores}
-              puedeEditar={puedeEditar}
-              idCambiandoEstado={
-                cambioDeEstado.isPending ? (cambioDeEstado.variables?.id ?? null) : null
-              }
-              onEditar={setEditando}
-              onCambiarEstado={cambiarEstado}
-            />
-          )}
-        </CardContent>
-      </Card>
 
       {puedeEditar && (
         <>

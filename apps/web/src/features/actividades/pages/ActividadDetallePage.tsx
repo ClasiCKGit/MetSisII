@@ -1,12 +1,15 @@
 import { Link, useParams } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
 import { ProfesoresDeLaActividad } from "../components/ProfesoresDeLaActividad";
 import { useActividad } from "../hooks/useProfesoresDeActividad";
 
 const VOLVER = (
-  <Link to="/actividades" className="text-sm text-muted-foreground hover:underline">
+  <Link
+    to="/actividades"
+    className="w-fit text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+  >
     ← Volver a actividades
   </Link>
 );
@@ -38,11 +41,9 @@ export function ActividadDetallePage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         {VOLVER}
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold">{actividad.nombre}</h1>
-          <Badge variant={actividad.activa ? "secondary" : "outline"}>
-            {actividad.activa ? "Activa" : "Inactiva"}
-          </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="titulo-pantalla">{actividad.nombre}</h1>
+          <EstadoActivo activo={actividad.activa} femenino />
         </div>
         {actividad.descripcion && (
           <p className="text-sm text-muted-foreground">{actividad.descripcion}</p>

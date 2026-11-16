@@ -1,4 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import { PencilIcon, PowerIcon } from "lucide-react";
+import { EstadoActivo } from "@/components/shared/EstadoActivo";
+import { Iniciales } from "@/components/shared/Iniciales";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -46,7 +48,7 @@ export function ProfesoresTable({
       <TableBody>
         {profesores.length === 0 && (
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground">
+            <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
               Todavía no hay profesores cargados.
             </TableCell>
           </TableRow>
@@ -54,41 +56,49 @@ export function ProfesoresTable({
 
         {profesores.map((profesor) => {
           const nombreCompleto = `${profesor.nombre} ${profesor.apellido}`;
+          const accionEstado = profesor.activo ? "Desactivar" : "Activar";
 
           return (
             <TableRow key={profesor.id}>
-              <TableCell>{nombreCompleto}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2.5 font-semibold">
+                  <Iniciales nombre={profesor.nombre} apellido={profesor.apellido} />
+                  <span className={profesor.activo ? undefined : "opacity-60"}>
+                    {nombreCompleto}
+                  </span>
+                </div>
+              </TableCell>
               <TableCell>{profesor.especialidad ?? SIN_DATO}</TableCell>
               <TableCell>
-                <div>{profesor.email ?? SIN_DATO}</div>
+                <div className="text-muted-foreground">{profesor.email ?? SIN_DATO}</div>
                 {profesor.telefono && (
                   <div className="text-xs text-muted-foreground">{profesor.telefono}</div>
                 )}
               </TableCell>
               <TableCell>
-                <Badge variant={profesor.activo ? "secondary" : "outline"}>
-                  {profesor.activo ? "Activo" : "Inactivo"}
-                </Badge>
+                <EstadoActivo activo={profesor.activo} />
               </TableCell>
               {puedeEditar && (
-                <TableCell className="text-right">
+                <TableCell>
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon-lg"
                       aria-label={`Editar a ${nombreCompleto}`}
+                      title="Editar"
                       onClick={() => onEditar(profesor)}
                     >
-                      Editar
+                      <PencilIcon aria-hidden="true" />
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      aria-label={`${profesor.activo ? "Desactivar" : "Activar"} a ${nombreCompleto}`}
+                      size="icon-lg"
+                      aria-label={`${accionEstado} a ${nombreCompleto}`}
+                      title={accionEstado}
                       disabled={idCambiandoEstado === profesor.id}
                       onClick={() => onCambiarEstado(profesor)}
                     >
-                      {profesor.activo ? "Desactivar" : "Activar"}
+                      <PowerIcon aria-hidden="true" />
                     </Button>
                   </div>
                 </TableCell>

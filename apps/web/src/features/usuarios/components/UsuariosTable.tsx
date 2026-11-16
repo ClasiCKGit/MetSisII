@@ -1,3 +1,6 @@
+import { KeyRoundIcon, PencilIcon, PowerIcon } from "lucide-react";
+import { EstadoActivo } from "@/components/shared/EstadoActivo";
+import { Iniciales } from "@/components/shared/Iniciales";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,51 +48,66 @@ export function UsuariosTable({
         {usuarios.map((usuario) => {
           const esUnoMismo = usuario.id === yoId;
           const nombreCompleto = `${usuario.nombre} ${usuario.apellido}`;
+          const accionEstado = usuario.activo ? "Desactivar" : "Activar";
 
           return (
             <TableRow key={usuario.id}>
               <TableCell>
-                {nombreCompleto} {esUnoMismo && <Badge variant="outline">Vos</Badge>}
+                <div className="flex items-center gap-2.5 font-semibold">
+                  <Iniciales nombre={usuario.nombre} apellido={usuario.apellido} />
+                  <span className={usuario.activo ? undefined : "opacity-60"}>
+                    {nombreCompleto}
+                  </span>
+                  {esUnoMismo && <Badge variant="outline">Vos</Badge>}
+                </div>
               </TableCell>
-              <TableCell>{usuario.email}</TableCell>
+              <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
               <TableCell>
-                <Badge variant={usuario.rol === "ADMIN" ? "default" : "secondary"}>
+                <Badge
+                  variant="secondary"
+                  className={
+                    usuario.rol === "ADMIN"
+                      ? "bg-primary-soft font-bold text-primary-soft-foreground"
+                      : undefined
+                  }
+                >
                   {ROL_LABEL[usuario.rol]}
                 </Badge>
               </TableCell>
               <TableCell>
-                <Badge variant={usuario.activo ? "secondary" : "outline"}>
-                  {usuario.activo ? "Activo" : "Inactivo"}
-                </Badge>
+                <EstadoActivo activo={usuario.activo} />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell>
                 <div className="flex justify-end gap-1">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon-lg"
                     aria-label={`Editar a ${nombreCompleto}`}
+                    title="Editar"
                     onClick={() => onEditar(usuario)}
                   >
-                    Editar
+                    <PencilIcon aria-hidden="true" />
                   </Button>
                   {!esUnoMismo && (
                     <>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        aria-label={`${usuario.activo ? "Desactivar" : "Activar"} a ${nombreCompleto}`}
-                        disabled={idCambiandoEstado === usuario.id}
-                        onClick={() => onCambiarEstado(usuario)}
+                        size="icon-lg"
+                        aria-label={`Restablecer la contraseña de ${nombreCompleto}`}
+                        title="Restablecer contraseña"
+                        onClick={() => onResetear(usuario)}
                       >
-                        {usuario.activo ? "Desactivar" : "Activar"}
+                        <KeyRoundIcon aria-hidden="true" />
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        aria-label={`Restablecer la contraseña de ${nombreCompleto}`}
-                        onClick={() => onResetear(usuario)}
+                        size="icon-lg"
+                        aria-label={`${accionEstado} a ${nombreCompleto}`}
+                        title={accionEstado}
+                        disabled={idCambiandoEstado === usuario.id}
+                        onClick={() => onCambiarEstado(usuario)}
                       >
-                        Contraseña
+                        <PowerIcon aria-hidden="true" />
                       </Button>
                     </>
                   )}

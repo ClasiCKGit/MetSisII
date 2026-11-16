@@ -25,7 +25,7 @@ describe("registro de gimnasio", () => {
 
   it("valida en el cliente: campos vacíos, identificador inválido y reservado, contraseñas distintas", async () => {
     const { user } = renderApp("/registro");
-    await screen.findByText("Registrá tu gimnasio", { selector: '[data-slot="card-title"]' });
+    await screen.findByRole("heading", { name: "Registrá tu gimnasio" });
 
     await user.click(screen.getByRole("button", { name: "Crear gimnasio" }));
     expect(

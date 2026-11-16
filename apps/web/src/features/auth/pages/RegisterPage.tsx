@@ -4,15 +4,7 @@ import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { TextField } from "@/components/shared/form-fields";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { FieldGroup } from "@/components/ui/field";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { slugify } from "@/lib/slugify";
 import { useAuthConfig } from "../hooks/useAuthConfig";
@@ -68,15 +60,20 @@ export function RegisterPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Registrá tu gimnasio</CardTitle>
-        <CardDescription>Creá la cuenta del gimnasio y de su primer administrador.</CardDescription>
-      </CardHeader>
+    <div className="flex w-full max-w-2xl flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="titulo-pantalla">Registrá tu gimnasio</h1>
+        <p className="text-sm text-muted-foreground">
+          Creá la cuenta del gimnasio y de su primer administrador.
+        </p>
+      </div>
 
-      <CardContent>
-        <form id="form-registro" noValidate onSubmit={form.handleSubmit(enviar)}>
-          <FieldGroup>
+      <form noValidate className="flex flex-col gap-8" onSubmit={form.handleSubmit(enviar)}>
+        <FieldSet>
+          <FieldLegend className="font-heading text-xs! font-extrabold tracking-widest text-primary uppercase">
+            01 · Tu gimnasio
+          </FieldLegend>
+          <div className="grid gap-5 sm:grid-cols-2">
             <TextField
               control={form.control}
               name="gimnasioNombre"
@@ -92,6 +89,14 @@ export function RegisterPage() {
               autoComplete="off"
               onValueChange={() => setSlugEditadoAMano(true)}
             />
+          </div>
+        </FieldSet>
+
+        <FieldSet>
+          <FieldLegend className="font-heading text-xs! font-extrabold tracking-widest text-primary uppercase">
+            02 · Cuenta de administrador
+          </FieldLegend>
+          <div className="grid gap-5 sm:grid-cols-2">
             <TextField
               control={form.control}
               name="adminNombre"
@@ -104,13 +109,15 @@ export function RegisterPage() {
               label="Tu apellido"
               autoComplete="family-name"
             />
-            <TextField
-              control={form.control}
-              name="email"
-              label="Email"
-              type="email"
-              autoComplete="username"
-            />
+            <div className="sm:col-span-2">
+              <TextField
+                control={form.control}
+                name="email"
+                label="Email"
+                type="email"
+                autoComplete="username"
+              />
+            </div>
             <TextField
               control={form.control}
               name="password"
@@ -126,43 +133,42 @@ export function RegisterPage() {
               type="password"
               autoComplete="new-password"
             />
-          </FieldGroup>
+          </div>
+        </FieldSet>
 
-          {errorGeneral && (
-            <p role="alert" className="mt-4 text-sm text-destructive">
-              {getErrorMessage(registro.error)}
-            </p>
-          )}
-        </form>
-      </CardContent>
+        {errorGeneral && (
+          <p role="alert" className="text-sm text-destructive">
+            {getErrorMessage(registro.error)}
+          </p>
+        )}
 
-      <CardFooter className="flex-col gap-3">
-        <Button type="submit" form="form-registro" disabled={registro.isPending} className="w-full">
-          {registro.isPending ? "Creando…" : "Crear gimnasio"}
-        </Button>
-        <Link to="/login" className={buttonVariants({ variant: "link" })}>
-          Ya tengo una cuenta
-        </Link>
-      </CardFooter>
-    </Card>
+        <div className="flex flex-col gap-4">
+          <Button type="submit" disabled={registro.isPending} size="xl" className="w-full">
+            {registro.isPending ? "Creando…" : "Crear gimnasio"}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            ¿Ya tenés cuenta?{" "}
+            <Link to="/login" className="font-semibold text-primary hover:underline">
+              Ya tengo una cuenta
+            </Link>
+          </p>
+        </div>
+      </form>
+    </div>
   );
 }
 
 function RegistroCerrado() {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Registro no disponible</CardTitle>
-        <CardDescription>
-          Por ahora no se pueden registrar gimnasios nuevos. Si tu gimnasio ya usa FitManager,
-          pedile una cuenta a su administrador.
-        </CardDescription>
-      </CardHeader>
-      <CardFooter>
-        <Link to="/login" className={buttonVariants({ variant: "link" })}>
-          Ir a iniciar sesión
-        </Link>
-      </CardFooter>
-    </Card>
+    <div className="flex w-full max-w-md flex-col gap-4">
+      <h1 className="titulo-pantalla">Registro no disponible</h1>
+      <p className="text-sm text-muted-foreground">
+        Por ahora no se pueden registrar gimnasios nuevos. Si tu gimnasio ya usa FitManager, pedile
+        una cuenta a su administrador.
+      </p>
+      <Link to="/login" className={buttonVariants({ variant: "outline", className: "w-fit" })}>
+        Ir a iniciar sesión
+      </Link>
+    </div>
   );
 }

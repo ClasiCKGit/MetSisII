@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { KeyRoundIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { TextField } from "@/components/shared/form-fields";
@@ -82,14 +83,31 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-export function ChangePasswordDialog() {
+interface ChangePasswordDialogProps {
+  // En la barra lateral contraída el disparador muestra solo el ícono
+  soloIcono?: boolean;
+  className?: string;
+}
+
+export function ChangePasswordDialog({ soloIcono = false, className }: ChangePasswordDialogProps) {
   const [abierto, setAbierto] = useState(false);
 
   return (
     <Dialog open={abierto} onOpenChange={setAbierto}>
       {/* render: el disparador se dibuja como un Button (en Radix esto era asChild) */}
-      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
-        Cambiar contraseña
+      <DialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size={soloIcono ? "icon-lg" : "sm"}
+            aria-label={soloIcono ? "Cambiar contraseña" : undefined}
+            title={soloIcono ? "Cambiar contraseña" : undefined}
+            className={className}
+          />
+        }
+      >
+        <KeyRoundIcon aria-hidden="true" />
+        {!soloIcono && "Cambiar contraseña"}
       </DialogTrigger>
       <DialogContent>
         <ChangePasswordForm onDone={() => setAbierto(false)} />
