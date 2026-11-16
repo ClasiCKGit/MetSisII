@@ -158,6 +158,46 @@ export async function apiDesactivarActividad(token: string, id: string): Promise
   });
 }
 
+export interface SocioDePrueba {
+  id: string;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  email: string | null;
+  telefono: string | null;
+  fechaNacimiento: string | null;
+  activo: boolean;
+}
+
+export async function apiCrearSocio(
+  token: string,
+  datos: {
+    nombre: string;
+    apellido: string;
+    dni: string;
+    email?: string;
+    telefono?: string;
+    fechaNacimiento?: string;
+  }
+): Promise<SocioDePrueba> {
+  const res = await fetch(`${API}/socios`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as SocioDePrueba;
+}
+
+export async function apiDarDeBajaSocio(token: string, id: string): Promise<void> {
+  await fetch(`${API}/socios/${id}`, { method: "DELETE", headers: conToken(token) });
+}
+
+// Todos los socios del gimnasio, activos e inactivos
+export async function apiListarSocios(token: string): Promise<SocioDePrueba[]> {
+  const res = await fetch(`${API}/socios`, { headers: conToken(token) });
+  return (await res.json()) as SocioDePrueba[];
+}
+
 export async function apiActualizarUsuario(
   token: string,
   id: string,
