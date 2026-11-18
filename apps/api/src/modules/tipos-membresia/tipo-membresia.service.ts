@@ -8,6 +8,7 @@ import type {
 async function verificarActividad(gimnasioDb: TenantClient, actividadId: string) {
   const actividad = await gimnasioDb.actividad.findUnique({ where: { id: actividadId } });
   if (!actividad) throw new AppError(404, "La actividad no existe");
+  return actividad;
 }
 
 export async function listar(db: Express.Request["db"], actividadId?: string) {
@@ -28,9 +29,9 @@ export async function obtener(db: Express.Request["db"], id: string) {
 }
 
 export async function crear(db: Express.Request["db"], input: CrearTipoMembresiaInput) {
-  await verificarActividad(db, input.actividadId);
+  const actividad = await verificarActividad(db, input.actividadId);
   return db.tipoMembresia.create({
-    data: input,
+    data: { ...input, gimnasioId: actividad.gimnasioId },
     include: { actividad: { select: { id: true, nombre: true } } },
   });
 }

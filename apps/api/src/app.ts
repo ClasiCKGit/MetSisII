@@ -6,6 +6,7 @@ import { logger } from "./config/logger";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
 import { tiposMembresiaRouter } from "./modules/tipos-membresia/tipo-membresia.routes";
+import { membresiasRouter } from "./modules/membresias/membresia.routes";
 
 export function createApp() {
   const app = express();
@@ -19,13 +20,9 @@ export function createApp() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Acá se van a montar las rutas de cada módulo a medida que se implementen:
   app.use("/api/auth", authRouter);
   app.use("/api/tipos-membresia", tiposMembresiaRouter);
-  // app.use("/api/socios", sociosRouter);
-  // app.use("/api/profesores", profesoresRouter);
-  // app.use("/api/actividades", actividadesRouter);
-  // app.use("/api/pagos", pagosRouter);
+  app.use("/api/membresias", membresiasRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
