@@ -5,6 +5,8 @@ import pinoHttp from "pino-http";
 import { logger } from "./config/logger";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
+import { tiposMembresiaRouter } from "./modules/tipos-membresia/tipo-membresia.routes";
+import { membresiasRouter } from "./modules/membresias/membresia.routes";
 import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 import { profesoresRouter } from "./modules/profesores/profesores.routes";
 import { actividadesRouter } from "./modules/actividades/actividades.routes";
@@ -24,8 +26,9 @@ export function createApp() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Acá se van a montar las rutas de cada módulo a medida que se implementen:
   app.use("/api/auth", authRouter);
+  app.use("/api/tipos-membresia", tiposMembresiaRouter);
+  app.use("/api/membresias", membresiasRouter);
   app.use("/api/usuarios", usuariosRouter);
   app.use("/api/socios", sociosRouter);
   app.use("/api/profesores", profesoresRouter);

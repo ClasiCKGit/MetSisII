@@ -1,5 +1,6 @@
 // Carga datos de prueba. Las funciones por entidad están en seed/entidades.ts y los datos de
 // cada gimnasio en seed/gimnasios.ts.
+
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";

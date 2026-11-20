@@ -5,7 +5,7 @@ import { toApiError } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
 
 export const apiClient = axios.create({
-  baseURL: `${env.VITE_API_URL}/api`,
+  baseURL: env.VITE_API_URL ? `${env.VITE_API_URL}/api` : "/api",
   timeout: 15_000,
 });
 
