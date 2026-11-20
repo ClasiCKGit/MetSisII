@@ -1,193 +1,173 @@
-# MetSisII
+# FitManager
 
-## FitManager
+Aplicación web de gestión de gimnasios, desarrollada para las materias Metodologías de Sistemas II y Trabajo Final Integrador.
 
-Aplicacion web de gestion de gimnasios. La idea es brindar a el/los administradores y a los socios una plataforma para interactuar con el gimnasio. 
+Es **multi-tenant**: varios gimnasios usan la misma instalación y cada uno ve solo sus propios datos. Para iniciar sesión, el usuario ingresa el identificador de su gimnasio (slug), su email y su contraseña. El aislamiento entre gimnasios se aplica en el backend en cada consulta a la base (ver [`docs/backend/auth.md`](docs/backend/auth.md)).
 
-¿Qué podría hacer el sistema?
+## Funcionalidades
 
-Como administrador:
+Los usuarios del sistema son el personal del gimnasio, con dos roles: **administrador** y **recepcionista**.
 
-- Registrar socios.
-- Modificar/eliminar socios.
-- Ver listado de socios.
-- Registrar profesores.
-- Crear actividades (Musculación, Spinning, CrossFit, etc.).
-- Asignar profesores.
-- Crear horarios.
-- Registrar pagos.
-- Consultar socios con cuotas vencidas.
+| Funcionalidad | Estado |
+|---|---|
+| Registro de gimnasio con su primer administrador | ✅ |
+| Inicio de sesión por gimnasio y cambio de contraseña | ✅ |
+| Gestión de usuarios del personal (solo administradores) | ✅ |
+| Alta, edición, baja y listado de socios | ✅ |
+| Alta, edición y listado de profesores | ✅ |
+| Actividades (Musculación, Spinning, CrossFit, etc.) y asignación de profesores | ✅ |
+| Horarios de cada actividad | ✅ |
+| Inicio con resumen del gimnasio (socios activos) | ✅ |
+| Membresías y registro de pagos | 🚧 |
+| Consulta de socios con cuotas vencidas | 🚧 |
+| Acceso de los socios (ver sus datos, inscribirse a actividades, estado de cuota) | 🚧 |
 
-Como socio:
+## Tecnologías
 
-- Iniciar sesión.
-- Ver sus datos.
-- Ver actividades disponibles.
-- Inscribirse a una actividad.
-- Ver sus próximas clases.
-- Consultar el estado de su cuota.
+| Capa | Stack |
+|---|---|
+| Backend | Node.js, TypeScript, Express 5, Zod 4, JWT + bcrypt, Pino |
+| Base de datos | PostgreSQL 16 (Docker), Prisma 7 |
+| Frontend | React 19, Vite 8, Tailwind 4, shadcn/ui sobre Base UI, React Router, TanStack Query, Zustand, react-hook-form |
+| Testing | Vitest, Supertest (API), Testing Library + MSW (web) |
+| Calidad y CI | ESLint, Prettier, Husky + lint-staged, GitHub Actions |
 
-## Setup inicial del proyecto
+Es un monorepo con npm workspaces: `apps/api`, `apps/web` y `packages/shared`.
 
-git clone https://github.com/ClasiCKGit/MetSisII
-cd MetSisII
-npm install
+## Requisitos
+
+- Node.js 22.12 o superior
+- Docker (para Postgres)
+
+## Puesta en marcha
 
 ```bash
+git clone https://github.com/ClasiCKGit/MetSisII
+cd MetSisII
+npm install                            # siempre desde la raíz, nunca dentro de apps/*
+
 cp .env.example .env
-cp apps/api/.env.example apps/api/.env
+cp apps/api/.env.example apps/api/.env # completar JWT_SECRET
 cp apps/web/.env.example apps/web/.env
 
-npm run db:up                          # levantar Postgres
+npm run db:up                          # levantar Postgres (puerto 5433 por defecto)
 npm run db:migrate                     # aplicar migraciones
 npm run prisma:generate -w apps/api    # generar el cliente de Prisma
 npm run db:seed                        # datos de prueba
-npm run dev                            # API + web
+npm run dev                            # API en :3000 y web en :5173
 ```
 
-**El orden importa: el cliente de Prisma se genera aparte y no se commitea, así que sin ese paso la API no compila.**
+**El orden importa:** el cliente de Prisma se genera aparte y no se commitea, así que sin ese paso la API no compila.
 
-## Comandos utiles
+### Datos de prueba
 
-### Daily development
+El seed crea dos gimnasios para probar el aislamiento entre ellos:
 
-| Comando | Que hace |
+| Gimnasio (slug) | Email | Contraseña | Rol |
+|---|---|---|---|
+| `fitzone-bahia-blanca` | `admin@fitzone.com` | `admin123` | Administrador |
+| `powergym-punta-alta` | `admin@powergym.com` | `admin123` | Administrador |
+| `powergym-punta-alta` | `admin@fitzone.com` | `recepcion123` | Recepcionista |
+
+El último usuario tiene el mismo email que el admin de FitZone pero en otro gimnasio: el email es único por gimnasio, no global.
+
+## Comandos útiles
+
+Todos se corren desde la raíz.
+
+### Desarrollo
+
+| Comando | Qué hace |
 |---|---|
-| `npm run dev` | Levanta API y web juntas |
-| `npm run dev:api` / `npm run dev:web`	| Levanta solo una |
+| `npm run dev` | Levanta la API y la web juntas |
+| `npm run dev:api` / `npm run dev:web` | Levanta solo una |
 | `npm run build` | Compila todo el monorepo |
-| `npm run lint` / `npm run lint:fix` | ESLint (revisa / corrige) | 
-| `npm run format` / `npm run format:check` | Prettier (aplica / solo verifica) |
+| `npm run typecheck -w apps/api` | Revisa los tipos del código y los tests de la API |
+| `npm run lint` / `npm run lint:fix` | ESLint (revisa / corrige) |
+| `npm run format:check` / `npm run format` | Prettier (verifica / aplica) |
 
 ### Base de datos
 
-| Comando | Que hace |
+| Comando | Qué hace |
 |---|---|
-| `npm run db:up`/`npm run db:down` | Inicia / detiene Postgres (los datos persisten) |
+| `npm run db:up` / `npm run db:down` | Inicia / detiene Postgres (los datos persisten) |
 | `npm run db:logs` | Logs en vivo del contenedor |
 | `npm run db:reset` | Borra todos los datos locales y arranca de cero |
-| `npm run db:migrate` | Aplica migraciones pendientes |
-| `npm run db:seed` | Carga datos de prueba |
+| `npm run db:migrate` | Crea y aplica migraciones pendientes |
+| `npm run db:seed` | Carga los datos de prueba |
 | `npm run db:studio` | Interfaz visual de la base (localhost:5555) |
 
-## Frontend
-
-Aplicación React (Vite, Tailwind 4 y shadcn/ui sobre Base UI) en `apps/web`.
+## Tests
 
 ```bash
-npm run dev:web          # http://localhost:5173
-npm run build -w apps/web
-npm test -w apps/web     # tests (no necesitan la API ni Postgres)
+npm test                 # todos los tests
+npm test -w apps/api     # API: necesita Postgres levantado
+npm test -w apps/web     # web: no necesita la API ni Postgres
 ```
 
-Requiere `apps/web/.env` con `VITE_API_URL=http://localhost:3000` (copiar de `.env.example`).
-
-**Pantallas actuales:** inicio de sesión, registro de gimnasio, inicio, gestión de usuarios (solo administradores) y cambio de contraseña.
-
-**Componentes de shadcn:** se agregan desde `apps/web` con `npx shadcn@latest add <nombre>`. Este proyecto usa Base UI: en los ejemplos hay que usar la prop `render` en lugar de `asChild`, y `toast` en lugar de `sonner`.
-
-Cómo funcionan la sesión, las rutas, los formularios y las convenciones de Zustand y shadcn: `docs/frontend/frontend-auth.md`. Cómo se prueba: `docs/frontend/testing-frontend.md`.
-
-## Tecnologías elegidas.
-
-### Backend
-- Backend: TS, express
-- Validations: Zod
-- Auth: JWT + bcrypt
-
-### DB
-- DB: postgres
-- ORM: Prisma
-
-### Frontend
-- Frontend: React + vite
-- Styles: Tailwind + shadcn/ui
-
-### Extra
-- Docker
-- Testing: Vitest
+- Los tests de la API corren contra una base aparte con sufijo `_test`, que se crea y migra sola; nunca tocan la base de desarrollo.
+- Los tests de la web usan una API falsa en memoria (MSW). Con `TEST_API=real` corren contra la API verdadera.
+- Para correr un solo archivo o un solo test: `cd apps/api && npx vitest run tests/integration/auth.test.ts` o `cd apps/web && npx vitest run -t "nombre del test"`.
 
 ## Estructura del proyecto
 
 ```
-FitManager/
+MetSisII/
 ├── apps/
-│   ├── api/                      # Backend (Express + TS)
+│   ├── api/                    # Backend (Express + Prisma)
+│   │   ├── prisma/             # schema, migraciones y seed
 │   │   ├── src/
-│   │   │   ├── config/               # env, db connection, constantes
-│   │   │   │   ├── env.ts
-│   │   │   │   └── database.ts
-│   │   │   ├── modules/              # organizado por dominio, no por tipo de archivo
-│   │   │   │   ├── socios/
-│   │   │   │   │   ├── socios.controller.ts
-│   │   │   │   │   ├── socios.service.ts
-│   │   │   │   │   ├── socios.routes.ts
-│   │   │   │   │   ├── socios.schema.ts      # Zod schemas
-│   │   │   │   │   └── socios.types.ts
-│   │   │   │   ├── profesores/
-│   │   │   │   ├── actividades/
-│   │   │   │   ├── pagos/
-│   │   │   │   ├── membresias/
-│   │   │   │   └── auth/
-│   │   │   ├── middlewares/
-│   │   │   │   ├── auth.middleware.ts
-│   │   │   │   ├── error.middleware.ts
-│   │   │   │   └── validate.middleware.ts
-│   │   │   ├── utils/
-│   │   │   ├── jobs/                 # cron jobs (recordatorios de vencimiento, etc.)
-│   │   │   ├── app.ts                # setup de Express (middlewares, rutas)
-│   │   │   └── server.ts             # entry point (listen)
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   └── migrations/
-│   │   ├── tests/
-│   │   ├── .env
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── web/                     # Frontend (React + Vite)
+│   │   │   ├── config/         # variables de entorno, Prisma, logger y cliente multi-tenant
+│   │   │   ├── middlewares/    # autenticación, roles, validación y manejo de errores
+│   │   │   ├── modules/        # un módulo por dominio: routes → controller → service + schema
+│   │   │   │                   # (auth, usuarios, socios, profesores, actividades, horarios, dashboard)
+│   │   │   ├── app.ts          # setup de Express y montaje de rutas
+│   │   │   └── server.ts       # punto de entrada
+│   │   └── tests/              # integration/ (con base) y unit/
+│   └── web/                    # Frontend (React + Vite)
 │       ├── src/
-│       │   ├── api/                  # funciones que llaman a la API (axios/fetch)
-│       │   │   ├── socios.api.ts
-│       │   │   ├── pagos.api.ts
-│       │   │   └── client.ts         # instancia base de axios
-│       │   ├── components/
-│       │   │   ├── ui/               # componentes shadcn/ui
-│       │   │   └── shared/           # componentes reutilizables propios
-│       │   ├── features/             # organizado por dominio, como el back
-│       │   │   ├── socios/
-│       │   │   │   ├── components/
-│       │   │   │   ├── hooks/        
-│       │   │   │   └── pages/
-│       │   │   ├── profesores/
-│       │   │   ├── actividades/
-│       │   │   ├── pagos/
-│       │   │   └── auth/
+│       │   ├── api/            # llamadas HTTP por dominio
+│       │   ├── components/     # ui/ (shadcn) y shared/ (propios)
+│       │   ├── features/       # un módulo por dominio: components, hooks, pages, schemas
 │       │   ├── layouts/
-│       │   ├── routes/               # definición de rutas (react-router)
-│       │   ├── lib/                  # utils, formateo de fechas, etc.
-│       │   ├── App.tsx
-│       │   └── main.tsx
-│       ├── public/
-│       ├── index.html
-│       ├── package.json
-│       └── tsconfig.json
-│
-├── packages/
-│   └── shared/                       # tipos y schemas compartidos (Zod, DTOs)
-│       ├── src/
-│       │   ├── types/
-│       │   └── schemas/
-│       └── package.json
-│
-├── docker-compose.yml                # Postgres + API para desarrollo
-├── package.json                      # workspaces root
-└── README.md
+│       │   ├── lib/            # cliente axios, errores, utilidades
+│       │   ├── routes/         # rutas y guards
+│       │   └── store/          # sesión (Zustand)
+│       └── tests/              # mocks de MSW, integration/ y unit/
+├── packages/shared/            # reservado para tipos y schemas compartidos
+├── docs/                       # documentación técnica
+├── docker-compose.yml          # Postgres para desarrollo
+└── package.json                # workspaces y scripts de la raíz
 ```
 
-## Integrantes 
+## Documentación
 
-- Lautaro Capdeville 
-- Santino Crivera 
-- Ramiro Pizzico 
+| Tema | Documento |
+|---|---|
+| Monorepo y dependencias | [`docs/config-general.md`](docs/config-general.md) |
+| Decisiones de diseño | [`docs/decisiones-diseno.md`](docs/decisiones-diseno.md) |
+| Flujo de trabajo, convenciones y CI | [`docs/estandarizacion-y-automatizacion.md`](docs/estandarizacion-y-automatizacion.md) |
+| Autenticación y multi-tenancy | [`docs/backend/auth.md`](docs/backend/auth.md) |
+| Base de datos | [`docs/backend/database.md`](docs/backend/database.md) |
+| Socios (API) | [`docs/backend/socios.md`](docs/backend/socios.md) |
+| Profesores, actividades y horarios (API) | [`docs/backend/profesores-actividades-horarios.md`](docs/backend/profesores-actividades-horarios.md) |
+| Tests de la API | [`docs/backend/testing-backend.md`](docs/backend/testing-backend.md) |
+| Sesión, rutas y formularios (web) | [`docs/frontend/frontend-auth.md`](docs/frontend/frontend-auth.md) |
+| Socios (web) | [`docs/frontend/socios.md`](docs/frontend/socios.md) |
+| Tests de la web | [`docs/frontend/testing-frontend.md`](docs/frontend/testing-frontend.md) |
+
+## Flujo de trabajo
+
+- Las ramas salen de `dev` con el formato `integrante/prefijo/descripcion-corta` (por ejemplo `ramiro/feature/crud-socios`).
+- Se integran en `dev` con un merge local (`git merge --no-ff`); a `main` solo se llega por PR desde `dev`.
+- Commits con Conventional Commits en español: `feat(socios): agregar filtro por estado`.
+- El pre-commit corre ESLint y Prettier sobre los archivos modificados. El CI corre lint, formato, build y tests en cada push a `main` y `dev` y en los PR a `main`.
+
+Detalle completo en [`docs/estandarizacion-y-automatizacion.md`](docs/estandarizacion-y-automatizacion.md).
+
+## Integrantes
+
+- Lautaro Capdeville
+- Santino Crivera
+- Ramiro Pizzico
 - Guido Strizzi
