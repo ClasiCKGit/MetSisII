@@ -35,7 +35,7 @@ flowchart LR
 
 | Herramienta | Para qué sirve | Dónde se configura | Estado |
 |---|---|---|---|
-| npm workspaces | Un solo repo con `apps/api`, `apps/web` y `packages/shared` | `package.json` raíz | Implementado |
+| npm workspaces | Un solo repo con `apps/api` y `apps/web` | `package.json` raíz | Implementado |
 | ESLint 9 (flat config) | Detectar errores y malas prácticas | `eslint.config.ts` | Implementado |
 | Prettier 3 | Formato único del código | `.prettierrc.json`, `.prettierignore` | Implementado |
 | Husky 9 | Ejecutar comandos en los hooks de Git | `.husky/` | Implementado |
