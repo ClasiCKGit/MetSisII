@@ -1,0 +1,29 @@
+# Pruebas de membresías y pagos
+
+Las pruebas de estos módulos combinan integración contra PostgreSQL y una prueba unitaria de la vigencia calculada.
+
+## Qué cubren
+
+- Vigencia de membresías vencidas, por vencer (hoy y siete días), al día y canceladas.
+- Rutas protegidas, aislamiento por gimnasio y filtros de membresías.
+- Alta de inscripción junto con su pago, importe tomado del tipo de membresía y serialización decimal con dos dígitos.
+- Rechazo de inscripciones sin método de pago y de duplicados, sin crear registros parciales.
+- Filtros de pagos por socio, estado, método y fechas inclusivas.
+- Alta de pagos, rechazo de importes inválidos, aislamiento y transiciones desde `PENDIENTE`.
+- Reversión de una transacción interactiva si falla una operación interna, cubierta en `tests/integration/tenant.test.ts`.
+
+## Ejecutar
+
+Desde la raíz del repositorio:
+
+```powershell
+npm run test -w apps/api
+```
+
+La suite deriva la base de pruebas de `DATABASE_URL`, agregando el sufijo `_test`, y aplica las migraciones antes de correr. Si necesitás usar una base específica, definí `TEST_DATABASE_URL` con un nombre terminado en `_test`. La configuración verifica ese sufijo y cancela la suite si la URL no parece una base de pruebas. Cada caso limpia las tablas antes de ejecutarse.
+
+También se pueden ejecutar solo los módulos nuevos desde `apps/api`:
+
+```powershell
+npx vitest run tests/unit/membresia-vigencia.test.ts tests/integration/membresias.test.ts tests/integration/pagos.test.ts
+```

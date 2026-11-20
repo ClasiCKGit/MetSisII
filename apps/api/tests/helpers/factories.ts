@@ -1,4 +1,5 @@
 import { prisma } from "../../src/config/database";
+import { Prisma } from "../../src/generated/prisma/client";
 import { signToken } from "../../src/utils/jwt";
 import { hashPassword } from "../../src/utils/password";
 
@@ -92,6 +93,85 @@ export async function crearActividad(gimnasioId: string, datos: DatosActividad =
   const n = siguiente();
   return prisma.actividad.create({
     data: { gimnasioId, nombre: `Actividad ${n}`, ...datos },
+  });
+}
+
+interface DatosTipoMembresia {
+  nombre?: string;
+  precio?: string | number;
+  duracionDias?: number;
+  cantidadClases?: number | null;
+  activo?: boolean;
+}
+
+export async function crearTipoMembresia(
+  gimnasioId: string,
+  actividadId: string,
+  datos: DatosTipoMembresia = {}
+) {
+  const n = siguiente();
+  const { precio = "12500.50", ...resto } = datos;
+  return prisma.tipoMembresia.create({
+    data: {
+      gimnasioId,
+      actividadId,
+      nombre: `Plan ${n}`,
+      precio: new Prisma.Decimal(precio),
+      duracionDias: 30,
+      ...resto,
+    },
+  });
+}
+
+interface DatosMembresia {
+  fechaInicio?: Date;
+  fechaFin?: Date;
+  estado?: "ACTIVA" | "VENCIDA" | "CANCELADA";
+}
+
+export async function crearMembresia(
+  gimnasioId: string,
+  socioId: string,
+  actividadId: string,
+  tipoMembresiaId: string,
+  datos: DatosMembresia = {}
+) {
+  const fechaInicio = datos.fechaInicio ?? new Date();
+  const fechaFin = datos.fechaFin ?? new Date(fechaInicio.getTime() + 30 * 24 * 60 * 60 * 1000);
+  return prisma.membresia.create({
+    data: {
+      gimnasioId,
+      socioId,
+      actividadId,
+      tipoMembresiaId,
+      fechaInicio,
+      fechaFin,
+      estado: datos.estado ?? "ACTIVA",
+    },
+  });
+}
+
+interface DatosPago {
+  membresiaId?: string | null;
+  monto?: string | number;
+  fecha?: Date;
+  metodoPago?: "EFECTIVO" | "TARJETA" | "TRANSFERENCIA" | "MERCADO_PAGO";
+  estado?: "PENDIENTE" | "PAGADO" | "RECHAZADO";
+  concepto?: string | null;
+}
+
+export async function crearPago(gimnasioId: string, socioId: string, datos: DatosPago = {}) {
+  return prisma.pago.create({
+    data: {
+      gimnasioId,
+      socioId,
+      membresiaId: datos.membresiaId ?? null,
+      monto: new Prisma.Decimal(datos.monto ?? "12500.50"),
+      fecha: datos.fecha,
+      metodoPago: datos.metodoPago ?? "EFECTIVO",
+      estado: datos.estado ?? "PENDIENTE",
+      concepto: datos.concepto,
+    },
   });
 }
 
