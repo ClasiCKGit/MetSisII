@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-FitManager: app web multi-tenant de gestión de gimnasios. Monorepo con npm workspaces: `apps/api` (Express 5 + Prisma 7 + Zod 4 + Postgres), `apps/web` (React 19 + Vite 8 + Tailwind 4 + shadcn/ui sobre Base UI), `packages/shared` (vacío por ahora). Código, mensajes de error, textos de UI, nombres de tests y commits van **en español**.
+FitManager: app web multi-tenant de gestión de gimnasios. Monorepo con npm workspaces: `apps/api` (Express 5 + Prisma 7 + Zod 4 + Postgres), `apps/web` (React 19 + Vite 8 + Tailwind 4 + shadcn/ui sobre Base UI). Código, mensajes de error, textos de UI, nombres de tests y commits van **en español**.
 
 La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `backend/socios.md`, `frontend/frontend-auth.md`, `frontend/socios.md`, `frontend/testing-frontend.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
 

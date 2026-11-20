@@ -32,7 +32,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Testing | Vitest, Supertest (API), Testing Library + MSW (web) |
 | Calidad y CI | ESLint, Prettier, Husky + lint-staged, GitHub Actions |
 
-Es un monorepo con npm workspaces: `apps/api`, `apps/web` y `packages/shared`.
+Es un monorepo con npm workspaces: `apps/api` y `apps/web`.
 
 ## Requisitos
 
@@ -134,7 +134,6 @@ MetSisII/
 │       │   ├── routes/         # rutas y guards
 │       │   └── store/          # sesión (Zustand)
 │       └── tests/              # mocks de MSW, integration/ y unit/
-├── packages/shared/            # reservado para tipos y schemas compartidos
 ├── docs/                       # documentación técnica
 ├── docker-compose.yml          # Postgres para desarrollo
 └── package.json                # workspaces y scripts de la raíz

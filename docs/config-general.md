@@ -1,16 +1,15 @@
 ## Gestión de dependencias (npm workspaces)
 
-Este proyecto es un **monorepo** manejado con [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces). Contiene tres paquetes:
+Este proyecto es un **monorepo** manejado con [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces). Contiene dos paquetes:
 
 | Paquete             | Ubicación          | Descripción                          |
 |---------------------|---------------------|---------------------------------------|
 | `@fitmanager/api`       | `apps/api`          | Backend (Express + TypeScript)        |
 | `@fitmanager/web`       | `apps/web`          | Frontend (React + Vite)               |
-| `@fitmanager/shared`    | `packages/shared`   | Tipos y schemas (Zod) compartidos     |
 
 ### Reglas del equipo
 
-1. **Nunca ejecutes `npm install` dentro de `apps/api`, `apps/web` o `packages/shared`.** Todo se instala desde la raíz del repo.
+1. **Nunca ejecutes `npm install` dentro de `apps/api` o `apps/web`.** Todo se instala desde la raíz del repo.
 2. **Hay un solo `package-lock.json`**, en la raíz. No debe existir ningún otro `package-lock.json` en subcarpetas — si aparece uno, borralo.
 3. **Si tu código importa algo, esa dependencia tiene que estar declarada en el `package.json` del workspace que la usa**, aunque "funcione" sin declararla (ver sección de *phantom dependencies* más abajo).
 
@@ -22,7 +21,7 @@ cd MetSisII
 npm install
 ```
 
-Esto instala las dependencias de los tres paquetes de una sola vez.
+Esto instala las dependencias de los dos paquetes de una sola vez.
 
 ### Comandos comunes
 
@@ -37,7 +36,6 @@ npm run dev:web
 # Instalar una dependencia en un workspace específico
 npm install <paquete> --workspace=apps/api
 npm install <paquete> --workspace=apps/web
-npm install -D <paquete> --workspace=packages/shared
 
 # Instalar una herramienta compartida para TODO el repo (linters, formatters, etc.)
 npm install -D <paquete> --workspaces
@@ -66,13 +64,7 @@ npx depcheck apps/web
 
 ### Compartir código entre API y Web
 
-Todo lo que necesite vivir tanto en el backend como en el frontend (tipos de dominio, schemas de validación Zod) va en `packages/shared`. Se importa como un paquete normal:
-
-```ts
-import { CrearSocioSchema } from "@fitmanager/shared";
-```
-
-Si agregás algo nuevo ahí, exportalo desde `packages/shared/src/index.ts`.
+Por ahora no hay un paquete compartido: cada app tiene sus propios schemas de Zod (`apps/api/src/modules/<dominio>/<dominio>.schema.ts` y `apps/web/src/features/<dominio>/schemas.ts`), porque validan cosas distintas (el body de la request en la API, los campos del formulario en la web). Si en algún momento aparece código que convenga compartir, se puede crear un workspace en `packages/` y sumarlo a `workspaces` en el `package.json` de la raíz.
 
 ## Linting y formateo de código
 
@@ -80,7 +72,7 @@ El proyecto usa **ESLint** (flat config) y **Prettier** para mantener el código
 
 ### Configuración
 
-Toda la config vive en la raíz del repo y aplica a los tres workspaces (`apps/api`, `apps/web`, `packages/shared`) desde un único lugar:
+Toda la config vive en la raíz del repo y aplica a los dos workspaces (`apps/api` y `apps/web`) desde un único lugar:
 
 | Archivo | Qué hace |
 |---|---|
