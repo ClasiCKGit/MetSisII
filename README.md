@@ -1,6 +1,6 @@
 # FitManager
 
-Aplicación web de gestión de gimnasios, desarrollada para Metodologías de Sistemas II.
+Aplicación web de gestión de gimnasios, desarrollada para las materias Metodologías de Sistemas II y Trabajo Final Integrador.
 
 Es **multi-tenant**: varios gimnasios usan la misma instalación y cada uno ve solo sus propios datos. Para iniciar sesión, el usuario ingresa el identificador de su gimnasio (slug), su email y su contraseña. El aislamiento entre gimnasios se aplica en el backend en cada consulta a la base (ver [`docs/backend/auth.md`](docs/backend/auth.md)).
 
