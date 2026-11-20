@@ -1,17 +1,9 @@
 {
   "compilerOptions": {
-    // File Layout
-    "rootDir": "./src",
-    "outDir": "./dist",
-
     // Environment Settings
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "nodenext",
     "types": ["node"],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
 
     // Other Outputs
     "sourceMap": true,
@@ -21,15 +13,6 @@
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
 
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -39,5 +22,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "exclude": ["prisma.config.ts", "prisma/seed.ts", "dist", "scripts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["prisma.config.ts", "prisma/seed.ts", "dist", "scripts", "tests", "vitest.config.mts"]
 }

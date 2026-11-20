@@ -11,12 +11,13 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     throw new AppError(401, "Falta el token de autenticación");
   }
 
-  const { usuarioId, gimnasioId } = verifyToken(header.slice("Bearer ".length));
+  const { usuarioId, gimnasioId, tokenVersion } = verifyToken(header.slice("Bearer ".length));
 
-  // Se consulta en cada request: desactivar un usuario o un gimnasio, o cambiar
-  // un rol, tiene efecto inmediato sin esperar a que venza el token.
+  // Se consulta en cada request: desactivar un usuario o un gimnasio, cambiar un
+  // rol o cambiar la contraseña (que incrementa tokenVersion) tiene efecto
+  // inmediato sin esperar a que venza el token.
   const usuario = await prisma.usuario.findFirst({
-    where: { id: usuarioId, gimnasioId, activo: true, gimnasio: { activo: true } },
+    where: { id: usuarioId, gimnasioId, tokenVersion, activo: true, gimnasio: { activo: true } },
     select: {
       id: true,
       email: true,

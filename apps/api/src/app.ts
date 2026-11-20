@@ -7,6 +7,12 @@ import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
 import { tiposMembresiaRouter } from "./modules/tipos-membresia/tipo-membresia.routes";
 import { membresiasRouter } from "./modules/membresias/membresia.routes";
+import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
+import { profesoresRouter } from "./modules/profesores/profesores.routes";
+import { actividadesRouter } from "./modules/actividades/actividades.routes";
+import { horariosRouter } from "./modules/horarios/horarios.routes";
+import { sociosRouter } from "./modules/socios/socios.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export function createApp() {
   const app = express();
@@ -23,6 +29,13 @@ export function createApp() {
   app.use("/api/auth", authRouter);
   app.use("/api/tipos-membresia", tiposMembresiaRouter);
   app.use("/api/membresias", membresiasRouter);
+  app.use("/api/usuarios", usuariosRouter);
+  app.use("/api/socios", sociosRouter);
+  app.use("/api/profesores", profesoresRouter);
+  app.use("/api/actividades", actividadesRouter);
+  app.use("/api/horarios", horariosRouter);
+  app.use("/api/dashboard", dashboardRouter);
+  // app.use("/api/pagos", pagosRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

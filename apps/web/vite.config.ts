@@ -5,10 +5,18 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@fitmanager/shared": path.resolve(__dirname, "../../packages/shared/src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
+      "@fitmanager/shared": path.resolve(import.meta.dirname, "../../packages/shared/src"),
     },
   },
 });

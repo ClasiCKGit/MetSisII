@@ -3,10 +3,10 @@ import { z } from "zod";
 // Slugs que no se pueden usar porque van a servir como subdominios
 const RESERVED_SLUGS = ["www", "api", "app", "admin", "login", "static", "assets"];
 
-const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Email inválido"));
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Email inválido"));
 
 // bcrypt solo considera los primeros 72 bytes; el máximo evita truncados silenciosos
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(72, "La contraseña no puede superar los 72 caracteres");
@@ -22,6 +22,11 @@ const slugSchema = z
     "Solo minúsculas, números y guiones (sin guiones al inicio o al final)"
   )
   .refine((slug) => !RESERVED_SLUGS.includes(slug), "Ese identificador está reservado");
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "La contraseña actual es obligatoria"),
+  newPassword: passwordSchema,
+});
 
 export const registerGimnasioSchema = z.object({
   gimnasio: z.object({
@@ -55,3 +60,4 @@ export const loginSchema = z.object({
 
 export type RegisterGimnasioInput = z.infer<typeof registerGimnasioSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
