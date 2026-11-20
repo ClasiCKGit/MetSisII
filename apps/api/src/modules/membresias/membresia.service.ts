@@ -1,12 +1,38 @@
 import { AppError } from "../../middlewares/error.middleware";
 import type { TenantClient } from "../../config/tenant";
-import type { InscribirSocioInput } from "./membresia.schema";
+import type { InscribirSocioInput, ListarMembresiasQuery } from "./membresia.schema";
+import { agregarEstadoVigencia } from "./vigencia";
+
+const membresiaInclude = {
+  socio: { select: { id: true, nombre: true, apellido: true } },
+  actividad: { select: { id: true, nombre: true } },
+  tipoMembresia: { select: { id: true, nombre: true, duracionDias: true } },
+} as const;
+
+export async function listar(db: TenantClient, filtros: ListarMembresiasQuery) {
+  const { vigencia, ...where } = filtros;
+  const membresias = await db.membresia.findMany({
+    where,
+    include: membresiaInclude,
+    orderBy: [{ fechaFin: "asc" }, { createdAt: "desc" }],
+  });
+  const conVigencia = membresias.map(agregarEstadoVigencia);
+  return vigencia
+    ? conVigencia.filter((membresia) => membresia.estadoVigencia === vigencia)
+    : conVigencia;
+}
+
+export async function obtener(db: TenantClient, id: string) {
+  const membresia = await db.membresia.findUnique({ where: { id }, include: membresiaInclude });
+  if (!membresia) throw new AppError(404, "Membresía no encontrada");
+  return agregarEstadoVigencia(membresia);
+}
 
 export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
   const fechaInicio = input.fechaInicio ? new Date(input.fechaInicio) : new Date();
 
   // Serializa inscripciones simultáneas para que dos solicitudes no superen el cupo.
-  return db.$transaction(
+  const membresia = await db.$transaction(
     async (tx) => {
       const [socio, actividad, tipo] = await Promise.all([
         tx.socio.findUnique({ where: { id: input.socioId } }),
@@ -49,7 +75,7 @@ export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
           throw new AppError(409, "La actividad no tiene cupo disponible");
       }
 
-      return tx.membresia.create({
+      const membresia = await tx.membresia.create({
         data: {
           gimnasioId: socio.gimnasioId,
           socioId: socio.id,
@@ -58,13 +84,30 @@ export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
           fechaInicio,
           fechaFin,
         },
-        include: {
-          socio: { select: { id: true, nombre: true, apellido: true } },
-          actividad: { select: { id: true, nombre: true } },
-          tipoMembresia: { select: { id: true, nombre: true } },
+        include: membresiaInclude,
+      });
+
+      const pago = await tx.pago.create({
+        data: {
+          gimnasioId: socio.gimnasioId,
+          socioId: socio.id,
+          membresiaId: membresia.id,
+          monto: tipo.precio,
+          metodoPago: input.metodoPago,
         },
       });
+
+      return { membresia, pago };
     },
     { isolationLevel: "Serializable" }
   );
+  return {
+    ...agregarEstadoVigencia(membresia.membresia),
+    pago: {
+      id: membresia.pago.id,
+      monto: membresia.pago.monto.toFixed(2),
+      metodoPago: membresia.pago.metodoPago,
+      estado: membresia.pago.estado,
+    },
+  };
 }

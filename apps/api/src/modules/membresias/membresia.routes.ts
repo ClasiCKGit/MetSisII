@@ -7,6 +7,8 @@ import { inscribirSocioSchema } from "./membresia.schema";
 export const membresiasRouter = Router();
 
 membresiasRouter.use(authenticate);
+membresiasRouter.get("/", controller.listar);
+membresiasRouter.get("/:id", controller.obtener);
 membresiasRouter.post(
   "/inscripciones",
   requireRole("ADMIN", "RECEPCIONISTA"),

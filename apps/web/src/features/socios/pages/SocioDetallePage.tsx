@@ -3,8 +3,10 @@ import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { Iniciales } from "@/components/shared/Iniciales";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
+import { useMembresiasSocio } from "../hooks/useMembresiasSocio";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
 
@@ -46,9 +48,20 @@ function formatearIngreso(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR");
 }
 
+function formatearFecha(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
+}
+
+const ETIQUETAS_VIGENCIA = {
+  AL_DIA: "Al día",
+  POR_VENCER: "Por vencer",
+  VENCIDA: "Vencida",
+} as const;
+
 export function SocioDetallePage() {
   const { id = "" } = useParams();
   const { data: socio, isPending, error, refetch, isFetching } = useSocio(id);
+  const membresiasQuery = useMembresiasSocio(id);
   const [editando, setEditando] = useState(false);
 
   if (isPending) {
@@ -110,9 +123,50 @@ export function SocioDetallePage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Seccion titulo="Membresías">
-          <p className="text-sm text-muted-foreground">
-            Todavía no disponible: se completa cuando esté listo el módulo de membresías.
-          </p>
+          {membresiasQuery.isPending ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Cargando membresías…
+            </p>
+          ) : membresiasQuery.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {getErrorMessage(membresiasQuery.error)}
+            </p>
+          ) : membresiasQuery.data.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Este socio todavía no tiene membresías.</p>
+          ) : (
+            <ul className="divide-y">
+              {membresiasQuery.data.map((membresia) => (
+                <li
+                  key={membresia.id}
+                  className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">{membresia.actividad.nombre}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {membresia.tipoMembresia.nombre} · vence el{" "}
+                      {formatearFecha(membresia.fechaFin)}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={
+                      membresia.estadoVigencia === "AL_DIA"
+                        ? "border-success/30 bg-success/10 text-success"
+                        : membresia.estadoVigencia === "POR_VENCER"
+                          ? "border-warning/30 bg-warning/10 text-warning"
+                          : membresia.estadoVigencia === "VENCIDA"
+                            ? "border-destructive/30 bg-destructive/10 text-destructive"
+                            : "text-muted-foreground"
+                    }
+                  >
+                    {membresia.estadoVigencia
+                      ? ETIQUETAS_VIGENCIA[membresia.estadoVigencia]
+                      : "Cancelada"}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
         </Seccion>
         <Seccion titulo="Historial de pagos">
           <p className="text-sm text-muted-foreground">

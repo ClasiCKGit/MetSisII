@@ -8,6 +8,7 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   UsersIcon,
+  WalletIcon,
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
@@ -32,6 +33,7 @@ interface ItemMenu {
 const MENU: ItemMenu[] = [
   { to: "/", etiqueta: "Inicio", icono: HouseIcon },
   { to: "/socios", etiqueta: "Socios", icono: IdCardIcon },
+  { to: "/pagos", etiqueta: "Pagos", icono: WalletIcon },
   { to: "/usuarios", etiqueta: "Usuarios", icono: UsersIcon, roles: ["ADMIN"] },
   { to: "/profesores", etiqueta: "Profesores", icono: ContactIcon },
   { to: "/actividades", etiqueta: "Actividades", icono: DumbbellIcon },

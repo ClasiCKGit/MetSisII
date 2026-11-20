@@ -1,4 +1,4 @@
-import { PencilIcon, PowerIcon } from "lucide-react";
+import { PencilIcon, PowerIcon, Trash2Icon } from "lucide-react";
 import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { Iniciales } from "@/components/shared/Iniciales";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ interface ProfesoresTableProps {
   // Solo los administradores modifican; la recepción solo consulta
   puedeEditar: boolean;
   idCambiandoEstado: string | null;
+  mensajeVacio: string;
   onEditar: (profesor: Profesor) => void;
   onCambiarEstado: (profesor: Profesor) => void;
 }
@@ -27,6 +28,7 @@ export function ProfesoresTable({
   profesores,
   puedeEditar,
   idCambiandoEstado,
+  mensajeVacio,
   onEditar,
   onCambiarEstado,
 }: ProfesoresTableProps) {
@@ -49,14 +51,14 @@ export function ProfesoresTable({
         {profesores.length === 0 && (
           <TableRow>
             <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-              Todavía no hay profesores cargados.
+              {mensajeVacio}
             </TableCell>
           </TableRow>
         )}
 
         {profesores.map((profesor) => {
           const nombreCompleto = `${profesor.nombre} ${profesor.apellido}`;
-          const accionEstado = profesor.activo ? "Desactivar" : "Activar";
+          const accionEstado = profesor.activo ? "Dar de baja" : "Reactivar";
 
           return (
             <TableRow key={profesor.id}>
@@ -90,16 +92,29 @@ export function ProfesoresTable({
                     >
                       <PencilIcon aria-hidden="true" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-lg"
-                      aria-label={`${accionEstado} a ${nombreCompleto}`}
-                      title={accionEstado}
-                      disabled={idCambiandoEstado === profesor.id}
-                      onClick={() => onCambiarEstado(profesor)}
-                    >
-                      <PowerIcon aria-hidden="true" />
-                    </Button>
+                    {profesor.activo ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-lg"
+                        aria-label={`${accionEstado} a ${nombreCompleto}`}
+                        title={accionEstado}
+                        disabled={idCambiandoEstado === profesor.id}
+                        onClick={() => onCambiarEstado(profesor)}
+                      >
+                        <Trash2Icon aria-hidden="true" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon-lg"
+                        aria-label={`${accionEstado} a ${nombreCompleto}`}
+                        title={accionEstado}
+                        disabled={idCambiandoEstado === profesor.id}
+                        onClick={() => onCambiarEstado(profesor)}
+                      >
+                        <PowerIcon aria-hidden="true" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               )}

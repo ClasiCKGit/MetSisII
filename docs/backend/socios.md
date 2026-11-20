@@ -163,6 +163,6 @@ El seed (`prisma/seed/gimnasios.ts`) crea dos socios en cada gimnasio: Juan Pér
 
 ## 8. Pendientes
 
-- **Membresías e historial de pagos del socio** (FIT-51, en curso): el detalle del frontend los muestra como "todavía no disponible". Dependen del Epic 4 (FIT-6). Los modelos `Membresia` y `Pago` ya existen en el schema, pero no tienen endpoints.
+- **Membresías e historial de pagos del socio** (FIT-51, en curso): el detalle muestra membresías con su vigencia calculada (ver [Membresías](membresias.md)) y el historial de pagos sigue pendiente de integrarse en la vista (ver [Pagos](pagos.md)).
 - **Ingresos del mes y vencimientos próximos** en `/api/dashboard/resumen` (resto de FIT-72), también a la espera de FIT-6.
 - El listado no está paginado. Con pocos cientos de socios por gimnasio alcanza; si crece, agregar `take`/`skip` o un cursor.

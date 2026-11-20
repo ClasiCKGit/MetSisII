@@ -112,6 +112,7 @@ export function DashboardPage() {
         </h2>
         <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
           <AccesoRapido to="/socios" etiqueta="Ver socios" icono={IdCardIcon} />
+          <AccesoRapido to="/pagos" etiqueta="Ver pagos" icono={WalletIcon} />
           {rol === "ADMIN" && (
             <AccesoRapido to="/usuarios" etiqueta="Gestionar usuarios" icono={UsersIcon} />
           )}
