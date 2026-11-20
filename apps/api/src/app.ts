@@ -13,6 +13,7 @@ import { actividadesRouter } from "./modules/actividades/actividades.routes";
 import { horariosRouter } from "./modules/horarios/horarios.routes";
 import { sociosRouter } from "./modules/socios/socios.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
+import { pagosRouter } from "./modules/pagos/pagos.routes";
 
 export function createApp() {
   const app = express();
@@ -35,7 +36,7 @@ export function createApp() {
   app.use("/api/actividades", actividadesRouter);
   app.use("/api/horarios", horariosRouter);
   app.use("/api/dashboard", dashboardRouter);
-  // app.use("/api/pagos", pagosRouter);
+  app.use("/api/pagos", pagosRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
