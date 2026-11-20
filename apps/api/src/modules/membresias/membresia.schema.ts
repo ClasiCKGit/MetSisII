@@ -5,6 +5,7 @@ export const inscribirSocioSchema = z.object({
   socioId: z.uuid(),
   actividadId: z.uuid(),
   tipoMembresiaId: z.uuid(),
+  metodoPago: z.enum(["EFECTIVO", "TARJETA", "TRANSFERENCIA", "MERCADO_PAGO"]),
   fechaInicio: z.iso.datetime().optional(),
 });
 

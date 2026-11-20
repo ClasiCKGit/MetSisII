@@ -75,7 +75,7 @@ export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
           throw new AppError(409, "La actividad no tiene cupo disponible");
       }
 
-      return tx.membresia.create({
+      const membresia = await tx.membresia.create({
         data: {
           gimnasioId: socio.gimnasioId,
           socioId: socio.id,
@@ -86,8 +86,28 @@ export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
         },
         include: membresiaInclude,
       });
+
+      const pago = await tx.pago.create({
+        data: {
+          gimnasioId: socio.gimnasioId,
+          socioId: socio.id,
+          membresiaId: membresia.id,
+          monto: tipo.precio,
+          metodoPago: input.metodoPago,
+        },
+      });
+
+      return { membresia, pago };
     },
     { isolationLevel: "Serializable" }
   );
-  return agregarEstadoVigencia(membresia);
+  return {
+    ...agregarEstadoVigencia(membresia.membresia),
+    pago: {
+      id: membresia.pago.id,
+      monto: membresia.pago.monto.toFixed(2),
+      metodoPago: membresia.pago.metodoPago,
+      estado: membresia.pago.estado,
+    },
+  };
 }
