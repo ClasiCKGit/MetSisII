@@ -1,6 +1,7 @@
 // apps/api/src/config/env.ts
 import "dotenv/config";
 import { z } from "zod";
+import { esZonaHorariaValida } from "../utils/fechas";
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -10,6 +11,11 @@ export const envSchema = z.object({
   // Si es false, nadie puede crear gimnasios desde la API (POST /api/auth/register-gimnasio
   // responde 403) y el frontend oculta el registro. Acepta true/false, 1/0, yes/no, on/off.
   REGISTRO_GIMNASIOS_HABILITADO: z.stringbool().default(true),
+  // Zona horaria de los gimnasios (IANA): define qué es "el mes" en las métricas del inicio
+  ZONA_HORARIA: z
+    .string()
+    .refine(esZonaHorariaValida, "ZONA_HORARIA debe ser una zona horaria IANA válida")
+    .default("America/Argentina/Buenos_Aires"),
 });
 
 const parsed = envSchema.safeParse(process.env);

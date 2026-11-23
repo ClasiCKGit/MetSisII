@@ -21,3 +21,14 @@ export function estadoVigencia(fechaFin: Date, estado: string, ahora = new Date(
 export function agregarEstadoVigencia<T extends { fechaFin: Date; estado: string }>(membresia: T) {
   return { ...membresia, estadoVigencia: estadoVigencia(membresia.fechaFin, membresia.estado) };
 }
+
+/**
+ * Rango [desde, hasta) de fechas de fin que hoy dan POR_VENCER: del inicio del día UTC de hoy
+ * al inicio del día UTC dentro de ocho días. Sirve para filtrar en la base con la misma regla
+ * que estadoVigencia (excluyendo las CANCELADAS).
+ */
+export function rangoPorVencer(ahora = new Date()) {
+  const desde = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()));
+  const hasta = new Date(desde.getTime() + (DIAS_POR_VENCER + 1) * MILISEGUNDOS_POR_DIA);
+  return { desde, hasta };
+}
