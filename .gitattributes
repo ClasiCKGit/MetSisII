@@ -1,0 +1,15 @@
+# Todos los archivos de texto se guardan y se descargan con LF, también en Windows:
+# así Prettier (endOfLine: lf) no marca diferencias por los saltos de línea.
+* text=auto eol=lf
+
+# Binarios: sin conversión de saltos de línea
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary

@@ -51,7 +51,7 @@ flowchart LR
 | Validación del nombre de rama | Rechazar ramas fuera del estándar | `.github/workflows/ci.yml` | Propuesto |
 | Plantilla de Pull Request | Que todos los PR digan lo mismo | `.github/pull_request_template.md` | Propuesto |
 | `CODEOWNERS` | Revisión obligatoria en zonas críticas | `.github/CODEOWNERS` | Propuesto |
-| `.gitattributes` | Evitar diferencias de saltos de línea entre sistemas | Raíz del repo | Recomendado |
+| `.gitattributes` | Evitar diferencias de saltos de línea entre sistemas | Raíz del repo | Implementado |
 
 ---
 
@@ -416,12 +416,18 @@ Con un archivo `CODEOWNERS` y la opción *Require review from Code Owners* del r
 - Todo paquete que se importa se declara en el `package.json` del workspace que lo usa, aunque funcione sin declararlo (evita dependencias fantasma). Se verifica con `npx depcheck apps/api`.
 - Antes de escribir código con una librería, se consulta su versión en `package-lock.json` para no usar APIs deprecadas.
 
-### 8.5 Saltos de línea (Windows) — Recomendado
+### 8.5 Saltos de línea (Windows) — Implementado
 
-El equipo trabaja en Windows, donde Git puede convertir los saltos de línea a CRLF, mientras que Prettier y el CI usan LF. Un archivo `.gitattributes` en la raíz lo evita:
+El equipo trabaja en Windows, donde Git puede convertir los saltos de línea a CRLF (`core.autocrlf=true`), mientras que Prettier y el CI usan LF. El `.gitattributes` de la raíz fuerza LF en todos los archivos de texto, también en la copia local, y marca como binarios las imágenes y fuentes:
 
 ```
 * text=auto eol=lf
+```
+
+Quien ya tenía el repo clonado antes de este cambio conserva los archivos en CRLF hasta que Git los vuelva a escribir, y `npm run format:check` los marca. Para regenerarlos en LF, con el árbol limpio (sin cambios sin commitear), desde Git Bash:
+
+```bash
+git ls-files -z | xargs -0 rm -f && git checkout -- .
 ```
 
 ### 8.6 Versión de Node — Implementado
