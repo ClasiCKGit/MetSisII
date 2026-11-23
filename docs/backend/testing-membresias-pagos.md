@@ -4,6 +4,7 @@ Las pruebas de estos módulos combinan integración contra PostgreSQL y una prue
 
 ## Qué cubren
 
+- CRUD de tipos de membresía: permisos por rol, aislamiento, validación del precio contra `Decimal(10, 2)` y baja lógica.
 - Vigencia de membresías vencidas, por vencer (hoy y siete días), al día y canceladas.
 - Rutas protegidas, aislamiento por gimnasio y filtros de membresías.
 - Alta de inscripción junto con su pago, importe tomado del tipo de membresía y serialización decimal con dos dígitos.
@@ -25,5 +26,5 @@ La suite deriva la base de pruebas de `DATABASE_URL`, agregando el sufijo `_test
 También se pueden ejecutar solo los módulos nuevos desde `apps/api`:
 
 ```powershell
-npx vitest run tests/unit/membresia-vigencia.test.ts tests/integration/membresias.test.ts tests/integration/pagos.test.ts
+npx vitest run tests/unit/membresia-vigencia.test.ts tests/integration/tipos-membresia.test.ts tests/integration/membresias.test.ts tests/integration/pagos.test.ts
 ```

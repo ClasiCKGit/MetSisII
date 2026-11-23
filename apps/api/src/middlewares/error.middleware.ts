@@ -67,6 +67,13 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (prismaCode === "P2025") {
     return res.status(404).json({ error: "Registro no encontrado" });
   }
+  // Prisma tira el codigo "P2034" cuando una transacción (por ejemplo Serializable) choca con otra
+  // simultánea: no es un error del servidor, el cliente puede reintentar
+  if (prismaCode === "P2034") {
+    return res
+      .status(409)
+      .json({ error: "La operación chocó con otra simultánea, volvé a intentarlo" });
+  }
 
   req.log?.error(err);
 
