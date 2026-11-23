@@ -300,6 +300,14 @@ function estadoVigencia(membresia: FakeMembresia): "AL_DIA" | "POR_VENCER" | "VE
   return "AL_DIA";
 }
 
+// "2026-11": el mes calendario en la zona por defecto de la API (ZONA_HORARIA)
+const mesEnArgentina = (fecha: Date) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+  }).format(fecha);
+
 function membresiaConRelaciones(membresia: FakeMembresia) {
   const socio = estado.socios.find((s) => s.id === membresia.socioId);
   const actividad = estado.actividades.find((a) => a.id === membresia.actividadId);
@@ -824,10 +832,26 @@ export function crearHandlers(apiUrl: string) {
       const actual = autenticar(request);
       if (actual instanceof Response) return actual;
 
+      const gimnasioId = actual.gimnasio.id;
       const sociosActivos = estado.socios.filter(
-        (s) => s.gimnasioId === actual.gimnasio.id && s.activo
+        (s) => s.gimnasioId === gimnasioId && s.activo
       ).length;
-      return respuesta(200, { sociosActivos });
+      const ingresos = estado.pagos
+        .filter(
+          (p) =>
+            p.gimnasioId === gimnasioId &&
+            p.estado === "PAGADO" &&
+            mesEnArgentina(new Date(p.fecha)) === mesEnArgentina(new Date())
+        )
+        .reduce((total, p) => total + Math.round(Number(p.monto) * 100), 0);
+      const vencimientosProximos = estado.membresias.filter(
+        (m) => m.gimnasioId === gimnasioId && estadoVigencia(m) === "POR_VENCER"
+      ).length;
+      return respuesta(200, {
+        sociosActivos,
+        ingresosMes: (ingresos / 100).toFixed(2),
+        vencimientosProximos,
+      });
     }),
 
     // ───── socios: cualquier usuario con sesión consulta, da de alta y edita; la baja es de ADMIN
@@ -1012,12 +1036,20 @@ export function crearHandlers(apiUrl: string) {
       const actual = autenticar(request);
       if (actual instanceof Response) return actual;
 
-      const socioId = new URL(request.url).searchParams.get("socioId");
-      if (socioId !== null && !UUID.test(socioId)) return errorDeValidacion();
+      const params = new URL(request.url).searchParams;
+      const socioId = params.get("socioId");
+      const vigencia = params.get("vigencia");
+      if (
+        (socioId !== null && !UUID.test(socioId)) ||
+        (vigencia !== null && !["AL_DIA", "POR_VENCER", "VENCIDA"].includes(vigencia))
+      ) {
+        return errorDeValidacion();
+      }
 
       const lista = estado.membresias
         .filter((m) => m.gimnasioId === actual.gimnasio.id)
         .filter((m) => socioId === null || m.socioId === socioId)
+        .filter((m) => vigencia === null || estadoVigencia(m) === vigencia)
         .sort(
           (a, b) => a.fechaFin.localeCompare(b.fechaFin) || b.createdAt.localeCompare(a.createdAt)
         )

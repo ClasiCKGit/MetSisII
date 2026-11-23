@@ -61,10 +61,11 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 - **Historial de pagos**: `usePagosSocio(id)` llama a `GET /api/pagos?socioId=…`, del más reciente al más antiguo. Muestra concepto (o actividad y tipo de la membresía), fecha, método, monto y estado. Usa la misma clave de TanStack Query que la pantalla de pagos (`["pagos", filtros]`), así que invalidar `["pagos"]` refresca las dos; no usa `keepPreviousData` para que al cambiar de socio no se vean los pagos del anterior.
 - Los formatos de pagos (montos en centavos, etiquetas, concepto) y `EstadoPagoBadge` están en `features/pagos/formato.ts` y `features/pagos/components/`, compartidos con `PagosPage`.
 
-## 5. Socios activos en el inicio
+## 5. Métricas del inicio
 
-- `DashboardPage` usa `useResumen()` (`features/dashboard/hooks/useResumen.ts`), que llama a `GET /api/dashboard/resumen`.
-- Mientras carga o si falla, la tarjeta muestra un guion y un texto que explica el motivo; con datos, el número.
+- `DashboardPage` usa `useResumen()` (`features/dashboard/hooks/useResumen.ts`), que llama a `GET /api/dashboard/resumen`, y muestra tres tarjetas: **Socios activos**, **Ingresos del mes** (con `formatearMonto` de `features/pagos/formato.ts`) y **Vencimientos próximos**.
+- Mientras carga o si falla, cada tarjeta muestra un guion y un texto que explica el motivo; con datos, el número.
+- Debajo, **"Vencen en los próximos 7 días"** lista esas membresías con `useVencimientosProximos()` (`GET /api/membresias?vigencia=POR_VENCER`), con enlace al detalle de cada socio. Su clave cuelga de `["dashboard"]`, así que se refresca junto con las métricas.
 - Las mutaciones de socios (`useCrearSocio`, `useActualizarSocio`) invalidan también la clave `["dashboard"]`: al dar de alta o de baja un socio y volver al inicio, el número ya está actualizado.
 
 ---
@@ -88,8 +89,9 @@ apps/web/src/
 │   └── types.ts                    # Socio, FiltroEstado
 ├── features/dashboard/
 │   ├── hooks/useResumen.ts         # useResumen y DASHBOARD_KEY
+│   ├── hooks/useVencimientosProximos.ts
 │   └── types.ts                    # ResumenDashboard
-└── pages/DashboardPage.tsx         # tarjeta "Socios activos"
+└── pages/DashboardPage.tsx         # métricas y vencimientos próximos
 ```
 
 Las rutas están en `routes/index.tsx` (dentro de `RequireAuth`, sin `RequireRole`) y el ítem del menú en `layouts/AppLayout.tsx`.
@@ -105,6 +107,6 @@ Helpers en `tests/helpers/api.ts`: `apiCrearSocio`, `apiListarSocios` (activos e
 | Archivo | Qué prueba |
 |---|---|
 | `tests/integration/socios.test.tsx` | Listado y orden, aislamiento, búsqueda y filtro, alta, validaciones del cliente, DNI repetido, edición que borra un opcional, baja y reactivación, permisos de la recepción, detalle (incluida la fecha en UTC), socio de otro gimnasio y enlace del menú |
-| `tests/integration/dashboard.test.tsx` | Conteo de socios activos del propio gimnasio, `0` sin socios, actualización al dar de alta e "Ingresos del mes" todavía sin datos |
+| `tests/integration/dashboard.test.tsx` | Conteo de socios activos del propio gimnasio, `0` sin socios, actualización al dar de alta, ingresos del mes (solo pagos cobrados) y vencimientos próximos con la lista y el enlace al socio |
 
 Como en el resto de los tests de pantalla, se espera **el dato de la tabla** (`findByRole("row", ...)`) y no un texto suelto: "Ana Admin" o el nombre del gimnasio también aparecen en la barra lateral, y un test que no espera la lista puede terminar antes de que llegue.
