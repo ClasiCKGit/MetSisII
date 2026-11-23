@@ -60,6 +60,8 @@ El CI (`.github/workflows/ci.yml`) corre lint, format:check, prisma:generate, bu
 
 Cambio de `schema.prisma` → nueva migración con `npm run db:migrate` y actualizar `prisma/seed.ts`. Nunca editar migraciones ya commiteadas. Prisma 7 busca `prisma.config.ts` en el directorio actual: correr los comandos con los scripts de la raíz o con `-w apps/api`.
 
+Una columna de texto nueva que se use para ordenar listados necesita `COLLATE "es-x-icu"` en su migración (escrito a mano: Prisma no modela collations); si no, Postgres en Alpine ordena por bytes y las tildes quedan al final. Ver `docs/backend/database.md`.
+
 ### Tests de la API
 
 - Corren contra Postgres real en una base derivada de `DATABASE_URL` con sufijo `_test` (en CI, `TEST_DATABASE_URL`). `tests/global-setup.ts` la crea y aplica `prisma migrate deploy`; `assertTestDatabase` aborta si el nombre no termina en `_test`.
