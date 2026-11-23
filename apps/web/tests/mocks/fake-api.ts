@@ -66,6 +66,40 @@ interface FakeVinculo {
   actividadId: string;
   profesorId: string;
 }
+interface FakeTipoMembresia {
+  id: string;
+  gimnasioId: string;
+  actividadId: string;
+  nombre: string;
+  precio: string;
+  duracionDias: number;
+  cantidadClases: number | null;
+  activo: boolean;
+}
+interface FakeMembresia {
+  id: string;
+  gimnasioId: string;
+  socioId: string;
+  actividadId: string;
+  tipoMembresiaId: string;
+  fechaInicio: string;
+  fechaFin: string;
+  estado: "ACTIVA" | "VENCIDA" | "CANCELADA";
+  createdAt: string;
+}
+type EstadoPago = "PENDIENTE" | "PAGADO" | "RECHAZADO";
+interface FakePago {
+  id: string;
+  gimnasioId: string;
+  socioId: string;
+  membresiaId: string | null;
+  monto: string;
+  fecha: string;
+  metodoPago: string;
+  estado: EstadoPago;
+  concepto: string | null;
+  createdAt: string;
+}
 
 const estado = {
   gimnasios: [] as FakeGimnasio[],
@@ -74,6 +108,9 @@ const estado = {
   actividades: [] as FakeActividad[],
   vinculos: [] as FakeVinculo[],
   socios: [] as FakeSocio[],
+  tiposMembresia: [] as FakeTipoMembresia[],
+  membresias: [] as FakeMembresia[],
+  pagos: [] as FakePago[],
   sesiones: new Map<string, { usuarioId: string }>(),
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
@@ -86,6 +123,9 @@ export function resetFakeApi(): void {
   estado.actividades.length = 0;
   estado.vinculos.length = 0;
   estado.socios.length = 0;
+  estado.tiposMembresia.length = 0;
+  estado.membresias.length = 0;
+  estado.pagos.length = 0;
   estado.sesiones.clear();
   estado.registroHabilitado = true;
 }
@@ -238,6 +278,59 @@ const vinculoConProfesor = (vinculo: FakeVinculo) => ({
   ...vinculo,
   profesor: estado.profesores.find((p) => p.id === vinculo.profesorId),
 });
+
+// ───── membresías y pagos ─────
+const METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "MERCADO_PAGO"];
+const ESTADOS_PAGO: EstadoPago[] = ["PENDIENTE", "PAGADO", "RECHAZADO"];
+const MONTO = /^\d{1,8}(?:\.\d{1,2})?$/;
+const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+const fechaIsoValida = (valor: unknown) =>
+  typeof valor === "string" && !Number.isNaN(new Date(valor).getTime());
+
+// Igual que apps/api/src/modules/membresias/vigencia.ts: días calendario UTC
+function estadoVigencia(membresia: FakeMembresia): "AL_DIA" | "POR_VENCER" | "VENCIDA" | null {
+  if (membresia.estado === "CANCELADA") return null;
+  const fin = new Date(membresia.fechaFin);
+  const ahora = new Date();
+  const diaFin = Date.UTC(fin.getUTCFullYear(), fin.getUTCMonth(), fin.getUTCDate());
+  const hoy = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate());
+  const diasRestantes = Math.floor((diaFin - hoy) / MILISEGUNDOS_POR_DIA);
+  if (diasRestantes < 0) return "VENCIDA";
+  if (diasRestantes <= 7) return "POR_VENCER";
+  return "AL_DIA";
+}
+
+function membresiaConRelaciones(membresia: FakeMembresia) {
+  const socio = estado.socios.find((s) => s.id === membresia.socioId);
+  const actividad = estado.actividades.find((a) => a.id === membresia.actividadId);
+  const tipo = estado.tiposMembresia.find((t) => t.id === membresia.tipoMembresiaId);
+  return {
+    ...membresia,
+    estadoVigencia: estadoVigencia(membresia),
+    socio: socio && { id: socio.id, nombre: socio.nombre, apellido: socio.apellido },
+    actividad: actividad && { id: actividad.id, nombre: actividad.nombre },
+    tipoMembresia: tipo && { id: tipo.id, nombre: tipo.nombre, duracionDias: tipo.duracionDias },
+  };
+}
+
+function pagoConRelaciones(pago: FakePago) {
+  const socio = estado.socios.find((s) => s.id === pago.socioId);
+  const membresia = estado.membresias.find((m) => m.id === pago.membresiaId);
+  const actividad = estado.actividades.find((a) => a.id === membresia?.actividadId);
+  const tipo = estado.tiposMembresia.find((t) => t.id === membresia?.tipoMembresiaId);
+  return {
+    ...pago,
+    socio: socio && { id: socio.id, nombre: socio.nombre, apellido: socio.apellido },
+    membresia:
+      membresia && actividad && tipo
+        ? {
+            id: membresia.id,
+            actividad: { id: actividad.id, nombre: actividad.nombre },
+            tipoMembresia: { id: tipo.id, nombre: tipo.nombre },
+          }
+        : null,
+  };
+}
 
 const crearUsuario = (datos: Omit<FakeUsuario, "id" | "createdAt" | "activo">): FakeUsuario => {
   const usuario: FakeUsuario = {
@@ -874,6 +967,212 @@ export function crearHandlers(apiUrl: string) {
       if (!objetivo) return error(404, "Socio no encontrado");
       objetivo.activo = false;
       return respuesta(200, objetivo);
+    }),
+
+    // ───── tipos de membresía: solo ADMIN los crea
+    http.post(`${base}/tipos-membresia`, async ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      const precio = Number(cuerpo?.precio);
+      if (
+        !cuerpo ||
+        !UUID.test(texto(cuerpo.actividadId)) ||
+        !texto(cuerpo.nombre).trim() ||
+        !Number.isFinite(precio) ||
+        precio < 0 ||
+        !MONTO.test(String(precio)) ||
+        !Number.isInteger(cuerpo.duracionDias) ||
+        (cuerpo.duracionDias as number) <= 0
+      ) {
+        return errorDeValidacion();
+      }
+      const actividad = estado.actividades.find(
+        (a) => a.id === cuerpo.actividadId && a.gimnasioId === actual.gimnasio.id
+      );
+      if (!actividad) return error(404, "La actividad no existe");
+
+      const tipo: FakeTipoMembresia = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        actividadId: actividad.id,
+        nombre: texto(cuerpo.nombre).trim(),
+        precio: String(precio),
+        duracionDias: cuerpo.duracionDias as number,
+        cantidadClases: typeof cuerpo.cantidadClases === "number" ? cuerpo.cantidadClases : null,
+        activo: true,
+      };
+      estado.tiposMembresia.push(tipo);
+      return respuesta(201, { ...tipo, actividad: { id: actividad.id, nombre: actividad.nombre } });
+    }),
+
+    // ───── membresías
+    http.get(`${base}/membresias`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const socioId = new URL(request.url).searchParams.get("socioId");
+      if (socioId !== null && !UUID.test(socioId)) return errorDeValidacion();
+
+      const lista = estado.membresias
+        .filter((m) => m.gimnasioId === actual.gimnasio.id)
+        .filter((m) => socioId === null || m.socioId === socioId)
+        .sort(
+          (a, b) => a.fechaFin.localeCompare(b.fechaFin) || b.createdAt.localeCompare(a.createdAt)
+        )
+        .map(membresiaConRelaciones);
+      return respuesta(200, lista);
+    }),
+
+    // Igual que la API: crea la membresía y su pago pendiente juntos
+    http.post(`${base}/membresias/inscripciones`, async ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        !UUID.test(texto(cuerpo.socioId)) ||
+        !UUID.test(texto(cuerpo.actividadId)) ||
+        !UUID.test(texto(cuerpo.tipoMembresiaId)) ||
+        !METODOS_PAGO.includes(texto(cuerpo.metodoPago)) ||
+        (cuerpo.fechaInicio !== undefined && !fechaIsoValida(cuerpo.fechaInicio))
+      ) {
+        return errorDeValidacion();
+      }
+      const gimnasioId = actual.gimnasio.id;
+      const socio = estado.socios.find(
+        (s) => s.id === cuerpo.socioId && s.gimnasioId === gimnasioId
+      );
+      const actividad = estado.actividades.find(
+        (a) => a.id === cuerpo.actividadId && a.gimnasioId === gimnasioId
+      );
+      const tipo = estado.tiposMembresia.find(
+        (t) => t.id === cuerpo.tipoMembresiaId && t.gimnasioId === gimnasioId
+      );
+      if (!socio?.activo) return error(404, "Socio inexistente o inactivo");
+      if (!actividad?.activa) return error(404, "Actividad inexistente o inactiva");
+      if (!tipo?.activo || tipo.actividadId !== actividad.id) {
+        return error(400, "El tipo de membresía no está activo para esta actividad");
+      }
+
+      const inicio = cuerpo.fechaInicio ? new Date(texto(cuerpo.fechaInicio)) : new Date();
+      const fin = new Date(inicio);
+      fin.setDate(fin.getDate() + tipo.duracionDias);
+      const vigentes = estado.membresias.filter(
+        (m) =>
+          m.actividadId === actividad.id &&
+          m.estado === "ACTIVA" &&
+          new Date(m.fechaInicio) <= inicio &&
+          new Date(m.fechaFin) >= inicio
+      );
+      if (vigentes.some((m) => m.socioId === socio.id)) {
+        return error(409, "El socio ya tiene una membresía activa para esta actividad");
+      }
+      if (actividad.cupo !== null && vigentes.length >= actividad.cupo) {
+        return error(409, "La actividad no tiene cupo disponible");
+      }
+
+      const ahora = new Date().toISOString();
+      const membresia: FakeMembresia = {
+        id: crypto.randomUUID(),
+        gimnasioId,
+        socioId: socio.id,
+        actividadId: actividad.id,
+        tipoMembresiaId: tipo.id,
+        fechaInicio: inicio.toISOString(),
+        fechaFin: fin.toISOString(),
+        estado: "ACTIVA",
+        createdAt: ahora,
+      };
+      const pago: FakePago = {
+        id: crypto.randomUUID(),
+        gimnasioId,
+        socioId: socio.id,
+        membresiaId: membresia.id,
+        monto: Number(tipo.precio).toFixed(2),
+        fecha: ahora,
+        metodoPago: texto(cuerpo.metodoPago),
+        estado: "PENDIENTE",
+        concepto: null,
+        createdAt: ahora,
+      };
+      estado.membresias.push(membresia);
+      estado.pagos.push(pago);
+      return respuesta(201, {
+        ...membresiaConRelaciones(membresia),
+        pago: { id: pago.id, monto: pago.monto, metodoPago: pago.metodoPago, estado: pago.estado },
+      });
+    }),
+
+    // ───── pagos: cualquier usuario con sesión consulta y registra
+    http.get(`${base}/pagos`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const params = new URL(request.url).searchParams;
+      const socioId = params.get("socioId");
+      const estadoPago = params.get("estado");
+      const desde = params.get("desde");
+      const hasta = params.get("hasta");
+      if (
+        (socioId !== null && !UUID.test(socioId)) ||
+        (estadoPago !== null && !ESTADOS_PAGO.includes(estadoPago as EstadoPago)) ||
+        (desde !== null && !fechaIsoValida(desde)) ||
+        (hasta !== null && !fechaIsoValida(hasta))
+      ) {
+        return errorDeValidacion();
+      }
+
+      const lista = estado.pagos
+        .filter((p) => p.gimnasioId === actual.gimnasio.id)
+        .filter((p) => socioId === null || p.socioId === socioId)
+        .filter((p) => estadoPago === null || p.estado === estadoPago)
+        .filter((p) => desde === null || new Date(p.fecha) >= new Date(desde))
+        .filter((p) => hasta === null || new Date(p.fecha) <= new Date(hasta))
+        .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt.localeCompare(a.createdAt))
+        .map(pagoConRelaciones);
+      return respuesta(200, lista);
+    }),
+
+    http.post(`${base}/pagos`, async ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      const monto = String(cuerpo?.monto ?? "").trim();
+      if (
+        !cuerpo ||
+        !UUID.test(texto(cuerpo.socioId)) ||
+        !MONTO.test(monto) ||
+        Number(monto) <= 0 ||
+        !METODOS_PAGO.includes(texto(cuerpo.metodoPago)) ||
+        (cuerpo.estado !== undefined && !ESTADOS_PAGO.includes(cuerpo.estado as EstadoPago)) ||
+        (cuerpo.fecha !== undefined && !fechaIsoValida(cuerpo.fecha))
+      ) {
+        return errorDeValidacion();
+      }
+      const socio = estado.socios.find(
+        (s) => s.id === cuerpo.socioId && s.gimnasioId === actual.gimnasio.id
+      );
+      if (!socio) return error(404, "Socio no encontrado");
+
+      const ahora = new Date().toISOString();
+      const pago: FakePago = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        socioId: socio.id,
+        membresiaId: null,
+        monto: Number(monto).toFixed(2),
+        fecha: cuerpo.fecha ? new Date(texto(cuerpo.fecha)).toISOString() : ahora,
+        metodoPago: texto(cuerpo.metodoPago),
+        estado: (cuerpo.estado as EstadoPago | undefined) ?? "PENDIENTE",
+        concepto: textoOpcional(cuerpo.concepto),
+        createdAt: ahora,
+      };
+      estado.pagos.push(pago);
+      return respuesta(201, pagoConRelaciones(pago));
     }),
   ];
 }
