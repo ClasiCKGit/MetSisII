@@ -198,6 +198,56 @@ export async function apiListarSocios(token: string): Promise<SocioDePrueba[]> {
   return (await res.json()) as SocioDePrueba[];
 }
 
+export interface TipoMembresiaDePrueba {
+  id: string;
+  nombre: string;
+  actividadId: string;
+}
+
+export async function apiCrearTipoMembresia(
+  token: string,
+  datos: { actividadId: string; nombre: string; precio: number; duracionDias: number }
+): Promise<TipoMembresiaDePrueba> {
+  const res = await fetch(`${API}/tipos-membresia`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as TipoMembresiaDePrueba;
+}
+
+// Inscribe al socio: crea la membresía y su pago pendiente
+export async function apiInscribir(
+  token: string,
+  datos: { socioId: string; actividadId: string; tipoMembresiaId: string; metodoPago: string }
+): Promise<{ id: string; pago: { id: string; monto: string } }> {
+  const res = await fetch(`${API}/membresias/inscripciones`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as { id: string; pago: { id: string; monto: string } };
+}
+
+export async function apiCrearPago(
+  token: string,
+  datos: {
+    socioId: string;
+    monto: string;
+    metodoPago: string;
+    estado?: "PENDIENTE" | "PAGADO" | "RECHAZADO";
+    concepto?: string;
+    fecha?: string;
+  }
+): Promise<{ id: string }> {
+  const res = await fetch(`${API}/pagos`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as { id: string };
+}
+
 export async function apiActualizarUsuario(
   token: string,
   id: string,
