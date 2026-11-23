@@ -5,8 +5,16 @@ import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { Iniciales } from "@/components/shared/Iniciales";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EstadoPagoBadge } from "@/features/pagos/components/EstadoPagoBadge";
+import {
+  conceptoDePago,
+  formatearFechaPago,
+  formatearMonto,
+  METODO_PAGO_LABEL,
+} from "@/features/pagos/formato";
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { useMembresiasSocio } from "../hooks/useMembresiasSocio";
+import { usePagosSocio } from "../hooks/usePagosSocio";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
 
@@ -62,6 +70,7 @@ export function SocioDetallePage() {
   const { id = "" } = useParams();
   const { data: socio, isPending, error, refetch, isFetching } = useSocio(id);
   const membresiasQuery = useMembresiasSocio(id);
+  const pagosQuery = usePagosSocio(id);
   const [editando, setEditando] = useState(false);
 
   if (isPending) {
@@ -134,7 +143,7 @@ export function SocioDetallePage() {
           ) : membresiasQuery.data.length === 0 ? (
             <p className="text-sm text-muted-foreground">Este socio todavía no tiene membresías.</p>
           ) : (
-            <ul className="divide-y">
+            <ul aria-label="Membresías del socio" className="divide-y">
               {membresiasQuery.data.map((membresia) => (
                 <li
                   key={membresia.id}
@@ -169,9 +178,37 @@ export function SocioDetallePage() {
           )}
         </Seccion>
         <Seccion titulo="Historial de pagos">
-          <p className="text-sm text-muted-foreground">
-            Todavía no disponible: se completa cuando esté listo el módulo de pagos.
-          </p>
+          {pagosQuery.isPending ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Cargando pagos…
+            </p>
+          ) : pagosQuery.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {getErrorMessage(pagosQuery.error)}
+            </p>
+          ) : pagosQuery.data.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Este socio todavía no tiene pagos.</p>
+          ) : (
+            <ul aria-label="Pagos del socio" className="divide-y">
+              {pagosQuery.data.map((pago) => (
+                <li
+                  key={pago.id}
+                  className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">{conceptoDePago(pago)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatearFechaPago(pago.fecha)} · {METODO_PAGO_LABEL[pago.metodoPago]}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold tabular-nums">{formatearMonto(pago.monto)}</span>
+                    <EstadoPagoBadge estado={pago.estado} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </Seccion>
       </div>
 

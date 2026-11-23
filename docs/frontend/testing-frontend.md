@@ -149,6 +149,7 @@ apps/web/
 | `integration/registro.test.tsx` | 5 | Autocompletado del identificador, validación, registro correcto y `409` en el campo |
 | `integration/cambio-contrasena.test.tsx` | 3 | Contraseña actual incorrecta sin cerrar la sesión, validación y cambio correcto |
 | `integration/usuarios.test.tsx` | 10 | Listado, alta, edición, rol propio bloqueado, desactivar y reactivar, restablecer contraseña |
+| `integration/socio-detalle.test.tsx` | 3 | Detalle del socio: membresías con su vigencia, historial de pagos ordenado y solo del socio |
 | `integration/aislamiento.test.tsx` | 2 | Que nada se filtre de un test al siguiente |
 
 ---
