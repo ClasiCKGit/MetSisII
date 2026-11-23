@@ -1,6 +1,6 @@
 # Socios (backend)
 
-Documentación del módulo `socios` de `apps/api` (Epic 2, FIT-4): qué endpoints expone, qué reglas valida y cómo mantiene el aislamiento entre gimnasios. Incluye el endpoint de resumen del inicio (`/api/dashboard/resumen`), que por ahora solo cuenta socios.
+Documentación del módulo `socios` de `apps/api` (Epic 2, FIT-4): qué endpoints expone, qué reglas valida y cómo mantiene el aislamiento entre gimnasios. Incluye el endpoint de resumen del inicio (`/api/dashboard/resumen`).
 
 El aislamiento en sí (`req.db`, `TENANT_RULES`, `authenticate`, `requireRole`) está explicado en `docs/backend/auth.md`; acá solo se describe cómo lo usa este módulo. El modelo de datos completo está en `docs/backend/database.md`. La parte del frontend está en `docs/frontend/socios.md`.
 
@@ -20,7 +20,7 @@ El aislamiento en sí (`req.db`, `TENANT_RULES`, `authenticate`, `requireRole`) 
 |---|---|
 | FIT-48 | CRUD de socios en la API (`/api/socios`), con DNI único por gimnasio |
 | FIT-52 | Tests de aislamiento y permisos; ajustes del schema (campos no permitidos, `null` para borrar opcionales, baja solo para `ADMIN`) |
-| FIT-72 (parcial) | `GET /api/dashboard/resumen` con la cantidad de socios activos |
+| FIT-72 | `GET /api/dashboard/resumen`: socios activos, ingresos del mes y vencimientos próximos |
 
 ---
 
@@ -116,10 +116,13 @@ El `409` y el `404` los traduce el propio service (`P2002` y `P2025` de Prisma) 
 
 | Ruta | Rol | Qué devuelve |
 |---|---|---|
-| `GET /api/dashboard/resumen` | Cualquiera | `{ "sociosActivos": number }` |
+| `GET /api/dashboard/resumen` | Cualquiera | `{ "sociosActivos": number, "ingresosMes": string, "vencimientosProximos": number }` |
 
-- Cuenta con `req.db.socio.count({ where: { activo: true } })`: solo socios activos del propio gimnasio.
-- Es el primer dato del dashboard general (FIT-72). Los ingresos del mes y los vencimientos próximos se van a agregar a esta misma respuesta cuando existan membresías y pagos (FIT-6); el tipo está en `dashboard.types.ts`.
+Las tres métricas salen de `req.db`, así que nunca incluyen datos de otro gimnasio:
+
+- **`sociosActivos`**: `socio.count({ where: { activo: true } })`.
+- **`ingresosMes`**: suma (`aggregate`) de los pagos `PAGADO` cuya `fecha` cae en el mes calendario en curso, como texto con dos decimales (`"1500.75"`, `"0.00"` si no hay), igual que los montos de pagos. "El mes" se calcula en la zona horaria `ZONA_HORARIA` (por defecto `America/Argentina/Buenos_Aires`) con `rangoDelMes` de `src/utils/fechas.ts`: el servidor corre en UTC y, sin esto, entre las 21:00 y las 24:00 del último día del mes los pagos contarían para el mes siguiente.
+- **`vencimientosProximos`**: membresías no canceladas con vigencia `POR_VENCER` (vencen hoy o en los próximos 7 días). Usa `rangoPorVencer` de `membresias/vigencia.ts`, la misma regla de días UTC que `estadoVigencia`, así que coincide con `GET /api/membresias?vigencia=POR_VENCER` (un test unitario lo verifica en los bordes).
 
 ---
 
