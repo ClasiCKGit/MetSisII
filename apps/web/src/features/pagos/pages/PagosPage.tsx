@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EncabezadoPantalla } from "@/components/shared/EncabezadoPantalla";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -15,8 +14,17 @@ import {
 } from "@/components/ui/table";
 import { useSocios } from "@/features/socios/hooks/useSocios";
 import { getErrorMessage } from "@/lib/api-error";
+import { EstadoPagoBadge } from "../components/EstadoPagoBadge";
+import {
+  aCentavos,
+  conceptoDePago,
+  formatearCentavos,
+  formatearFechaPago,
+  formatearMonto,
+  METODO_PAGO_LABEL,
+} from "../formato";
 import { usePagos } from "../hooks/usePagos";
-import type { EstadoPago, FiltrosPagos, Pago } from "../types";
+import type { EstadoPago, FiltrosPagos } from "../types";
 
 interface FiltrosPantalla {
   desde: string;
@@ -24,19 +32,6 @@ interface FiltrosPantalla {
   socioId: string;
   estado: "TODOS" | EstadoPago;
 }
-
-const ESTADO_LABEL: Record<EstadoPago, string> = {
-  PENDIENTE: "Pendiente",
-  PAGADO: "Pagado",
-  RECHAZADO: "Rechazado",
-};
-
-const METODO_LABEL: Record<Pago["metodoPago"], string> = {
-  EFECTIVO: "Efectivo",
-  TARJETA: "Tarjeta",
-  TRANSFERENCIA: "Transferencia",
-  MERCADO_PAGO: "Mercado Pago",
-};
 
 function fechaLocalIso(fecha: string, finDelDia = false): string | undefined {
   if (!fecha) return undefined;
@@ -47,45 +42,12 @@ function fechaLocalIso(fecha: string, finDelDia = false): string | undefined {
   return valor.toISOString();
 }
 
-function aCentavos(monto: string): bigint {
-  const [entero, decimal = ""] = monto.split(".");
-  return BigInt(entero) * 100n + BigInt(decimal.padEnd(2, "0").slice(0, 2));
-}
-
-function formatearCentavos(centavos: bigint): string {
-  const entero = centavos / 100n;
-  const decimal = (centavos % 100n).toString().padStart(2, "0");
-  return `$${new Intl.NumberFormat("es-AR").format(entero)},${decimal}`;
-}
-
-function formatearFecha(iso: string): string {
-  return new Date(iso).toLocaleString("es-AR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 function TarjetaResumen({ titulo, valor }: { titulo: string; valor: string }) {
   return (
     <article className="flex flex-col gap-3 rounded-xl border bg-card p-5">
       <h2 className="rotulo text-card-foreground/80">{titulo}</h2>
       <p className="font-heading text-3xl font-black tabular-nums">{valor}</p>
     </article>
-  );
-}
-
-function EstadoBadge({ estado }: { estado: EstadoPago }) {
-  const estilo =
-    estado === "PAGADO"
-      ? "border-success/30 bg-success/10 text-success"
-      : estado === "PENDIENTE"
-        ? "border-warning/30 bg-warning/10 text-warning"
-        : "border-destructive/30 bg-destructive/10 text-destructive";
-
-  return (
-    <Badge variant="outline" className={estilo}>
-      {ESTADO_LABEL[estado]}
-    </Badge>
   );
 }
 
@@ -254,7 +216,7 @@ export function PagosPage() {
                 {pagos.data.map((pago) => (
                   <TableRow key={pago.id}>
                     <TableCell className="whitespace-nowrap">
-                      {formatearFecha(pago.fecha)}
+                      {formatearFechaPago(pago.fecha)}
                     </TableCell>
                     <TableCell>
                       <Link
@@ -264,18 +226,13 @@ export function PagosPage() {
                         {pago.socio.nombre} {pago.socio.apellido}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {pago.concepto ??
-                        (pago.membresia
-                          ? `${pago.membresia.actividad.nombre} · ${pago.membresia.tipoMembresia.nombre}`
-                          : "Pago suelto")}
-                    </TableCell>
-                    <TableCell>{METODO_LABEL[pago.metodoPago]}</TableCell>
+                    <TableCell className="text-muted-foreground">{conceptoDePago(pago)}</TableCell>
+                    <TableCell>{METODO_PAGO_LABEL[pago.metodoPago]}</TableCell>
                     <TableCell>
-                      <EstadoBadge estado={pago.estado} />
+                      <EstadoPagoBadge estado={pago.estado} />
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">
-                      {formatearCentavos(aCentavos(pago.monto))}
+                      {formatearMonto(pago.monto)}
                     </TableCell>
                   </TableRow>
                 ))}
