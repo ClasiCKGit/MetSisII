@@ -15,6 +15,7 @@ import { renderApp } from "../helpers/render";
 // (oculto para los lectores de pantalla). Los findBy* esperan a que sea accesible.
 const tabla = () => screen.getByRole("table", { hidden: true });
 const fila = (nombre: string | RegExp) => within(tabla()).getByRole("row", { name: nombre });
+const filtroEstado = () => screen.getByRole("combobox", { name: "Filtrar profesores por estado" });
 
 describe("gestión de profesores", () => {
   it("lista los profesores con sus datos y deja un guion en los que faltan", async () => {
@@ -54,8 +55,10 @@ describe("gestión de profesores", () => {
   it("avisa cuando todavía no hay profesores", async () => {
     const g = await nuevoGimnasio();
     await conSesion(g.token);
-    renderApp("/profesores");
+    const { user } = renderApp("/profesores");
 
+    expect(await screen.findByText("No hay profesores activos.")).toBeInTheDocument();
+    await user.selectOptions(filtroEstado(), "todos");
     expect(await screen.findByText("Todavía no hay profesores cargados.")).toBeInTheDocument();
   });
 
@@ -138,19 +141,22 @@ describe("gestión de profesores", () => {
     });
   });
 
-  it("desactiva y reactiva a un profesor", async () => {
+  it("da de baja a un profesor, lo muestra en el filtro de dados de baja y lo reactiva", async () => {
     const g = await nuevoGimnasio();
     await apiCrearProfesor(g.token, { nombre: "Diego", apellido: "Torres" });
     await conSesion(g.token);
     const { user } = renderApp("/profesores");
 
-    await user.click(await screen.findByRole("button", { name: "Desactivar a Diego Torres" }));
-    expect(await screen.findByText("Profesor desactivado")).toBeInTheDocument();
-    expect(await within(fila(/Diego Torres/)).findByText("Inactivo")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Dar de baja a Diego Torres" }));
+    expect(await screen.findByText("Profesor dado de baja")).toBeInTheDocument();
+    expect(await screen.findByText("No hay profesores activos.")).toBeInTheDocument();
     expect((await apiListarProfesores(g.token))[0]?.activo).toBe(false);
 
-    await user.click(await screen.findByRole("button", { name: "Activar a Diego Torres" }));
-    expect(await screen.findByText("Profesor activado")).toBeInTheDocument();
+    await user.selectOptions(filtroEstado(), "inactivos");
+    expect(await within(fila(/Diego Torres/)).findByText("Inactivo")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Reactivar a Diego Torres" }));
+    expect(await screen.findByText("Profesor reactivado")).toBeInTheDocument();
     await waitFor(async () => expect((await apiListarProfesores(g.token))[0]?.activo).toBe(true));
   });
 
@@ -169,7 +175,7 @@ describe("gestión de profesores", () => {
     expect(await screen.findByText("Marina Silva")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Nuevo profesor" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Editar/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Desactivar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Dar de baja/ })).not.toBeInTheDocument();
   });
 
   it("el enlace Profesores del menú lleva a la pantalla, también para la recepción", async () => {
