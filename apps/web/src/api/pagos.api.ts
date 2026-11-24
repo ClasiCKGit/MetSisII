@@ -5,3 +5,12 @@ export async function listarPagos(filtros: FiltrosPagos): Promise<Pago[]> {
   const { data } = await apiClient.get<Pago[]>("/pagos", { params: filtros });
   return data;
 }
+
+// Solo un pago pendiente cambia de estado (la API responde 409 si no)
+export async function actualizarEstadoPago(
+  id: string,
+  estado: "PAGADO" | "RECHAZADO"
+): Promise<Pago> {
+  const { data } = await apiClient.patch<Pago>(`/pagos/${id}/estado`, { estado });
+  return data;
+}

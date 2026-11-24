@@ -69,3 +69,24 @@ export function aSocioCambios(valores: SocioFormValues): SocioCambios {
     fechaNacimiento: valores.fechaNacimiento || null,
   };
 }
+
+// ───── inscripción a una actividad ─────
+
+export const METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "MERCADO_PAGO"] as const;
+
+export const inscripcionSchema = z.object({
+  actividadId: z.string().min(1, "Elegí una actividad"),
+  tipoMembresiaId: z.string().min(1, "Elegí el tipo de membresía"),
+  metodoPago: z.enum(METODOS_PAGO, "Elegí cómo va a pagar"),
+  fechaInicio: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Ingresá la fecha de inicio")
+    .refine((valor) => !Number.isNaN(Date.parse(valor)), "La fecha no es válida"),
+});
+
+export type InscripcionFormValues = z.infer<typeof inscripcionSchema>;
+
+// La vigencia se cuenta en días UTC (igual que en la API): el día elegido va a medianoche UTC
+export function aFechaInicioIso(fecha: string): string {
+  return `${fecha}T00:00:00.000Z`;
+}
