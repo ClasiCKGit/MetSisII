@@ -993,7 +993,27 @@ export function crearHandlers(apiUrl: string) {
       return respuesta(200, objetivo);
     }),
 
-    // ───── tipos de membresía: solo ADMIN los crea
+    // ───── tipos de membresía: todos los consultan (también los inactivos), solo ADMIN los crea
+    http.get(`${base}/tipos-membresia`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const actividadId = new URL(request.url).searchParams.get("actividadId");
+      if (actividadId !== null && !UUID.test(actividadId)) return errorDeValidacion();
+
+      const nombreDe = (id: string) => estado.actividades.find((a) => a.id === id)?.nombre ?? "";
+      const lista = estado.tiposMembresia
+        .filter((t) => t.gimnasioId === actual.gimnasio.id)
+        .filter((t) => actividadId === null || t.actividadId === actividadId)
+        .sort(
+          (a, b) =>
+            nombreDe(a.actividadId).localeCompare(nombreDe(b.actividadId), "es") ||
+            a.nombre.localeCompare(b.nombre, "es")
+        )
+        .map((t) => ({ ...t, actividad: { id: t.actividadId, nombre: nombreDe(t.actividadId) } }));
+      return respuesta(200, lista);
+    }),
+
     http.post(`${base}/tipos-membresia`, async ({ request }) => {
       const actual = autenticarAdmin(request);
       if (actual instanceof Response) return actual;
@@ -1099,7 +1119,16 @@ export function crearHandlers(apiUrl: string) {
           new Date(m.fechaInicio) <= inicio &&
           new Date(m.fechaFin) >= inicio
       );
-      if (vigentes.some((m) => m.socioId === socio.id)) {
+      // Como la API: choca con cualquier membresía activa que termine después del inicio,
+      // aunque empiece más tarde
+      const yaInscripto = estado.membresias.some(
+        (m) =>
+          m.socioId === socio.id &&
+          m.actividadId === actividad.id &&
+          m.estado === "ACTIVA" &&
+          new Date(m.fechaFin) >= inicio
+      );
+      if (yaInscripto) {
         return error(409, "El socio ya tiene una membresía activa para esta actividad");
       }
       if (actividad.cupo !== null && vigentes.length >= actividad.cupo) {
@@ -1205,6 +1234,31 @@ export function crearHandlers(apiUrl: string) {
       };
       estado.pagos.push(pago);
       return respuesta(201, pagoConRelaciones(pago));
+    }),
+
+    // Igual que la API: solo un pago PENDIENTE pasa a PAGADO o RECHAZADO
+    http.patch(`${base}/pagos/:id/estado`, async ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !UUID.test(String(params.id)) ||
+        !cuerpo ||
+        Object.keys(cuerpo).length !== 1 ||
+        !["PAGADO", "RECHAZADO"].includes(texto(cuerpo.estado))
+      ) {
+        return errorDeValidacion();
+      }
+      const pago = estado.pagos.find(
+        (p) => p.id === params.id && p.gimnasioId === actual.gimnasio.id
+      );
+      if (!pago) return error(404, "Pago no encontrado");
+      if (pago.estado !== "PENDIENTE") {
+        return error(409, "Solo se puede cambiar el estado de un pago pendiente");
+      }
+      pago.estado = cuerpo.estado as EstadoPago;
+      return respuesta(200, pagoConRelaciones(pago));
     }),
   ];
 }

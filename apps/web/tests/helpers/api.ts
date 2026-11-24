@@ -301,3 +301,32 @@ export async function conSesion(token: string): Promise<void> {
   );
   await useAuthStore.persist.rehydrate();
 }
+
+export interface MembresiaDePrueba {
+  id: string;
+  fechaInicio: string;
+  fechaFin: string;
+  actividad: { id: string; nombre: string };
+  tipoMembresia: { id: string; nombre: string };
+}
+
+export async function apiListarMembresias(
+  token: string,
+  socioId: string
+): Promise<MembresiaDePrueba[]> {
+  const res = await fetch(`${API}/membresias?socioId=${socioId}`, { headers: conToken(token) });
+  return (await res.json()) as MembresiaDePrueba[];
+}
+
+export async function apiListarPagos(
+  token: string,
+  socioId: string
+): Promise<Array<{ id: string; monto: string; metodoPago: string; estado: string }>> {
+  const res = await fetch(`${API}/pagos?socioId=${socioId}`, { headers: conToken(token) });
+  return (await res.json()) as Array<{
+    id: string;
+    monto: string;
+    metodoPago: string;
+    estado: string;
+  }>;
+}

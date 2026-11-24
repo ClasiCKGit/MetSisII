@@ -1,10 +1,11 @@
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { Iniciales } from "@/components/shared/Iniciales";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AccionesPagoPendiente } from "@/features/pagos/components/AccionesPagoPendiente";
 import { EstadoPagoBadge } from "@/features/pagos/components/EstadoPagoBadge";
 import {
   conceptoDePago,
@@ -15,6 +16,7 @@ import {
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { useMembresiasSocio } from "../hooks/useMembresiasSocio";
 import { usePagosSocio } from "../hooks/usePagosSocio";
+import { InscribirSocioDialog } from "../components/InscribirSocioDialog";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
 
@@ -36,11 +38,22 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   );
 }
 
-/** Bloque del detalle con su título, en el mismo contenedor que las tablas. */
-function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
+/** Bloque del detalle con su título (y una acción opcional), en el mismo contenedor que las tablas. */
+function Seccion({
+  titulo,
+  accion,
+  children,
+}: {
+  titulo: string;
+  accion?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-heading text-lg font-black tracking-tight uppercase">{titulo}</h2>
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading text-lg font-black tracking-tight uppercase">{titulo}</h2>
+        {accion}
+      </div>
       <div className="rounded-xl border bg-card p-4 sm:p-5">{children}</div>
     </section>
   );
@@ -72,6 +85,7 @@ export function SocioDetallePage() {
   const membresiasQuery = useMembresiasSocio(id);
   const pagosQuery = usePagosSocio(id);
   const [editando, setEditando] = useState(false);
+  const [inscribiendo, setInscribiendo] = useState(false);
 
   if (isPending) {
     return (
@@ -131,7 +145,18 @@ export function SocioDetallePage() {
       </Seccion>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Seccion titulo="Membresías">
+        <Seccion
+          titulo="Membresías"
+          accion={
+            // Un socio dado de baja no se puede inscribir (la API responde 404)
+            socio.activo && (
+              <Button size="sm" onClick={() => setInscribiendo(true)}>
+                <PlusIcon aria-hidden="true" />
+                Inscribir
+              </Button>
+            )
+          }
+        >
           {membresiasQuery.isPending ? (
             <p role="status" className="text-sm text-muted-foreground">
               Cargando membresías…
@@ -201,9 +226,16 @@ export function SocioDetallePage() {
                       {formatearFechaPago(pago.fecha)} · {METODO_PAGO_LABEL[pago.metodoPago]}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold tabular-nums">{formatearMonto(pago.monto)}</span>
-                    <EstadoPagoBadge estado={pago.estado} />
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold tabular-nums">
+                        {formatearMonto(pago.monto)}
+                      </span>
+                      <EstadoPagoBadge estado={pago.estado} />
+                    </div>
+                    {pago.estado === "PENDIENTE" && (
+                      <AccionesPagoPendiente pagoId={pago.id} concepto={conceptoDePago(pago)} />
+                    )}
                   </div>
                 </li>
               ))}
@@ -213,6 +245,11 @@ export function SocioDetallePage() {
       </div>
 
       <EditarSocioDialog socio={editando ? socio : null} onCerrar={() => setEditando(false)} />
+      <InscribirSocioDialog
+        socio={socio}
+        abierto={inscribiendo}
+        onAbiertoChange={setInscribiendo}
+      />
     </div>
   );
 }

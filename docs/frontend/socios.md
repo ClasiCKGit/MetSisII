@@ -60,6 +60,15 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 - **Membresías**: `useMembresiasSocio(id)` llama a `GET /api/membresias?socioId=…`. Cada una muestra actividad, tipo, fecha de fin (en UTC) y un badge con la vigencia que calcula la API (`Al día`, `Por vencer`, `Vencida` o `Cancelada`).
 - **Historial de pagos**: `usePagosSocio(id)` llama a `GET /api/pagos?socioId=…`, del más reciente al más antiguo. Muestra concepto (o actividad y tipo de la membresía), fecha, método, monto y estado. Usa la misma clave de TanStack Query que la pantalla de pagos (`["pagos", filtros]`), así que invalidar `["pagos"]` refresca las dos; no usa `keepPreviousData` para que al cambiar de socio no se vean los pagos del anterior.
 - Los formatos de pagos (montos en centavos, etiquetas, concepto) y `EstadoPagoBadge` están en `features/pagos/formato.ts` y `features/pagos/components/`, compartidos con `PagosPage`.
+- **Cobro de pagos pendientes**: cada pago `PENDIENTE` del historial tiene los botones **Cobrado** y **Rechazar** (`AccionesPagoPendiente`), que llaman a `PATCH /api/pagos/:id/estado`. El cambio no tiene vuelta atrás: la API solo acepta cambiar un pago pendiente (`409` si no). `useActualizarEstadoPago` invalida `["pagos"]` y `["dashboard"]`, porque un pago cobrado suma a los ingresos del mes.
+
+### 4.1 Inscripción a una actividad (`InscribirSocioDialog`)
+
+- El botón **Inscribir** de la sección Membresías abre el diálogo; no aparece si el socio está dado de baja (la API respondería `404`). Lo pueden usar administradores y recepción.
+- Campos: **actividad**, **tipo de membresía** (con precio y duración), **método de pago** y **fecha de inicio** (hoy por defecto).
+- Solo se ofrecen las actividades **activas que tienen algún tipo activo** (`useActividades` + `useTiposMembresia`, que llama a `GET /api/tipos-membresia`). El select de tipos se habilita al elegir la actividad y solo muestra los suyos; al cambiar de actividad se limpia el tipo elegido. Si no hay ninguna, el diálogo avisa que un administrador tiene que cargar los tipos primero.
+- La fecha elegida se manda como medianoche UTC (`aFechaInicioIso`), igual que el resto de las fechas de vigencia; la API calcula la fecha de fin sumando la duración del tipo.
+- Al confirmar llama a `POST /api/membresias/inscripciones`, que crea la membresía y un **pago pendiente** por el precio del tipo. `useInscribirSocio` invalida `["membresias"]`, `["pagos"]` y `["dashboard"]`. Los errores de la API (ya inscripto, sin cupo, tipo inactivo) se muestran en el diálogo.
 
 ## 5. Métricas del inicio
 
@@ -76,17 +85,28 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 apps/web/src/
 ├── api/
 │   ├── socios.api.ts               # listarSocios, obtenerSocio, crearSocio, actualizarSocio
+│   ├── membresias.api.ts           # listarMembresiasSocio, listarMembresiasPorVigencia, inscribirSocio
+│   ├── tipos-membresia.api.ts      # listarTiposMembresia
+│   ├── pagos.api.ts                # listarPagos, actualizarEstadoPago
 │   └── dashboard.api.ts            # obtenerResumen
 ├── features/socios/
 │   ├── components/
 │   │   ├── SociosTable.tsx         # tabla; los botones de baja solo para ADMIN
-│   │   └── SocioDialogs.tsx        # CrearSocioDialog, EditarSocioDialog
-│   ├── hooks/useSocios.ts          # useSocios, useSocio, useCrearSocio, useActualizarSocio
+│   │   ├── SocioDialogs.tsx        # CrearSocioDialog, EditarSocioDialog
+│   │   └── InscribirSocioDialog.tsx
+│   ├── hooks/
+│   │   ├── useSocios.ts            # useSocios, useSocio, useCrearSocio, useActualizarSocio
+│   │   ├── useMembresiasSocio.ts   # useMembresiasSocio y MEMBRESIAS_KEY
+│   │   ├── usePagosSocio.ts
+│   │   └── useInscripcion.ts       # useTiposMembresia, useInscribirSocio
 │   ├── pages/
 │   │   ├── SociosPage.tsx          # listado, buscador y filtro
 │   │   └── SocioDetallePage.tsx    # detalle
-│   ├── schemas.ts                  # socioSchema, aSocioInput, aSocioCambios
+│   ├── schemas.ts                  # socioSchema, aSocioInput, aSocioCambios, inscripcionSchema
 │   └── types.ts                    # Socio, FiltroEstado
+├── features/pagos/
+│   ├── components/AccionesPagoPendiente.tsx  # Cobrado / Rechazar
+│   └── hooks/useActualizarEstadoPago.ts
 ├── features/dashboard/
 │   ├── hooks/useResumen.ts         # useResumen y DASHBOARD_KEY
 │   ├── hooks/useVencimientosProximos.ts
@@ -100,13 +120,15 @@ Las rutas están en `routes/index.tsx` (dentro de `RequireAuth`, sin `RequireRol
 
 ## 7. Tests
 
-La API falsa (`tests/mocks/fake-api.ts`) imita los endpoints de socios y el resumen del inicio: permisos (baja solo `ADMIN`), `404` entre gimnasios, `409` por DNI repetido, filtros `q` y `activo`, y `null` para borrar opcionales. **Si cambia la API de socios, hay que actualizarla.**
+La API falsa (`tests/mocks/fake-api.ts`) imita los endpoints de socios, membresías (listado e inscripción), tipos de membresía (listado y alta), pagos (listado, alta y cambio de estado) y el resumen del inicio: permisos (baja solo `ADMIN`), `404` entre gimnasios, `409` por DNI repetido, filtros `q` y `activo`, y `null` para borrar opcionales. **Si cambia la API de socios, hay que actualizarla.**
 
-Helpers en `tests/helpers/api.ts`: `apiCrearSocio`, `apiListarSocios` (activos e inactivos) y `apiDarDeBajaSocio`.
+Helpers en `tests/helpers/api.ts`: `apiCrearSocio`, `apiListarSocios` (activos e inactivos), `apiDarDeBajaSocio`, `apiCrearTipoMembresia`, `apiInscribir`, `apiCrearPago`, `apiListarMembresias` y `apiListarPagos`.
 
 | Archivo | Qué prueba |
 |---|---|
 | `tests/integration/socios.test.tsx` | Listado y orden, aislamiento, búsqueda y filtro, alta, validaciones del cliente, DNI repetido, edición que borra un opcional, baja y reactivación, permisos de la recepción, detalle (incluida la fecha en UTC), socio de otro gimnasio y enlace del menú |
+| `tests/integration/socio-detalle.test.tsx` | Membresías e historial de pagos del socio |
+| `tests/integration/inscripcion.test.tsx` | Inscripción completa (con la fecha y el pago que quedan en la API), opciones de actividad y tipo, validaciones, error de la API por inscripción repetida, aviso sin tipos, socio dado de baja, y cobro o rechazo de un pago pendiente |
 | `tests/integration/dashboard.test.tsx` | Conteo de socios activos del propio gimnasio, `0` sin socios, actualización al dar de alta, ingresos del mes (solo pagos cobrados) y vencimientos próximos con la lista y el enlace al socio |
 
 Como en el resto de los tests de pantalla, se espera **el dato de la tabla** (`findByRole("row", ...)`) y no un texto suelto: "Ana Admin" o el nombre del gimnasio también aparecen en la barra lateral, y un test que no espera la lista puede terminar antes de que llegue.

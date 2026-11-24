@@ -62,6 +62,8 @@ export function TextField<T extends FieldValues>({
 interface SelectFieldProps<T extends FieldValues> extends FieldBaseProps<T> {
   options: Array<{ value: string; label: string }>;
   disabled?: boolean;
+  // Se llama con el valor nuevo, además de actualizar el formulario
+  onValueChange?: (value: string) => void;
 }
 
 // Usa NativeSelect (un <select> con estilo) en vez del Select de Base UI: es más simple,
@@ -73,6 +75,7 @@ export function SelectField<T extends FieldValues>({
   description,
   options,
   disabled,
+  onValueChange,
 }: SelectFieldProps<T>) {
   const selectId = `${useId()}-${name}`;
 
@@ -86,6 +89,10 @@ export function SelectField<T extends FieldValues>({
           <NativeSelect
             {...field}
             value={(field.value as string | undefined) ?? ""}
+            onChange={(event) => {
+              field.onChange(event);
+              onValueChange?.(event.target.value);
+            }}
             id={selectId}
             disabled={disabled}
             aria-invalid={fieldState.invalid}
