@@ -90,3 +90,5 @@ jobs:
         run: npm test
         env:
           TEST_DATABASE_URL: postgresql://fitmanager:fitmanager@localhost:5432/fitmanager_test
+          RESEND_API_KEY: re_test_dummy
+          MAIL_FROM: FitManager <onboarding@resend.dev>
