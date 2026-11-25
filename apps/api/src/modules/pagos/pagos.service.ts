@@ -1,6 +1,8 @@
 import { Prisma } from "../../generated/prisma/client";
+import { env } from "../../config/env";
 import type { TenantClient } from "../../config/tenant";
 import { AppError } from "../../middlewares/error.middleware";
+import { pagosACsv } from "./pagos.csv";
 import type { CrearPagoInput, ListarPagosQuery } from "./pagos.schema";
 
 const pagoInclude = {
@@ -43,6 +45,11 @@ export async function listarPagos(db: TenantClient, filtros: ListarPagosQuery) {
   });
 
   return pagos.map(serializarPago);
+}
+
+// Los mismos pagos que el listado con esos filtros, como reporte CSV
+export async function exportarPagosCsv(db: TenantClient, filtros: ListarPagosQuery) {
+  return pagosACsv(await listarPagos(db, filtros), env.ZONA_HORARIA);
 }
 
 export async function obtenerPago(db: TenantClient, id: string) {

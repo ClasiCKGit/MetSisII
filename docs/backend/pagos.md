@@ -7,6 +7,7 @@
 | Método | Ruta | Descripción |
 | --- | --- | --- |
 | `GET` | `/api/pagos` | Lista pagos; permite filtrar por `socioId`, `membresiaId`, `estado`, `metodoPago`, `desde` y `hasta` |
+| `GET` | `/api/pagos/exportar` | Descarga el reporte de pagos en CSV, con los mismos filtros que el listado (solo ADMIN) |
 | `GET` | `/api/pagos/:id` | Obtiene un pago con el socio y la membresía asociada |
 | `POST` | `/api/pagos` | Registra un pago (ADMIN o RECEPCIONISTA) |
 | `PATCH` | `/api/pagos/:id/estado` | Cambia un pago pendiente a `PAGADO` o `RECHAZADO` (ADMIN o RECEPCIONISTA) |
@@ -29,6 +30,21 @@ Content-Type: application/json
 ```
 
 Los filtros de fecha `desde` y `hasta` aceptan fechas ISO 8601 con zona horaria y delimitan `fecha` de forma inclusiva. Por ejemplo: `/api/pagos?estado=PAGADO&socioId=<uuid-socio>&desde=2026-11-01T00:00:00.000Z&hasta=2026-11-30T23:59:59.999Z`.
+
+## Reporte CSV
+
+`GET /api/pagos/exportar` devuelve los mismos pagos que `GET /api/pagos` con esos filtros (mismo orden, misma validación: 400 si un filtro es inválido o el rango está invertido), como archivo `text/csv; charset=utf-8` con `Content-Disposition: attachment; filename="pagos.csv"`. Es solo para ADMIN porque es un reporte de ingresos; recepción recibe 403.
+
+El formato está pensado para abrirse con doble clic en Excel con configuración regional en español:
+
+- Columnas: `Fecha;Socio;Concepto;Método de pago;Estado;Monto`.
+- Separador `;` y montos con coma decimal (`1000,25`), porque en es-AR la coma es el separador decimal.
+- BOM UTF-8 al principio, sin el cual Excel rompe las tildes, y fin de línea CRLF.
+- Fecha como `dd/mm/aaaa hh:mm` en `ZONA_HORARIA`, no en UTC.
+- Socio como `Apellido, Nombre`; el concepto sigue el mismo criterio que la pantalla (el del pago, o `Actividad · Tipo de membresía`, o `Pago suelto`).
+- Las celdas con `;`, comillas o saltos de línea van entre comillas, y las que empiezan con `=`, `+`, `-` o `@` llevan un apóstrofo adelante para que Excel no las ejecute como fórmula (inyección de CSV).
+
+La generación está en `pagos.csv.ts` (función pura, con tests en `tests/unit/pagos-csv.test.ts`). En el frontend, el botón "Exportar CSV" de la pantalla de Pagos lo ve solo el administrador; el nombre del archivo descargado incluye el período filtrado (`pagos_2026-11-01_a_2026-11-30.csv`).
 
 ## Importe decimal en las respuestas
 

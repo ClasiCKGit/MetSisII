@@ -7,6 +7,12 @@ export async function listar(req: Request, res: Response) {
   res.json(await pagosService.listarPagos(req.db, filtros));
 }
 
+export async function exportar(req: Request, res: Response) {
+  const filtros = listarPagosQuerySchema.parse(req.query);
+  const csv = await pagosService.exportarPagosCsv(req.db, filtros);
+  res.attachment("pagos.csv").type("text/csv; charset=utf-8").send(csv);
+}
+
 export async function obtener(req: Request, res: Response) {
   const { id } = pagoIdParamSchema.parse(req.params);
   res.json(await pagosService.obtenerPago(req.db, id));

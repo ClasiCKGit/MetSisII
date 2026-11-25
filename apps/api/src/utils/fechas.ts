@@ -52,6 +52,13 @@ export function rangoDelMes(ahora: Date, zona: string): { desde: Date; hasta: Da
   };
 }
 
+/** Fecha y hora en la zona indicada como "dd/mm/aaaa hh:mm" (24 h), el formato que lee Excel en español. */
+export function formatearFechaHora(fecha: Date, zona: string): string {
+  const p = partesEnZona(fecha, zona);
+  const dos = (n: number) => String(n).padStart(2, "0");
+  return `${dos(p.dia)}/${dos(p.mes)}/${p.anio} ${dos(p.hora)}:${dos(p.minuto)}`;
+}
+
 export function esZonaHorariaValida(zona: string): boolean {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: zona });
