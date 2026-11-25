@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { envSchema } from "../../src/config/env";
 
-const base = { DATABASE_URL: "postgresql://localhost/x", JWT_SECRET: "secreto-de-prueba" };
+const base = {
+  DATABASE_URL: "postgresql://localhost/x",
+  JWT_SECRET: "secreto-de-prueba",
+  RESEND_API_KEY: "re_test_dummy",
+  MAIL_FROM: "FitManager <onboarding@resend.dev>",
+};
 
 describe("REGISTRO_GIMNASIOS_HABILITADO", () => {
   it("está habilitado si no se define", () => {
