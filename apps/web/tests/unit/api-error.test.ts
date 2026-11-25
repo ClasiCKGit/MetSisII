@@ -29,6 +29,12 @@ describe("toApiError", () => {
     expect(e.details).toEqual({ errors: ["x"] });
   });
 
+  it("entiende el error JSON que llega como texto en una descarga", () => {
+    const e = toApiError(errorDeAxios(403, '{"error":"No tenés permisos para esta acción"}'));
+    expect(e.status).toBe(403);
+    expect(e.message).toBe("No tenés permisos para esta acción");
+  });
+
   it("usa un mensaje genérico si la respuesta no tiene la forma esperada", () => {
     expect(toApiError(errorDeAxios(500, "<html>caído</html>")).message).toBe(
       "Ocurrió un error inesperado"

@@ -31,6 +31,17 @@ function detallesDe(data: unknown): unknown {
   return undefined;
 }
 
+// Un pedido con responseType "text" (por ejemplo, la descarga de un CSV) recibe el error
+// JSON como texto sin parsear
+function comoJson(data: unknown): unknown {
+  if (typeof data !== "string") return data;
+  try {
+    return JSON.parse(data) as unknown;
+  } catch {
+    return data;
+  }
+}
+
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
 
@@ -39,7 +50,8 @@ export function toApiError(error: unknown): ApiError {
     if (!error.response) {
       return new ApiError(null, "No se pudo conectar con el servidor");
     }
-    const { status, data } = error.response;
+    const { status } = error.response;
+    const data = comoJson(error.response.data);
     return new ApiError(status, mensajeDe(data) ?? "Ocurrió un error inesperado", detallesDe(data));
   }
 
