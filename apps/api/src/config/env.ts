@@ -16,6 +16,10 @@ export const envSchema = z.object({
     .string()
     .refine(esZonaHorariaValida, "ZONA_HORARIA debe ser una zona horaria IANA válida")
     .default("America/Argentina/Buenos_Aires"),
+  RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY es obligatoria"),
+  // Remitente de los mails. Mientras no haya dominio propio verificado en Resend,
+  // usar el de prueba: onboarding@resend.dev
+  MAIL_FROM: z.string().min(1, "MAIL_FROM es obligatoria"),
 });
 
 const parsed = envSchema.safeParse(process.env);
