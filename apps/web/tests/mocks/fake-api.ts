@@ -353,6 +353,82 @@ const crearUsuario = (datos: Omit<FakeUsuario, "id" | "createdAt" | "activo">): 
 
 // ───────── handlers ─────────
 
+// Filtros de GET /pagos (también los usa la exportación): la lista ordenada o un 400
+function pagosFiltrados(actual: Autenticado, request: Request): FakePago[] | Response {
+  const params = new URL(request.url).searchParams;
+  const socioId = params.get("socioId");
+  const estadoPago = params.get("estado");
+  const desde = params.get("desde");
+  const hasta = params.get("hasta");
+  if (
+    (socioId !== null && !UUID.test(socioId)) ||
+    (estadoPago !== null && !ESTADOS_PAGO.includes(estadoPago as EstadoPago)) ||
+    (desde !== null && !fechaIsoValida(desde)) ||
+    (hasta !== null && !fechaIsoValida(hasta))
+  ) {
+    return errorDeValidacion();
+  }
+
+  return estado.pagos
+    .filter((p) => p.gimnasioId === actual.gimnasio.id)
+    .filter((p) => socioId === null || p.socioId === socioId)
+    .filter((p) => estadoPago === null || p.estado === estadoPago)
+    .filter((p) => desde === null || new Date(p.fecha) >= new Date(desde))
+    .filter((p) => hasta === null || new Date(p.fecha) <= new Date(hasta))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt.localeCompare(a.createdAt));
+}
+
+// Mismo formato que apps/api/src/modules/pagos/pagos.csv.ts (zona horaria por defecto de la API)
+function pagosACsv(pagos: FakePago[]): string {
+  const ETIQUETAS: Record<string, string> = {
+    EFECTIVO: "Efectivo",
+    TARJETA: "Tarjeta",
+    TRANSFERENCIA: "Transferencia",
+    MERCADO_PAGO: "Mercado Pago",
+    PENDIENTE: "Pendiente",
+    PAGADO: "Pagado",
+    RECHAZADO: "Rechazado",
+  };
+  const fecha = (iso: string) => {
+    const partes = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date(iso));
+    const p = (tipo: Intl.DateTimeFormatPartTypes) =>
+      partes.find((parte) => parte.type === tipo)?.value ?? "";
+    return `${p("day")}/${p("month")}/${p("year")} ${p("hour")}:${p("minute")}`;
+  };
+  const celda = (valor: string) => {
+    const seguro = /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
+    return /[";\r\n]/.test(seguro) ? `"${seguro.replaceAll('"', '""')}"` : seguro;
+  };
+
+  const filas = pagos.map((pago) => {
+    const { socio, membresia } = pagoConRelaciones(pago);
+    const concepto =
+      pago.concepto ??
+      (membresia
+        ? `${membresia.actividad.nombre} · ${membresia.tipoMembresia.nombre}`
+        : "Pago suelto");
+    return [
+      fecha(pago.fecha),
+      socio ? `${socio.apellido}, ${socio.nombre}` : "",
+      concepto,
+      ETIQUETAS[pago.metodoPago],
+      ETIQUETAS[pago.estado],
+      pago.monto.replace(".", ","),
+    ];
+  });
+  const encabezado = ["Fecha", "Socio", "Concepto", "Método de pago", "Estado", "Monto"];
+  const lineas = [encabezado, ...filas].map((fila) => fila.map(celda).join(";"));
+  return "\uFEFF" + lineas.join("\r\n") + "\r\n";
+}
+
 export function crearHandlers(apiUrl: string) {
   const base = `${apiUrl}/api`;
 
@@ -1172,29 +1248,25 @@ export function crearHandlers(apiUrl: string) {
       const actual = autenticar(request);
       if (actual instanceof Response) return actual;
 
-      const params = new URL(request.url).searchParams;
-      const socioId = params.get("socioId");
-      const estadoPago = params.get("estado");
-      const desde = params.get("desde");
-      const hasta = params.get("hasta");
-      if (
-        (socioId !== null && !UUID.test(socioId)) ||
-        (estadoPago !== null && !ESTADOS_PAGO.includes(estadoPago as EstadoPago)) ||
-        (desde !== null && !fechaIsoValida(desde)) ||
-        (hasta !== null && !fechaIsoValida(hasta))
-      ) {
-        return errorDeValidacion();
-      }
+      const lista = pagosFiltrados(actual, request);
+      return lista instanceof Response ? lista : respuesta(200, lista.map(pagoConRelaciones));
+    }),
 
-      const lista = estado.pagos
-        .filter((p) => p.gimnasioId === actual.gimnasio.id)
-        .filter((p) => socioId === null || p.socioId === socioId)
-        .filter((p) => estadoPago === null || p.estado === estadoPago)
-        .filter((p) => desde === null || new Date(p.fecha) >= new Date(desde))
-        .filter((p) => hasta === null || new Date(p.fecha) <= new Date(hasta))
-        .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.createdAt.localeCompare(a.createdAt))
-        .map(pagoConRelaciones);
-      return respuesta(200, lista);
+    // Igual que la API: reporte CSV con los filtros del listado, solo para ADMIN
+    http.get(`${base}/pagos/exportar`, ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const lista = pagosFiltrados(actual, request);
+      if (lista instanceof Response) return lista;
+      return new HttpResponse(pagosACsv(lista), {
+        status: 200,
+        headers: {
+          ...CORS,
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="pagos.csv"',
+        },
+      });
     }),
 
     http.post(`${base}/pagos`, async ({ request }) => {

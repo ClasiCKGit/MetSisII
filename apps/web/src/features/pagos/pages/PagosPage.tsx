@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/table";
 import { useSocios } from "@/features/socios/hooks/useSocios";
 import { getErrorMessage } from "@/lib/api-error";
+import { useAuthStore } from "@/store/auth.store";
 import { EstadoPagoBadge } from "../components/EstadoPagoBadge";
+import { ExportarPagosButton } from "../components/ExportarPagosButton";
 import {
   aCentavos,
   conceptoDePago,
@@ -22,6 +24,7 @@ import {
   formatearFechaPago,
   formatearMonto,
   METODO_PAGO_LABEL,
+  nombreReportePagos,
 } from "../formato";
 import { usePagos } from "../hooks/usePagos";
 import type { EstadoPago, FiltrosPagos } from "../types";
@@ -58,6 +61,8 @@ export function PagosPage() {
     socioId: "",
     estado: "TODOS",
   });
+  // El reporte de ingresos lo exporta solo el administrador (la API responde 403 a recepción)
+  const puedeExportar = useAuthStore((state) => state.usuario?.rol === "ADMIN");
   const socios = useSocios({});
   const filtrosApi = useMemo<FiltrosPagos>(
     () => ({
@@ -94,6 +99,15 @@ export function PagosPage() {
       <EncabezadoPantalla
         titulo="Pagos"
         descripcion="Consultá los cobros del gimnasio y filtrá por período, socio o estado."
+        accion={
+          puedeExportar && (
+            <ExportarPagosButton
+              filtros={filtrosApi}
+              nombreArchivo={nombreReportePagos(filtros.desde, filtros.hasta)}
+              disabled={!pagos.data?.length}
+            />
+          )
+        }
       />
 
       <section aria-label="Resumen de pagos filtrados" className="grid gap-4 sm:grid-cols-3">

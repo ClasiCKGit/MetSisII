@@ -34,6 +34,14 @@ export function formatearFechaPago(iso: string): string {
   return new Date(iso).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" });
 }
 
+// Nombre del archivo del reporte según el período elegido (fechas "aaaa-mm-dd" del filtro)
+export function nombreReportePagos(desde: string, hasta: string): string {
+  if (desde && hasta) return `pagos_${desde}_a_${hasta}.csv`;
+  if (desde) return `pagos_desde_${desde}.csv`;
+  if (hasta) return `pagos_hasta_${hasta}.csv`;
+  return "pagos.csv";
+}
+
 export function conceptoDePago(pago: Pick<Pago, "concepto" | "membresia">): string {
   if (pago.concepto) return pago.concepto;
   return pago.membresia

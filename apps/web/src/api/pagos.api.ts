@@ -6,6 +6,16 @@ export async function listarPagos(filtros: FiltrosPagos): Promise<Pago[]> {
   return data;
 }
 
+// Reporte CSV con los mismos filtros que el listado (solo ADMIN). Se pide como texto:
+// los errores siguen llegando como JSON y api-error los interpreta.
+export async function exportarPagos(filtros: FiltrosPagos): Promise<string> {
+  const { data } = await apiClient.get<string>("/pagos/exportar", {
+    params: filtros,
+    responseType: "text",
+  });
+  return data;
+}
+
 // Solo un pago pendiente cambia de estado (la API responde 409 si no)
 export async function actualizarEstadoPago(
   id: string,
