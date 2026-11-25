@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app";
 import { prisma } from "../../src/config/database";
 import { comparePassword } from "../../src/utils/password";
@@ -12,6 +12,16 @@ import {
   PASSWORD,
   tokenDe,
 } from "../helpers/factories";
+import crypto from "node:crypto";
+import * as mailer from "../../src/utils/mailer";
+
+// Mock completo: evita instanciar el cliente real de Resend y mandar mails en CI
+vi.mock("../../src/utils/mailer", () => ({ enviarMail: vi.fn() }));
+const enviarMailMock = vi.mocked(mailer.enviarMail);
+
+function hashTokenDePrueba(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 const app = createApp();
 
@@ -465,5 +475,137 @@ describe("POST /api/auth/change-password", () => {
     const deB = await prisma.usuario.findUniqueOrThrow({ where: { id: b.admin.id } });
     expect(await comparePassword(PASSWORD, deB.passwordHash)).toBe(true);
     expect(deB.tokenVersion).toBe(b.admin.tokenVersion);
+  });
+});
+describe("POST /api/auth/forgot-password", () => {
+  beforeEach(() => {
+    enviarMailMock.mockClear();
+    enviarMailMock.mockResolvedValue(undefined);
+  });
+
+  it("manda el mail y crea el token cuando el usuario existe", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com" });
+
+    expect(res.status).toBe(200);
+    expect(enviarMailMock).toHaveBeenCalledTimes(1);
+    expect(enviarMailMock.mock.calls[0][0].to).toBe("ana@gymtest.com");
+
+    const token = await prisma.passwordResetToken.findFirst({ where: { usuarioId: usuario.id } });
+    expect(token).not.toBeNull();
+  });
+
+  it("responde el mismo mensaje genérico aunque el email no exista (no revela nada)", async () => {
+    await crearGimnasio({ slug: "gym-test" });
+
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "no-existe@gymtest.com" });
+
+    expect(res.status).toBe(200);
+    expect(enviarMailMock).not.toHaveBeenCalled();
+  });
+
+  it("responde el mismo mensaje genérico aunque el gimnasio no exista", async () => {
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "no-existe", email: "a@b.com" });
+
+    expect(res.status).toBe(200);
+    expect(enviarMailMock).not.toHaveBeenCalled();
+  });
+
+  it("invalida el token anterior si se pide un nuevo reset", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+
+    await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com" });
+    await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com" });
+
+    const tokens = await prisma.passwordResetToken.findMany({ where: { usuarioId: usuario.id } });
+    expect(tokens).toHaveLength(1);
+  });
+});
+
+describe("POST /api/auth/reset-password", () => {
+  it("cambia la contraseña y la nueva sirve para iniciar sesión", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+    const token = "token-de-prueba-123";
+    await prisma.passwordResetToken.create({
+      data: {
+        usuarioId: usuario.id,
+        tokenHash: hashTokenDePrueba(token),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token, newPassword: "nuevaClave123" });
+
+    expect(res.status).toBe(200);
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com", password: "nuevaClave123" });
+    expect(login.status).toBe(200);
+  });
+
+  it("el token no se puede volver a usar", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+    const token = "token-de-prueba-123";
+    await prisma.passwordResetToken.create({
+      data: {
+        usuarioId: usuario.id,
+        tokenHash: hashTokenDePrueba(token),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+
+    await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token, newPassword: "nuevaClave123" });
+    const segundoIntento = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token, newPassword: "otraClave456" });
+
+    expect(segundoIntento.status).toBe(400);
+  });
+
+  it("rechaza un token expirado", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+    const token = "token-vencido";
+    await prisma.passwordResetToken.create({
+      data: {
+        usuarioId: usuario.id,
+        tokenHash: hashTokenDePrueba(token),
+        expiresAt: new Date(Date.now() - 1000),
+      },
+    });
+
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token, newPassword: "nuevaClave123" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza un token que no existe", async () => {
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: "no-existe", newPassword: "nuevaClave123" });
+
+    expect(res.status).toBe(400);
   });
 });

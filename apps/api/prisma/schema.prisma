@@ -64,12 +64,25 @@ model Usuario {
   tokenVersion Int        @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  passwordResetTokens PasswordResetToken[]
 
   gimnasio Gimnasio @relation(fields: [gimnasioId], references: [id], onDelete: Cascade)
 
   @@unique([gimnasioId, email])
   @@index([gimnasioId])
   @@map("usuarios")
+}
+model PasswordResetToken {
+  id         String   @id @default(uuid())
+  usuarioId  String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("password_reset_tokens")
 }
 
 // ────────────────────────────────

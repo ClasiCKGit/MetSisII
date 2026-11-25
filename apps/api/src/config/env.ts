@@ -20,6 +20,8 @@ export const envSchema = z.object({
   // Remitente de los mails. Mientras no haya dominio propio verificado en Resend,
   // usar el de prueba: onboarding@resend.dev
   MAIL_FROM: z.string().min(1, "MAIL_FROM es obligatoria"),
+  // URL del frontend, para armar el link de recuperación de contraseña que va en el mail
+  FRONTEND_URL: z.string().min(1, "FRONTEND_URL es obligatoria").default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);

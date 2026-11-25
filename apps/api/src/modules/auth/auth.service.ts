@@ -4,8 +4,17 @@ import type { TenantClient } from "../../config/tenant";
 import { AppError } from "../../middlewares/error.middleware";
 import { signToken } from "../../utils/jwt";
 import { BCRYPT_ROUNDS, comparePassword, hashPassword } from "../../utils/password";
-import type { ChangePasswordInput, LoginInput, RegisterGimnasioInput } from "./auth.schema";
+import type {
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterGimnasioInput,
+  ResetPasswordInput,
+} from "./auth.schema";
 import type { AuthContext } from "./auth.types";
+import crypto from "node:crypto";
+import { env } from "../../config/env";
+import { enviarMail } from "../../utils/mailer";
 
 // Hash ficticio: si el usuario no existe igual hacemos un compare, para que el
 // tiempo de respuesta no revele qué emails están registrados.
@@ -116,4 +125,72 @@ export async function changePassword(
   });
 
   return buildSession(actualizado, actor.gimnasio);
+}
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+/**
+ * Siempre resuelve sin error, exista o no el usuario: el controller responde
+ * siempre el mismo mensaje genérico, para no revelar qué emails están registrados.
+ */
+export async function forgotPassword({ gimnasioSlug, email }: ForgotPasswordInput): Promise<void> {
+  const gimnasio = await prisma.gimnasio.findUnique({ where: { slug: gimnasioSlug } });
+
+  const usuario = gimnasio?.activo
+    ? await prisma.usuario.findUnique({
+        where: { gimnasioId_email: { gimnasioId: gimnasio.id, email } },
+      })
+    : null;
+
+  if (!gimnasio || !usuario || !usuario.activo) return;
+
+  const token = crypto.randomBytes(32).toString("hex");
+
+  // Invalida cualquier link anterior que no se haya usado todavía
+  await prisma.$transaction([
+    prisma.passwordResetToken.deleteMany({ where: { usuarioId: usuario.id } }),
+    prisma.passwordResetToken.create({
+      data: {
+        usuarioId: usuario.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    }),
+  ]);
+
+  const link = `${env.FRONTEND_URL}/reset-password?token=${token}`;
+
+  await enviarMail({
+    to: usuario.email,
+    subject: "Restablecer tu contraseña de FitManager",
+    html: `
+      <p>Hola ${usuario.nombre},</p>
+      <p>Recibimos un pedido para restablecer tu contraseña. Si fuiste vos, hacé clic en el siguiente link (válido por 1 hora):</p>
+      <p><a href="${link}">${link}</a></p>
+      <p>Si no fuiste vos, podés ignorar este mail.</p>
+    `,
+  });
+}
+
+/** Deja inválidos todos los tokens del usuario y cierra cualquier sesión abierta (tokenVersion). */
+export async function resetPassword({ token, newPassword }: ResetPasswordInput): Promise<void> {
+  const registro = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashToken(token) },
+  });
+
+  if (!registro || registro.expiresAt < new Date()) {
+    throw new AppError(400, "El link no es válido o expiró");
+  }
+
+  await prisma.$transaction([
+    prisma.usuario.update({
+      where: { id: registro.usuarioId },
+      data: { passwordHash: await hashPassword(newPassword), tokenVersion: { increment: 1 } },
+    }),
+    prisma.passwordResetToken.deleteMany({ where: { usuarioId: registro.usuarioId } }),
+  ]);
 }

@@ -27,3 +27,15 @@ export async function changePassword(req: Request, res: Response) {
   const session = await authService.changePassword(req.db, req.auth, req.body);
   res.json(session);
 }
+
+export async function forgotPassword(req: Request, res: Response) {
+  await authService.forgotPassword(req.body);
+  res.json({
+    message: "Si el email existe, vas a recibir instrucciones para restablecer tu contraseña",
+  });
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  await authService.resetPassword(req.body);
+  res.json({ message: "Contraseña actualizada correctamente" });
+}
