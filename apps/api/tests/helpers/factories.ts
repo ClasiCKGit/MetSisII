@@ -59,6 +59,7 @@ interface DatosSocio {
   nombre?: string;
   apellido?: string;
   dni?: string;
+  email?: string;
   activo?: boolean;
 }
 
@@ -127,6 +128,7 @@ interface DatosMembresia {
   fechaInicio?: Date;
   fechaFin?: Date;
   estado?: "ACTIVA" | "VENCIDA" | "CANCELADA";
+  recordatorioEnviado?: boolean;
 }
 
 export async function crearMembresia(
@@ -147,6 +149,7 @@ export async function crearMembresia(
       fechaInicio,
       fechaFin,
       estado: datos.estado ?? "ACTIVA",
+      recordatorioEnviado: datos.recordatorioEnviado ?? false,
     },
   });
 }

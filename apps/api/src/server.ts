@@ -4,6 +4,7 @@ import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { createApp } from "./app";
 import { prisma } from "./config/database";
+import { programarRecordatorioVencimiento } from "./jobs/recordatorio-vencimiento.job";
 
 const app = createApp();
 
@@ -11,6 +12,7 @@ async function start() {
   try {
     await prisma.$connect();
     logger.info("Conectado a la base de datos");
+    programarRecordatorioVencimiento();
 
     app.listen(env.PORT, () => {
       logger.info(`API corriendo en http://localhost:${env.PORT}`);
