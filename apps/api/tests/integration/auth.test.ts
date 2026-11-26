@@ -499,6 +499,34 @@ describe("POST /api/auth/forgot-password", () => {
     expect(token).not.toBeNull();
   });
 
+  it("responde el mismo mensaje genérico aunque falle el envío del mail", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    const usuario = await crearUsuario(gimnasio.id, { email: "ana@gymtest.com" });
+    enviarMailMock.mockRejectedValue(new Error("Resend caído"));
+
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com" });
+
+    expect(res.status).toBe(200);
+    expect(enviarMailMock).toHaveBeenCalledTimes(1);
+    const token = await prisma.passwordResetToken.findFirst({ where: { usuarioId: usuario.id } });
+    expect(token).not.toBeNull();
+  });
+
+  it("escapa el nombre del usuario en el HTML del mail", async () => {
+    const gimnasio = await crearGimnasio({ slug: "gym-test" });
+    await crearUsuario(gimnasio.id, { email: "ana@gymtest.com", nombre: "<b>Ana</b>" });
+
+    await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ gimnasioSlug: "gym-test", email: "ana@gymtest.com" });
+
+    const html = enviarMailMock.mock.calls[0][0].html;
+    expect(html).toContain("&lt;b&gt;Ana&lt;/b&gt;");
+    expect(html).not.toContain("<b>Ana</b>");
+  });
+
   it("responde el mismo mensaje genérico aunque el email no exista (no revela nada)", async () => {
     await crearGimnasio({ slug: "gym-test" });
 

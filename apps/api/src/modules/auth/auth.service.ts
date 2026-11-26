@@ -14,6 +14,7 @@ import type {
 import type { AuthContext } from "./auth.types";
 import crypto from "node:crypto";
 import { env } from "../../config/env";
+import { escaparHtml } from "../../utils/html";
 import { enviarMail } from "../../utils/mailer";
 import { logger } from "../../config/logger";
 
@@ -137,22 +138,16 @@ function hashToken(token: string): string {
 /**
  * Siempre resuelve sin error, exista o no el usuario: el controller responde
  * siempre el mismo mensaje genérico, para no revelar qué emails están registrados.
+ * Por eso el mail se manda sin esperarlo: si se esperara, el tiempo de respuesta
+ * delataría que el usuario existe, y un fallo de Resend devolvería un error.
  */
 export async function forgotPassword({ gimnasioSlug, email }: ForgotPasswordInput): Promise<void> {
   const gimnasio = await prisma.gimnasio.findUnique({ where: { slug: gimnasioSlug } });
-  logger.info(
-    { gimnasioSlug, encontrado: !!gimnasio, activo: gimnasio?.activo },
-    "DEBUG forgotPassword: gimnasio"
-  );
   const usuario = gimnasio?.activo
     ? await prisma.usuario.findUnique({
         where: { gimnasioId_email: { gimnasioId: gimnasio.id, email } },
       })
     : null;
-  logger.info(
-    { email, encontrado: !!usuario, activo: usuario?.activo },
-    "DEBUG forgotPassword: usuario"
-  );
   if (!gimnasio || !usuario || !usuario.activo) return;
 
   const token = crypto.randomBytes(32).toString("hex");
@@ -171,15 +166,20 @@ export async function forgotPassword({ gimnasioSlug, email }: ForgotPasswordInpu
 
   const link = `${env.FRONTEND_URL}/reset-password?token=${token}`;
 
-  await enviarMail({
+  enviarMail({
     to: usuario.email,
     subject: "Restablecer tu contraseña de FitManager",
     html: `
-      <p>Hola ${usuario.nombre},</p>
+      <p>Hola ${escaparHtml(usuario.nombre)},</p>
       <p>Recibimos un pedido para restablecer tu contraseña. Si fuiste vos, hacé clic en el siguiente link (válido por 1 hora):</p>
       <p><a href="${link}">${link}</a></p>
       <p>Si no fuiste vos, podés ignorar este mail.</p>
     `,
+  }).catch((err: unknown) => {
+    logger.error(
+      { err, usuarioId: usuario.id },
+      "No se pudo enviar el mail de recuperación de contraseña"
+    );
   });
 }
 
