@@ -9,7 +9,7 @@ Producción usa dos servicios (FIT-79):
 
 Los dos despliegan solos desde la rama **`main`**: a `main` solo se llega por PR desde `dev`, con el CI en verde. Así, lo que está en producción siempre pasó lint, tests, e2e y el build de la imagen.
 
-**Por qué Railway y Netlify.** Railway corre la imagen Docker tal cual (con las migraciones al arrancar y el job de recordatorios, que necesita un proceso siempre prendido) y tiene Postgres en el mismo proyecto, en una red privada. El front es estático: Netlify lo sirve desde un CDN, con HTTPS y un deploy de vista previa por cada PR, sin costo.
+**Por qué Railway y Netlify.** Railway corre la imagen Docker tal cual (con las migraciones al arrancar y el job de recordatorios, que necesita un proceso siempre prendido) y tiene Postgres en el mismo proyecto, en una red privada. El front es estático: Netlify lo sirve desde un CDN, con HTTPS y sin costo.
 
 ---
 
@@ -59,3 +59,58 @@ curl https://<api>.up.railway.app/health
 ```
 
 Los logs están en el servicio, pestaña **Deployments → View logs** (en JSON, por pino).
+
+---
+
+## 2. Web en Netlify
+
+### Crear el sitio (una sola vez)
+
+1. En Netlify: **Add new project → Import an existing project → GitHub** y elegir el repositorio.
+2. Netlify lee `netlify.toml` de la raíz, así que los campos de build se completan solos:
+   - **Base directory:** la raíz. **Build command:** `npm run build -w apps/web`. **Publish directory:** `apps/web/dist`.
+   - Node 22 (`NODE_VERSION`).
+3. **Branch to deploy:** `main`.
+4. **Environment variables:** `VITE_API_URL` = la URL de Railway, **sin barra final** (`https://<api>.up.railway.app`). Vite la escribe dentro del build: si cambia, hay que volver a desplegar (**Deploys → Trigger deploy**).
+5. **Site configuration → Change site name** para tener una URL legible (`https://<sitio>.netlify.app`). Esa URL va en `FRONTEND_URL` de Railway.
+6. **Deploy Previews: desactivarlas** (*Site configuration → Build & deploy → Branches and deploy contexts*). Cada vista previa tiene una URL distinta que la API no acepta por CORS, así que no podría iniciar sesión.
+
+### Qué hace `netlify.toml`
+
+| Parte | Para qué |
+|---|---|
+| `ignore` | Si el commit no toca `apps/web`, `package.json`, el lockfile ni `netlify.toml`, Netlify no reconstruye. Un cambio que solo toca la API no redespliega la web |
+| Redirect `/* → /index.html` (200) | Es una SPA: sin esto, recargar en `/socios` daría 404, porque ese archivo no existe |
+| Headers de seguridad | No se puede embeber en un iframe (`X-Frame-Options`), no adivina tipos de archivo, no manda la URL completa a otros sitios y no pide cámara, micrófono ni ubicación |
+| Caché de `/assets/*` | Los archivos de Vite llevan un hash en el nombre: se cachean un año. `index.html` no se cachea, así un deploy nuevo se ve enseguida |
+
+### El orden la primera vez
+
+La API necesita la URL de la web (`FRONTEND_URL`) y la web la de la API (`VITE_API_URL`):
+
+1. Crear la API en Railway (sección 1) con `FRONTEND_URL` provisoria y generar su dominio.
+2. Crear el sitio en Netlify con `VITE_API_URL` y ponerle nombre.
+3. Volver a Railway y poner en `FRONTEND_URL` la URL de Netlify. Railway redespliega solo al cambiar una variable.
+
+Si la web carga pero el login falla con un error de red, casi siempre es CORS: `FRONTEND_URL` no coincide exactamente con la URL del sitio (`https`, sin barra final). En la consola del navegador se ve como "blocked by CORS policy".
+
+---
+
+## 3. Primer gimnasio y cierre del registro
+
+En producción no se corre el seed (la imagen no lo incluye). Los gimnasios se crean desde la web:
+
+1. Con `REGISTRO_GIMNASIOS_HABILITADO=true`, entrar a `https://<sitio>.netlify.app/registro` y registrar cada gimnasio con su administrador.
+2. Cambiar `REGISTRO_GIMNASIOS_HABILITADO` a `false` en Railway. La API responde 403 al registro y la web deja de mostrar el enlace.
+3. El resto del personal lo da de alta cada administrador desde **Usuarios**.
+
+---
+
+## 4. Checklist
+
+- [ ] `GET /health` de Railway responde 200.
+- [ ] La web carga y, recargando en `/socios`, sigue funcionando (sin 404).
+- [ ] Login, alta de socio, inscripción y cobro funcionan contra la API de Railway.
+- [ ] "Olvidé mi contraseña" manda el mail y el link abre la web de Netlify.
+- [ ] `REGISTRO_GIMNASIOS_HABILITADO=false` después de crear los gimnasios.
+- [ ] El respaldo diario de la base corrió al menos una vez.
