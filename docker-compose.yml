@@ -17,5 +17,29 @@ services:
       timeout: 5s
       retries: 5
 
+  # Imagen de producción de la API, para probarla en local contra el Postgres de arriba.
+  # Tiene perfil propio: `npm run db:up` sigue levantando solo la base.
+  #   npm run docker:api   (equivale a: docker compose --profile api up -d --build)
+  api:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: fitmanager-api
+    container_name: fitmanager-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Toma el resto de las variables (JWT_SECRET, RESEND_API_KEY, ...) de apps/api/.env
+    env_file: apps/api/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Dentro de la red de Compose la base es "postgres:5432", no localhost:POSTGRES_PORT
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    ports:
+      # 3001 para no chocar con `npm run dev`, que usa el 3000
+      - "${API_DOCKER_PORT:-3001}:3000"
+
 volumes:
   pgdata:
