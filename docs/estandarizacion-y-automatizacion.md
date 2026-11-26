@@ -43,6 +43,7 @@ flowchart LR
 | Configuración de VS Code | Mismo formato al guardar en todo el equipo | `.vscode/` | Implementado |
 | GitHub Actions | Validar lint, formato, build y tests | `.github/workflows/ci.yml` | Implementado |
 | Ruleset de `main` | Impedir merges con el CI en rojo | GitHub → Settings → Rules | Implementado |
+| Respaldo diario de la base | Volcado cifrado de producción, 30 días | `.github/workflows/respaldo-db.yml` | Implementado |
 | Docker Compose | Postgres idéntico para todos | `docker-compose.yml` | Implementado |
 | Validación de variables de entorno (Zod) | Fallar al arrancar si falta una variable | `apps/api/src/config/env.ts`, `apps/web/src/config/env.ts` | Implementado |
 | Prisma Migrate | Esquema de la base versionado | `apps/api/prisma/` | Implementado |

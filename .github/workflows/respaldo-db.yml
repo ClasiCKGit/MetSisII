@@ -1,0 +1,62 @@
+# Respaldo diario de la base de producción (Railway). Detalle en docs/deploy-produccion.md
+# El repo es público: el respaldo se cifra antes de subirse como artefacto.
+name: Respaldo de la base
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 03:00 en Argentina
+  workflow_dispatch:
+
+concurrency:
+  group: respaldo-db
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # pg_dump tiene que ser de la misma versión mayor que el servidor, o más nueva
+  PG_IMAGE: postgres:18-alpine
+
+jobs:
+  respaldo:
+    name: Respaldar Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Verificar los secretos
+        run: |
+          if [ -z "$BACKUP_DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Faltan los secretos BACKUP_DATABASE_URL o BACKUP_PASSPHRASE"
+            exit 1
+          fi
+
+      - name: Volcar la base
+        run: |
+          docker run --rm -e DATABASE_URL="$BACKUP_DATABASE_URL" -v "$PWD:/respaldo" "$PG_IMAGE" \
+            sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --file=/respaldo/fitmanager.dump'
+
+      - name: Comprobar que el volcado se puede leer
+        run: |
+          docker run --rm -v "$PWD:/respaldo" "$PG_IMAGE" pg_restore --list /respaldo/fitmanager.dump > contenido.txt
+          echo "Objetos en el respaldo: $(grep -cv '^;' contenido.txt)"
+          grep -q 'TABLE DATA public gimnasios' contenido.txt
+
+      - name: Cifrar
+        run: |
+          NOMBRE="fitmanager-$(date -u +%Y-%m-%dT%H%MZ).dump.gpg"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output "$NOMBRE" fitmanager.dump
+          rm fitmanager.dump
+          echo "NOMBRE=$NOMBRE" >> "$GITHUB_ENV"
+
+      - name: Guardar el respaldo
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOMBRE }}
+          path: ${{ env.NOMBRE }}
+          retention-days: 30
+          if-no-files-found: error

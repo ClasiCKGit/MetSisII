@@ -26,7 +26,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Aviso por mail a los socios con la membresía por vencer | ✅ |
 | Gráficos (ingresos por mes, actividades con más inscriptos) | 🚧 |
 | Pago online con Mercado Pago | 🚧 |
-| Deploy en producción (la imagen Docker de la API ya está) | 🚧 |
+| Deploy en producción: API y base en Railway, web en Netlify, respaldo diario cifrado (configurado; falta crear los servicios) | 🚧 |
 
 ### Fuera de alcance
 
@@ -170,6 +170,7 @@ MetSisII/
 | Pagos (API) | [`docs/backend/pagos.md`](docs/backend/pagos.md) |
 | Notificaciones por mail (API) | [`docs/backend/notificaciones.md`](docs/backend/notificaciones.md) |
 | Imagen Docker y deploy de la API | [`docs/backend/deploy.md`](docs/backend/deploy.md) |
+| Deploy en producción (Railway, Netlify y respaldos) | [`docs/deploy-produccion.md`](docs/deploy-produccion.md) |
 | Colección de Postman con todos los endpoints | [`docs/postman/`](docs/postman/README.md) |
 | Tests de la API | [`docs/backend/testing-backend.md`](docs/backend/testing-backend.md) |
 | Tests de membresías y pagos | [`docs/backend/testing-membresias-pagos.md`](docs/backend/testing-membresias-pagos.md) |
