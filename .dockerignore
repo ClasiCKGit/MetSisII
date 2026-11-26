@@ -1,0 +1,21 @@
+# Contexto de `docker build -f apps/api/Dockerfile .` (desde la raíz)
+**/node_modules
+**/dist
+**/build
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/src/generated
+apps/api/scripts
+apps/web
+.git
+.github
+.husky
+.vscode
+.claude
+docs
+**/*.md
+**/coverage
+
+# El lockfile nombra a apps/web como workspace: su package.json sí entra
+!apps/web/package.json

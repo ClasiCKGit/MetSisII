@@ -303,6 +303,8 @@ El job **"Lint y build"** ejecuta, en un entorno limpio:
 
 El job **"Tests"** levanta un servicio de Postgres 16 y ejecuta `npm test` (API y frontend). El detalle está en `docs/backend/testing-backend.md`, sección 9.
 
+El job **"Imagen Docker de la API"** construye `apps/api/Dockerfile` (sin publicar la imagen), para detectar a tiempo un cambio que rompa el build de producción: una dependencia que falta en `dependencies`, un archivo excluido por `.dockerignore`, etc. Ver `docs/backend/deploy.md`.
+
 ### 6.3 Decisiones de configuración
 
 - **Node 22**, porque Vite 8 y Prisma 7 requieren `^20.19 || >=22.12`.
@@ -400,7 +402,7 @@ Con un archivo `CODEOWNERS` y la opción *Require review from Code Owners* del r
 
 ### 8.2 Postgres con Docker Compose
 
-`docker-compose.yml` levanta Postgres 16 con un volumen persistente y un healthcheck. Comandos: `npm run db:up`, `db:down`, `db:logs` y `db:reset` (este último **borra todos los datos locales**). El puerto del host se define con `POSTGRES_PORT`: en Windows, un Postgres nativo puede ocupar el 5432 y causar errores de autenticación engañosos.
+`docker-compose.yml` levanta Postgres 16 con un volumen persistente y un healthcheck. También define el servicio `api` (la imagen de producción, perfil `api`), que solo se levanta con `npm run docker:api`: ver `docs/backend/deploy.md`. Comandos: `npm run db:up`, `db:down`, `db:logs` y `db:reset` (este último **borra todos los datos locales**). El puerto del host se define con `POSTGRES_PORT`: en Windows, un Postgres nativo puede ocupar el 5432 y causar errores de autenticación engañosos.
 
 ### 8.3 Prisma
 

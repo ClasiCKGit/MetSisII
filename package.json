@@ -26,6 +26,8 @@
     "db:logs": "docker compose logs -f postgres",
     "db:reset": "docker compose down -v && docker compose up -d",
     "db:seed": "npm run prisma:seed -w apps/api",
+    "docker:api": "docker compose --profile api up -d --build api",
+    "docker:api:down": "docker compose --profile api stop api",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
