@@ -82,8 +82,12 @@ Guarda gimnasios, usuarios y sesiones en memoria, y se vacía después de cada t
 | `GET/POST /usuarios` | Solo `ADMIN` (`403` si no). Alta con `409` si el email ya existe en el gimnasio y rol `RECEPCIONISTA` por defecto. Lista solo los del propio gimnasio. |
 | `PATCH /usuarios/:id` | `404` para un usuario inexistente **o de otro gimnasio**; `409` si un administrador intenta desactivarse o cambiar su propio rol; `400` ante campos no permitidos o un id que no es UUID. |
 | `POST /usuarios/:id/reset-password` | `409` sobre uno mismo, `404` si no existe o es de otro gimnasio, `204` si sale bien. |
+| `POST /auth/forgot-password` | Siempre `200` con el mensaje genérico. Si el gimnasio y el usuario existen y están activos, guarda un token (vence en 1 hora) que reemplaza al anterior. No hay mail: el test lo "lee" con `tokenDeResetDelUltimoMail()` (`tests/helpers/api.ts`). |
+| `POST /auth/reset-password` | `400 El link no es válido o expiró` si el token no existe o venció; `200` si sale bien, cambiando la contraseña y descartando el token. |
 
 **CORS.** jsdom aplica CORS como un navegador, y la app y la API están en orígenes distintos. Por eso todas las respuestas llevan `Access-Control-Allow-Origin: *` (la API real, en cambio, solo acepta el origen de `FRONTEND_URL`, que coincide con el `http://localhost:5173` de jsdom) y hay un manejador de `OPTIONS` para el preflight. Sin ese encabezado, axios falla con `No se pudo conectar con el servidor` aunque MSW sí haya respondido. Las funciones `respuesta()` y `sinContenido()` ya lo agregan: usarlas en los handlers nuevos.
+
+**Limitación en modo real.** `tokenDeResetDelUltimoMail()` lee el token de la API falsa. Con `TEST_API=real` no hay forma de obtenerlo (la API real lo manda por mail y guarda solo su hash), así que el test "con un token válido cambia la contraseña..." de `recuperacion-contrasena.test.ts` se saltea en ese modo (`it.skipIf(USANDO_API_REAL)`), como los de registro cerrado. El resto del flujo sí se prueba contra la API real.
 
 ### Mantenerla al día
 

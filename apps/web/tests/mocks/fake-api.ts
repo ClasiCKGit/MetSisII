@@ -147,8 +147,8 @@ export function obtenerUltimoTokenDeReset(): string | undefined {
 const SLUGS_RESERVADOS = ["www", "api", "app", "admin", "login", "static", "assets"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// El backend usa cors() abierto a cualquier origen. jsdom aplica CORS como un navegador (la app y la
-// API están en orígenes distintos), así que la API falsa también tiene que responder con este encabezado.
+// jsdom aplica CORS como un navegador (la app y la API están en orígenes distintos), así que la API
+// falsa tiene que responder con este encabezado. La real solo permite FRONTEND_URL / CORS_ORIGINS.
 const CORS = { "Access-Control-Allow-Origin": "*" };
 
 const respuesta = (status: number, cuerpo: unknown) =>

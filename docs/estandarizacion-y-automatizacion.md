@@ -395,7 +395,7 @@ Con un archivo `CODEOWNERS` y la opción *Require review from Code Owners* del r
 | Archivo | Contenido |
 |---|---|
 | `.env` (raíz) | Credenciales y puerto de Postgres para Docker Compose |
-| `apps/api/.env` | `DATABASE_URL`, `PORT`, `JWT_SECRET`, `NODE_ENV`, `REGISTRO_GIMNASIOS_HABILITADO` (opcional, `true` por defecto) |
+| `apps/api/.env` | Obligatorias: `DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `MAIL_FROM`. Opcionales: `PORT` (`3000`), `NODE_ENV` (`development`), `REGISTRO_GIMNASIOS_HABILITADO` (`true`), `ZONA_HORARIA` (`America/Argentina/Buenos_Aires`), `FRONTEND_URL` (`http://localhost:5173`), `TRUST_PROXY` (`0`), `CORS_ORIGINS` (si falta, el origen de `FRONTEND_URL`). El detalle de cada una está en `apps/api/.env.example` y en `config/env.ts`. |
 | `apps/web/.env` | `VITE_API_URL` |
 
 ### 8.2 Postgres con Docker Compose

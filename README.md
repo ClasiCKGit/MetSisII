@@ -11,7 +11,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Funcionalidad | Estado |
 |---|---|
 | Registro de gimnasio con su primer administrador | ✅ |
-| Inicio de sesión por gimnasio y cambio de contraseña | ✅ |
+| Inicio de sesión por gimnasio, cambio de contraseña y recuperación por mail | ✅ |
 | Gestión de usuarios del personal (solo administradores) | ✅ |
 | Alta, edición, baja y listado de socios | ✅ |
 | Alta, edición y listado de profesores | ✅ |
@@ -19,6 +19,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Horarios de cada actividad | ✅ |
 | Inicio con resumen del gimnasio (socios activos) | ✅ |
 | Membresías y registro de pagos | 🚧 |
+| Aviso por mail a los socios con la membresía por vencer | ✅ |
 | Consulta de socios con cuotas vencidas | 🚧 |
 | Acceso de los socios (ver sus datos, inscribirse a actividades, estado de cuota) | 🚧 |
 
@@ -47,7 +48,7 @@ cd MetSisII
 npm install                            # siempre desde la raíz, nunca dentro de apps/*
 
 cp .env.example .env
-cp apps/api/.env.example apps/api/.env # completar JWT_SECRET
+cp apps/api/.env.example apps/api/.env # completar JWT_SECRET y RESEND_API_KEY
 cp apps/web/.env.example apps/web/.env
 
 npm run db:up                          # levantar Postgres (puerto 5433 por defecto)
@@ -150,7 +151,11 @@ MetSisII/
 | Base de datos | [`docs/backend/database.md`](docs/backend/database.md) |
 | Socios (API) | [`docs/backend/socios.md`](docs/backend/socios.md) |
 | Profesores, actividades y horarios (API) | [`docs/backend/profesores-actividades-horarios.md`](docs/backend/profesores-actividades-horarios.md) |
+| Membresías (API) | [`docs/backend/membresias.md`](docs/backend/membresias.md) |
+| Pagos (API) | [`docs/backend/pagos.md`](docs/backend/pagos.md) |
+| Notificaciones por mail (API) | [`docs/backend/notificaciones.md`](docs/backend/notificaciones.md) |
 | Tests de la API | [`docs/backend/testing-backend.md`](docs/backend/testing-backend.md) |
+| Tests de membresías y pagos | [`docs/backend/testing-membresias-pagos.md`](docs/backend/testing-membresias-pagos.md) |
 | Sesión, rutas y formularios (web) | [`docs/frontend/frontend-auth.md`](docs/frontend/frontend-auth.md) |
 | Socios (web) | [`docs/frontend/socios.md`](docs/frontend/socios.md) |
 | Tests de la web | [`docs/frontend/testing-frontend.md`](docs/frontend/testing-frontend.md) |

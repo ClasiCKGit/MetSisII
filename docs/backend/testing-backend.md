@@ -91,7 +91,7 @@ sequenceDiagram
 | `vitest.config.mts` | Configuración de Vitest. Los archivos de test corren **de a uno** (`fileParallelism: false`) porque comparten la base. Es `.mts` porque Vite avisa que dejará de aceptar sintaxis ESM en un paquete CommonJS. |
 | `tests/test-env.ts` | Calcula la URL de la base de tests y contiene la protección `assertTestDatabase`. |
 | `tests/global-setup.ts` | Se ejecuta una vez: crea la base si no existe (conectándose a la base de mantenimiento `postgres`) y corre `prisma migrate deploy` sobre ella. |
-| `tests/env.ts` | Fija `NODE_ENV`, `DATABASE_URL` y `JWT_SECRET` **antes** de que se cargue código de la API, porque `config/env.ts` valida las variables apenas se importa. |
+| `tests/env.ts` | Fija `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, y `RESEND_API_KEY` y `MAIL_FROM` falsos, **antes** de que se cargue código de la API, porque `config/env.ts` valida las variables apenas se importa. Así los tests no dependen del `.env` de cada uno ni usan una API key real. |
 | `tests/setup.ts` | Antes de cada test vacía la base; al terminar cada archivo desconecta Prisma. |
 | `tests/helpers/db.ts` | `resetDb()`: `TRUNCATE "gimnasios" CASCADE`. Todas las tablas dependen, directa o indirectamente, de `gimnasios`, así que una sola sentencia vacía todo. |
 
@@ -255,7 +255,8 @@ Cuando se agrega un modelo nuevo con `gimnasioId`, hay que registrarlo en `TENAN
 | `it.each` | `auth.test.ts`, `usuarios.test.ts`, `tenant.test.ts` | Probar la misma regla con varios datos inválidos. |
 | `Promise.all` | `usuarios.test.ts` | Provocar una **carrera**: dos altas simultáneas con el mismo email. Verifica que una se crea y la otra recibe `409` (el camino del error `P2002`). |
 | Mock parcial con `vi.mock` | `login-timing.test.ts` | Envolver `comparePassword` para observar con qué hash se la llama, sin cambiar su comportamiento. |
-| `vi.stubEnv` + `vi.resetModules` | `rate-limit.test.ts` | El límite se decide al cargar el módulo según `NODE_ENV`: se recarga el módulo con cada entorno. |
+| `vi.stubEnv` + `vi.resetModules` | `rate-limit.test.ts`, `app-config.test.ts` | El límite y la configuración de la app se deciden al cargar los módulos según las variables de entorno: se recargan con cada valor. |
+| Mock completo de `utils/mailer` | `auth.test.ts`, `recordatorio-vencimiento.test.ts` | Ningún test manda mails: `enviarMail` se reemplaza con `vi.fn()` y se verifica con qué datos se llamó. Ver `docs/backend/notificaciones.md`. |
 
 ### Por qué `login-timing.test.ts` no mide tiempos
 

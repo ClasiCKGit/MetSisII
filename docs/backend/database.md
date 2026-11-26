@@ -14,6 +14,8 @@ erDiagram
     GIMNASIO ||--o{ ACTIVIDAD_PROFESOR : tiene
     GIMNASIO ||--o{ HORARIO : tiene
 
+    USUARIO ||--o{ PASSWORD_RESET_TOKEN : pide
+
     ACTIVIDAD ||--o{ ACTIVIDAD_PROFESOR : "es dada por"
     PROFESOR  ||--o{ ACTIVIDAD_PROFESOR : "dicta"
     ACTIVIDAD_PROFESOR ||--o{ HORARIO : "cubre (opcional)"
@@ -79,6 +81,7 @@ erDiagram
         string actividadId FK
         string tipoMembresiaId FK
         enum estado
+        boolean recordatorioEnviado
     }
     PAGO {
         string id PK
@@ -87,11 +90,17 @@ erDiagram
         decimal monto
         enum estado
     }
+    PASSWORD_RESET_TOKEN {
+        string id PK
+        string usuarioId FK
+        string tokenHash UK
+        datetime expiresAt
+    }
 ```
 
 ### Multi-tenancy
 
-Todas las tablas principales tienen una columna `gimnasioId` que las vincula a un `Gimnasio` (el tenant). Es la base del aislamiento entre gimnasios distintos en la misma base de datos compartida — **toda query debe filtrar por `gimnasioId`**, inyectado automáticamente por el middleware de resolución de tenant (Epic 2). Ninguna tabla de negocio queda sin este campo.
+Todas las tablas principales tienen una columna `gimnasioId` que las vincula a un `Gimnasio` (el tenant). Es la base del aislamiento entre gimnasios distintos en la misma base de datos compartida — **toda query debe filtrar por `gimnasioId`**, inyectado automáticamente por el middleware de resolución de tenant (Epic 2). Ninguna tabla de negocio queda sin este campo. La única tabla sin `gimnasioId` es `password_reset_tokens`, que no es de negocio: cuelga de `Usuario` y solo se usa antes de iniciar sesión, con el `prisma` global (ver abajo).
 
 ### Relaciones explicadas
 
@@ -112,6 +121,12 @@ Vincula `Socio` + `Actividad` + `TipoMembresia`, con su propio `fechaInicio`/`fe
 
 **`Pago` → `Socio` (obligatorio) y → `Membresia` (opcional)**
 Todo pago pertenece a un socio. Opcionalmente puede estar asociado a una membresía específica (el caso normal: "pagó la cuota de jiujitsu"). Queda `null` para pagos sueltos que no corresponden a ninguna membresía puntual (ej: venta de un producto, un servicio adicional) — en ese caso se usa el campo `concepto` para describir de qué se trata.
+
+**`Membresia.recordatorioEnviado`**
+Marca que el socio ya recibió el mail de aviso de vencimiento de esa membresía, para no mandarlo todos los días de la semana previa. Lo pone en `true` el job diario de recordatorios (ver `docs/backend/notificaciones.md`). Arranca en `false`, y como una renovación crea una membresía nueva, el aviso vuelve a salir en el período siguiente.
+
+**`PasswordResetToken` → `Usuario`**
+Un link de recuperación de contraseña pendiente. Se guarda solo el hash SHA-256 del token (`tokenHash`, único), nunca el token, con su vencimiento (`expiresAt`, 1 hora). Un usuario tiene como máximo uno: pedir otro borra los anteriores, y usarlo los borra todos. `onDelete: Cascade` desde `Usuario`. No tiene `gimnasioId` ni está en `TENANT_RULES` porque nunca se accede desde `req.db` (ver `docs/backend/auth.md`).
 
 **`Usuario` — separado de `Socio` y de `Profesor`**
 `Usuario` son las cuentas que loguean al sistema (admin, recepción) — no tiene relación con `Socio` ni con `Profesor`, que son solo registros de datos administrativos sin acceso al sistema (confirmado que los profesores no van a tener login).

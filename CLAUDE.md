@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FitManager: app web multi-tenant de gestión de gimnasios. Monorepo con npm workspaces: `apps/api` (Express 5 + Prisma 7 + Zod 4 + Postgres), `apps/web` (React 19 + Vite 8 + Tailwind 4 + shadcn/ui sobre Base UI). Código, mensajes de error, textos de UI, nombres de tests y commits van **en español**.
 
-La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `backend/socios.md`, `frontend/frontend-auth.md`, `frontend/socios.md`, `frontend/testing-frontend.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
+La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `backend/socios.md`, `backend/membresias.md`, `backend/pagos.md`, `backend/notificaciones.md`, `backend/testing-membresias-pagos.md`, `frontend/frontend-auth.md`, `frontend/socios.md`, `frontend/testing-frontend.md`, `config-general.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
 
 ## Comandos
 
@@ -42,6 +42,7 @@ El CI (`.github/workflows/ci.yml`) corre lint, format:check, prisma:generate, bu
 - Express 5: los handlers async pueden lanzar; `errorHandler` (`middlewares/error.middleware.ts`) traduce `AppError(status, msg)`, `ZodError` (400), Prisma `P2002` (409) y `P2025` (404). Las respuestas de error tienen forma `{ error: string, details? }`.
 - Los controllers validan params con Zod (`idParamsSchema.parse(req.params)`); el body se valida con `validateBody(schema)` en la ruta. Los services reciben `req.db` y `req.auth` como argumentos, no el `req`.
 - `config/env.ts` valida las variables con Zod al importarse. Variable nueva → agregarla ahí y al `.env.example` correspondiente.
+- Mails: siempre con `enviarMail` (`utils/mailer.ts`, Resend) y el texto de usuarios escapado con `escaparHtml`. Los jobs programados viven en `src/jobs/` y los arranca `server.ts` (no `createApp`); son la excepción que usa el `prisma` global y filtran por gimnasio activo a mano. Ver `docs/backend/notificaciones.md`.
 
 ### Multi-tenancy (crítico)
 
@@ -66,6 +67,7 @@ Una columna de texto nueva que se use para ordenar listados necesita `COLLATE "e
 
 - Corren contra Postgres real en una base derivada de `DATABASE_URL` con sufijo `_test` (en CI, `TEST_DATABASE_URL`). `tests/global-setup.ts` la crea y aplica `prisma migrate deploy`; `assertTestDatabase` aborta si el nombre no termina en `_test`.
 - `beforeEach` hace `TRUNCATE "gimnasios" CASCADE`; los archivos corren en serie (`fileParallelism: false`). `tests/env.ts` debe ir antes que `setup.ts` en `setupFiles`.
+- Ningún test manda mails: `vi.mock` de `utils/mailer` (ya hay `RESEND_API_KEY`/`MAIL_FROM` falsos en `tests/env.ts`).
 - Convenciones: `tests/integration/` si usa la base, `tests/unit/` si no; nombres que describen comportamiento; datos con `tests/helpers/factories.ts` y sesión con `tokenDe(...)` (no el endpoint de login); verificar el efecto en la base, no solo el status.
 - Todo endpoint nuevo prueba: 401 sin sesión, 403 por rol, 400 con datos inválidos sin efectos, camino feliz + cambio en la base, y **404 sobre un recurso de otro gimnasio sin modificarlo**.
 
