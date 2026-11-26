@@ -57,7 +57,18 @@ export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
+export const forgotPasswordSchema = z.object({
+  gimnasioSlug: z.string().trim().toLowerCase().min(1, "El gimnasio es obligatorio"),
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "El token es obligatorio"),
+  newPassword: passwordSchema,
+});
 
 export type RegisterGimnasioInput = z.infer<typeof registerGimnasioSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

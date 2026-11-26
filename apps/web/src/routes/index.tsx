@@ -13,6 +13,8 @@ import { ActividadDetallePage } from "@/features/actividades/pages/ActividadDeta
 import { SociosPage } from "@/features/socios/pages/SociosPage";
 import { SocioDetallePage } from "@/features/socios/pages/SocioDetallePage";
 import { PagosPage } from "@/features/pagos/pages/PagosPage";
+import { ForgotPasswordPage } from "@/features/auth/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/features/auth/pages/ResetPasswordPage";
 
 // Las rutas se declaran como datos (no se crea el router acá) para poder reutilizarlas en main.tsx
 // con createBrowserRouter, y en los tests con createMemoryRouter.
@@ -26,6 +28,8 @@ export const routes: RouteObject[] = [
         children: [
           { path: "/login", element: <LoginPage /> },
           { path: "/registro", element: <RegisterPage /> },
+          { path: "/olvide-mi-contrasena", element: <ForgotPasswordPage /> },
+          { path: "/reset-password", element: <ResetPasswordPage /> },
         ],
       },
     ],

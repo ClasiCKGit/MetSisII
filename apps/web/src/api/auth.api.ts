@@ -1,5 +1,5 @@
 import type { AuthConfig, Perfil, RegisterPayload, Sesion } from "@/features/auth/types";
-import type { LoginInput } from "@/features/auth/schemas";
+import type { LoginInput, ForgotPasswordInput } from "@/features/auth/schemas";
 import { apiClient } from "@/lib/api-client";
 
 export async function login(input: LoginInput): Promise<Sesion> {
@@ -28,5 +28,17 @@ export async function changePassword(input: {
   newPassword: string;
 }): Promise<Sesion> {
   const { data } = await apiClient.post<Sesion>("/auth/change-password", input);
+  return data;
+}
+export async function forgotPassword(input: ForgotPasswordInput): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>("/auth/forgot-password", input);
+  return data;
+}
+
+export async function resetPassword(input: {
+  token: string;
+  newPassword: string;
+}): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>("/auth/reset-password", input);
   return data;
 }

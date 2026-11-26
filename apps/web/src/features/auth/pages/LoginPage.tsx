@@ -91,6 +91,12 @@ export function LoginPage() {
           />
         </FieldGroup>
 
+        <p className="text-right text-sm">
+          <Link to="/olvide-mi-contrasena" className="font-semibold text-primary hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+
         {/* Error que devuelve la API (por ejemplo, credenciales inválidas) */}
         {login.error && (
           <p role="alert" className="text-sm text-destructive">

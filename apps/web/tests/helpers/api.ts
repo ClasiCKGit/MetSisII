@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/store/auth.store";
+import { obtenerUltimoTokenDeReset } from "../mocks/fake-api";
 
 // Llamadas directas a la API (sin pasar por la app), para preparar escenarios y comprobar resultados.
 // Funcionan igual contra la API falsa y contra la real.
@@ -329,4 +330,10 @@ export async function apiListarPagos(
     metodoPago: string;
     estado: string;
   }>;
+}
+
+export function tokenDeResetDelUltimoMail(): string {
+  const token = obtenerUltimoTokenDeReset();
+  if (!token) throw new Error("No se generó ningún token de reset todavía");
+  return token;
 }
