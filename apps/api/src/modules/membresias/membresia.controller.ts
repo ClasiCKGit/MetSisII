@@ -20,3 +20,8 @@ export async function renovar(req: Request, res: Response) {
   const { id } = membresiaIdParamSchema.parse(req.params);
   res.status(201).json(await service.renovar(req.db, id, req.body));
 }
+
+export async function cancelar(req: Request, res: Response) {
+  const { id } = membresiaIdParamSchema.parse(req.params);
+  res.json(await service.cancelar(req.db, id));
+}

@@ -365,6 +365,7 @@ export interface MembresiaDePrueba {
   id: string;
   fechaInicio: string;
   fechaFin: string;
+  estado: string;
   renovada: boolean;
   actividad: { id: string; nombre: string };
   tipoMembresia: { id: string; nombre: string };

@@ -8,6 +8,7 @@ Todas las rutas requieren sesión y se limitan al gimnasio del usuario autentica
 | `GET` | `/api/membresias/:id` | Obtiene una membresía con socio, actividad y tipo |
 | `POST` | `/api/membresias/inscripciones` | Inscribe a un socio y crea el pago en una sola transacción (ADMIN o RECEPCIONISTA) |
 | `POST` | `/api/membresias/:id/renovaciones` | Renueva una membresía: crea la siguiente con su pago, en una sola transacción (ADMIN o RECEPCIONISTA) |
+| `POST` | `/api/membresias/:id/cancelacion` | Cancela una membresía y rechaza sus pagos pendientes (solo ADMIN) |
 
 ## Tipos de membresía
 
@@ -110,4 +111,24 @@ Columna de `Membresia` (`false` por defecto, migración `20261126165407_agregar_
 - **No se puede renovar** otra vez.
 - `GET /api/membresias` la sigue devolviendo, con `renovada: true`; el filtro `vigencia` no la excluye. El inicio de la web la saca de su lista de vencimientos.
 
-Las pruebas específicas están en `apps/api/tests/integration/membresias.test.ts`, `apps/api/tests/integration/renovaciones.test.ts`, `apps/api/tests/integration/tipos-membresia.test.ts` y `apps/api/tests/unit/membresia-vigencia.test.ts`.
+## Cancelación (FIT-97)
+
+`POST /api/membresias/:id/cancelacion`, sin body. **Solo `ADMIN`** (la recepción recibe `403`), igual que la baja de socios: cancelar deshace un cobro pendiente. Sirve para una membresía cargada por error o para un socio que deja la actividad.
+
+En una transacción `Serializable`:
+
+1. Pasa la membresía a `estado: "CANCELADA"`. Desde ahí su `estadoVigencia` es `null`: no cuenta en el cupo, en los vencimientos próximos ni en el recordatorio por mail, que ya excluían a las canceladas.
+2. **Rechaza sus pagos pendientes:** los pagos `PENDIENTE` de la membresía pasan a `RECHAZADO`, para que no se cobre una membresía cancelada. Los `PAGADO` **no cambian**: si hay que devolver dinero, se hace fuera del sistema.
+3. **Si era una renovación**, la membresía anterior del socio en la actividad (la más reciente que esté marcada `renovada` y termine antes de que empiece la cancelada) vuelve a `renovada: false`, así se la puede renovar otra vez y vuelve a contar en los vencimientos.
+
+Responde `200` con la membresía cancelada y `pagosRechazados` (cuántos pagos pendientes pasaron a `RECHAZADO`).
+
+| Caso | Respuesta |
+|---|---|
+| Id que no es UUID | `400` |
+| La membresía no existe o es de otro gimnasio | `404` "Membresía no encontrada" |
+| Ya estaba cancelada | `409` "La membresía ya está cancelada" |
+
+Además, **`POST /api/pagos` rechaza con `409` "La membresía está cancelada"** un pago nuevo asociado a una membresía cancelada. La cancelación **no se puede deshacer**: para volver a dar acceso se inscribe al socio de nuevo.
+
+Las pruebas específicas están en `apps/api/tests/integration/membresias.test.ts`, `apps/api/tests/integration/renovaciones.test.ts`, `apps/api/tests/integration/cancelaciones.test.ts`, `apps/api/tests/integration/tipos-membresia.test.ts` y `apps/api/tests/unit/membresia-vigencia.test.ts`.

@@ -60,3 +60,13 @@ export async function renovarMembresia(id: string, input: RenovacionInput): Prom
   const { data } = await apiClient.post<Inscripcion>(`/membresias/${id}/renovaciones`, input);
   return data;
 }
+
+// Solo ADMIN. Los pagos pendientes de la membresía pasan a RECHAZADO; los pagados no cambian
+export async function cancelarMembresia(
+  id: string
+): Promise<MembresiaSocio & { pagosRechazados: number }> {
+  const { data } = await apiClient.post<MembresiaSocio & { pagosRechazados: number }>(
+    `/membresias/${id}/cancelacion`
+  );
+  return data;
+}

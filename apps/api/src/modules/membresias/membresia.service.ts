@@ -222,3 +222,53 @@ export async function renovar(db: TenantClient, id: string, input: RenovarMembre
   );
   return respuestaConPago(creada);
 }
+
+/**
+ * Cancela una membresía: deja de dar acceso, libera el cupo y sale de los vencimientos.
+ * Sus pagos pendientes pasan a RECHAZADO (no se cobra una membresía cancelada); los pagados
+ * no se tocan. Si era la renovación de otra, la anterior vuelve a poder renovarse.
+ */
+export async function cancelar(db: TenantClient, id: string) {
+  const cancelada = await db.$transaction(
+    async (tx) => {
+      const membresia = await tx.membresia.findUnique({ where: { id } });
+      if (!membresia) throw new AppError(404, "Membresía no encontrada");
+      if (membresia.estado === "CANCELADA") {
+        throw new AppError(409, "La membresía ya está cancelada");
+      }
+
+      const pagosRechazados = await tx.pago.updateMany({
+        where: { membresiaId: id, estado: "PENDIENTE" },
+        data: { estado: "RECHAZADO" },
+      });
+
+      // La renovada es la anterior más reciente del socio en la actividad
+      const anterior = await tx.membresia.findFirst({
+        where: {
+          id: { not: id },
+          socioId: membresia.socioId,
+          actividadId: membresia.actividadId,
+          estado: { not: "CANCELADA" },
+          renovada: true,
+          fechaFin: { lte: membresia.fechaInicio },
+        },
+        orderBy: { fechaFin: "desc" },
+      });
+      if (anterior) {
+        await tx.membresia.update({ where: { id: anterior.id }, data: { renovada: false } });
+      }
+
+      const actualizada = await tx.membresia.update({
+        where: { id },
+        data: { estado: "CANCELADA" },
+        include: membresiaInclude,
+      });
+      return { actualizada, pagosRechazados: pagosRechazados.count };
+    },
+    { isolationLevel: "Serializable" }
+  );
+  return {
+    ...agregarEstadoVigencia(cancelada.actualizada),
+    pagosRechazados: cancelada.pagosRechazados,
+  };
+}
