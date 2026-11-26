@@ -22,6 +22,8 @@ export const listarMembresiasQuerySchema = z.object({
   socioId: z.uuid().optional(),
   estado: z.enum(["ACTIVA", "VENCIDA", "CANCELADA"]).optional(),
   vigencia: z.enum(ESTADOS_VIGENCIA).optional(),
+  // false = solo las que el socio todavía no renovó (ni se volvió a inscribir)
+  renovada: z.stringbool().optional(),
 });
 
 export const membresiaIdParamSchema = z.object({ id: z.uuid("Id de membresía inválido") });
