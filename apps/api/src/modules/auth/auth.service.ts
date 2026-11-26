@@ -15,6 +15,7 @@ import type { AuthContext } from "./auth.types";
 import crypto from "node:crypto";
 import { env } from "../../config/env";
 import { enviarMail } from "../../utils/mailer";
+import { logger } from "../../config/logger";
 
 // Hash ficticio: si el usuario no existe igual hacemos un compare, para que el
 // tiempo de respuesta no revele qué emails están registrados.
@@ -139,13 +140,19 @@ function hashToken(token: string): string {
  */
 export async function forgotPassword({ gimnasioSlug, email }: ForgotPasswordInput): Promise<void> {
   const gimnasio = await prisma.gimnasio.findUnique({ where: { slug: gimnasioSlug } });
-
+  logger.info(
+    { gimnasioSlug, encontrado: !!gimnasio, activo: gimnasio?.activo },
+    "DEBUG forgotPassword: gimnasio"
+  );
   const usuario = gimnasio?.activo
     ? await prisma.usuario.findUnique({
         where: { gimnasioId_email: { gimnasioId: gimnasio.id, email } },
       })
     : null;
-
+  logger.info(
+    { email, encontrado: !!usuario, activo: usuario?.activo },
+    "DEBUG forgotPassword: usuario"
+  );
   if (!gimnasio || !usuario || !usuario.activo) return;
 
   const token = crypto.randomBytes(32).toString("hex");

@@ -91,3 +91,22 @@ export const changePasswordSchema = z
   });
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const forgotPasswordSchema = z.object({
+  gimnasioSlug: z.string().trim().toLowerCase().min(1, "Ingresá el identificador de tu gimnasio"),
+  email: emailSchema,
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string().min(1, "Repetí la contraseña nueva"),
+  })
+  .refine((datos) => datos.newPassword === datos.confirmNewPassword, {
+    error: "Las contraseñas no coinciden",
+    path: ["confirmNewPassword"],
+  });
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

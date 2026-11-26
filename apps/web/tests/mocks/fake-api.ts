@@ -112,6 +112,7 @@ const estado = {
   membresias: [] as FakeMembresia[],
   pagos: [] as FakePago[],
   sesiones: new Map<string, { usuarioId: string }>(),
+  passwordResetTokens: [] as Array<{ token: string; usuarioId: string; expiraEn: number }>,
   // Imita REGISTRO_GIMNASIOS_HABILITADO de la API
   registroHabilitado: true,
 };
@@ -127,12 +128,18 @@ export function resetFakeApi(): void {
   estado.membresias.length = 0;
   estado.pagos.length = 0;
   estado.sesiones.clear();
+  estado.passwordResetTokens.length = 0;
   estado.registroHabilitado = true;
 }
 
 // Solo para la API falsa: en la real se cambia con la variable de entorno al levantarla
 export function configurarRegistroGimnasios(habilitado: boolean): void {
   estado.registroHabilitado = habilitado;
+}
+
+// Solo para tests: "lee" el token que se mandó por mail en el último forgot-password
+export function obtenerUltimoTokenDeReset(): string | undefined {
+  return estado.passwordResetTokens.at(-1)?.token;
 }
 
 // ───────── utilidades ─────────
@@ -1331,6 +1338,53 @@ export function crearHandlers(apiUrl: string) {
       }
       pago.estado = cuerpo.estado as EstadoPago;
       return respuesta(200, pagoConRelaciones(pago));
+    }),
+    http.post(`${base}/auth/forgot-password`, async ({ request }) => {
+      const cuerpo = await leerJson(request);
+      const gimnasioSlug = texto(cuerpo?.gimnasioSlug).trim().toLowerCase();
+      const email = normalizarEmail(cuerpo?.email);
+      if (!gimnasioSlug || !email) return errorDeValidacion();
+
+      const gimnasio = estado.gimnasios.find((g) => g.slug === gimnasioSlug && g.activo);
+      const usuario = estado.usuarios.find(
+        (u) => u.gimnasioId === gimnasio?.id && u.email === email
+      );
+
+      if (gimnasio && usuario?.activo) {
+        estado.passwordResetTokens = estado.passwordResetTokens.filter(
+          (t) => t.usuarioId !== usuario.id
+        );
+        estado.passwordResetTokens.push({
+          token: `reset-${crypto.randomUUID()}`,
+          usuarioId: usuario.id,
+          expiraEn: Date.now() + 60 * 60 * 1000,
+        });
+      }
+
+      return respuesta(200, {
+        message: "Si el email existe, vas a recibir instrucciones para restablecer tu contraseña",
+      });
+    }),
+
+    http.post(`${base}/auth/reset-password`, async ({ request }) => {
+      const cuerpo = await leerJson(request);
+      const token = texto(cuerpo?.token);
+      const nueva = texto(cuerpo?.newPassword);
+      if (!token || nueva.length < 8 || nueva.length > 72) return errorDeValidacion();
+
+      const registro = estado.passwordResetTokens.find((t) => t.token === token);
+      if (!registro || registro.expiraEn < Date.now()) {
+        return error(400, "El link no es válido o expiró");
+      }
+
+      const usuario = estado.usuarios.find((u) => u.id === registro.usuarioId);
+      if (usuario) {
+        usuario.password = nueva;
+        cerrarSesionesDe(usuario.id);
+      }
+      estado.passwordResetTokens = estado.passwordResetTokens.filter((t) => t.token !== token);
+
+      return respuesta(200, { message: "Contraseña actualizada correctamente" });
     }),
   ];
 }
