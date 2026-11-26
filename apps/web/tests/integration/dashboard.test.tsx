@@ -7,6 +7,7 @@ import {
   apiCrearTipoMembresia,
   apiDarDeBajaSocio,
   apiInscribir,
+  apiRenovar,
   conSesion,
   nuevoGimnasio,
 } from "../helpers/api";
@@ -173,5 +174,57 @@ describe("inicio: métricas del gimnasio", () => {
     await user.click(within(lista).getByRole("link", { name: "Pérez, Lucía" }));
     expect(await screen.findByRole("heading", { name: "Lucía Pérez" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(`/socios/${lucia.id}`);
+  });
+
+  it("lista las membresías vencidas sin renovar y deja afuera las renovadas o reemplazadas", async () => {
+    const g = await nuevoGimnasio();
+    const crear = (nombre: string, apellido: string, dni: string) =>
+      apiCrearSocio(g.token, { nombre, apellido, dni });
+    const [lucia, juan, ana] = [
+      await crear("Lucía", "Pérez", "30111222"),
+      await crear("Juan", "Álvarez", "28999888"),
+      await crear("Ana", "Gómez", "27555444"),
+    ];
+    const yoga = await apiCrearActividad(g.token, { nombre: "Yoga" });
+    const mensual = await apiCrearTipoMembresia(g.token, {
+      actividadId: yoga.id,
+      nombre: "Mensual",
+      precio: 10000,
+      duracionDias: 30,
+    });
+    // Las tres empezaron hace 40 días: vencieron hace 10
+    const haceCuarentaDias = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    const inscribir = (socioId: string, fechaInicio?: string) =>
+      apiInscribir(g.token, {
+        socioId,
+        actividadId: yoga.id,
+        tipoMembresiaId: mensual.id,
+        metodoPago: "EFECTIVO",
+        fechaInicio,
+      });
+    await inscribir(lucia.id, haceCuarentaDias);
+    const deJuan = await inscribir(juan.id, haceCuarentaDias);
+    await inscribir(ana.id, haceCuarentaDias);
+    // Juan renovó y Ana se volvió a inscribir: solo Lucía tiene la cuota vencida
+    await apiRenovar(g.token, deJuan.id);
+    await inscribir(ana.id);
+    await conSesion(g.token);
+    const { user, router } = renderApp("/");
+
+    const lista = await screen.findByRole("list", { name: "Membresías vencidas" });
+    expect(within(lista).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(lista).getByText(/^Venció el/)).toBeInTheDocument();
+
+    await user.click(within(lista).getByRole("link", { name: "Pérez, Lucía" }));
+    expect(await screen.findByRole("heading", { name: "Lucía Pérez" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/socios/${lucia.id}`);
+  });
+
+  it("sin membresías vencidas lo avisa", async () => {
+    const g = await nuevoGimnasio();
+    await conSesion(g.token);
+    renderApp("/");
+
+    expect(await screen.findByText("No hay membresías vencidas sin renovar.")).toBeInTheDocument();
   });
 });

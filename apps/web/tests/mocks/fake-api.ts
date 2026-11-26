@@ -1362,9 +1362,11 @@ export function crearHandlers(apiUrl: string) {
       const params = new URL(request.url).searchParams;
       const socioId = params.get("socioId");
       const vigencia = params.get("vigencia");
+      const renovada = params.get("renovada");
       if (
         (socioId !== null && !UUID.test(socioId)) ||
-        (vigencia !== null && !["AL_DIA", "POR_VENCER", "VENCIDA"].includes(vigencia))
+        (vigencia !== null && !["AL_DIA", "POR_VENCER", "VENCIDA"].includes(vigencia)) ||
+        (renovada !== null && renovada !== "true" && renovada !== "false")
       ) {
         return errorDeValidacion();
       }
@@ -1373,6 +1375,7 @@ export function crearHandlers(apiUrl: string) {
         .filter((m) => m.gimnasioId === actual.gimnasio.id)
         .filter((m) => socioId === null || m.socioId === socioId)
         .filter((m) => vigencia === null || estadoVigencia(m) === vigencia)
+        .filter((m) => renovada === null || m.renovada === (renovada === "true"))
         .sort(
           (a, b) => a.fechaFin.localeCompare(b.fechaFin) || b.createdAt.localeCompare(a.createdAt)
         )
@@ -1463,6 +1466,17 @@ export function crearHandlers(apiUrl: string) {
         concepto: null,
         createdAt: ahora,
       };
+      // Como el service: volver a inscribirse después de que terminó la anterior la da por renovada
+      for (const anterior of estado.membresias) {
+        if (
+          anterior.socioId === socio.id &&
+          anterior.actividadId === actividad.id &&
+          anterior.estado !== "CANCELADA" &&
+          new Date(anterior.fechaFin) <= inicio
+        ) {
+          anterior.renovada = true;
+        }
+      }
       estado.membresias.push(membresia);
       estado.pagos.push(pago);
       return respuesta(201, {
