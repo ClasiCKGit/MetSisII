@@ -59,6 +59,18 @@ describe("enviarRecordatoriosDeVencimiento", () => {
     expect(enviarMail).not.toHaveBeenCalled();
   });
 
+  it("no manda mail si la membresía ya fue renovada", async () => {
+    const { gimnasio, socio, actividad, tipoMembresia } = await crearEscenarioBase();
+    await crearMembresia(gimnasio.id, socio.id, actividad.id, tipoMembresia.id, {
+      fechaFin: diasDesdeHoy(3),
+      renovada: true,
+    });
+
+    await enviarRecordatoriosDeVencimiento();
+
+    expect(enviarMail).not.toHaveBeenCalled();
+  });
+
   it("no manda mail si la membresía está cancelada", async () => {
     const { gimnasio, socio, actividad, tipoMembresia } = await crearEscenarioBase();
     await crearMembresia(gimnasio.id, socio.id, actividad.id, tipoMembresia.id, {

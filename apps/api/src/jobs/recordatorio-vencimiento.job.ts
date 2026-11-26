@@ -21,6 +21,7 @@ export async function enviarRecordatoriosDeVencimiento(): Promise<void> {
       fechaFin: { gte: desde, lt: hasta },
       estado: { not: "CANCELADA" },
       recordatorioEnviado: false,
+      renovada: false,
       socio: { activo: true, email: { not: null } },
       gimnasio: { activo: true },
     },
