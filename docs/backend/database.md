@@ -127,7 +127,7 @@ Todo pago pertenece a un socio. Opcionalmente puede estar asociado a una membres
 Marca que el socio ya recibió el mail de aviso de vencimiento de esa membresía, para no mandarlo todos los días de la semana previa. Lo pone en `true` el job diario de recordatorios (ver `docs/backend/notificaciones.md`). Arranca en `false`, y como una renovación crea una membresía nueva, el aviso vuelve a salir en el período siguiente.
 
 **`Membresia.renovada`**
-Marca que la membresía ya se renovó: existe otra del mismo socio y actividad que empieza cuando termina esta. La pone en `true` el endpoint de renovación. Una membresía renovada no cuenta en los vencimientos próximos, no recibe el recordatorio y no se puede volver a renovar (ver `docs/backend/membresias.md`).
+Marca que el socio ya tiene la siguiente membresía en esta actividad. La ponen en `true` la renovación y una inscripción nueva después de que esta terminó. Una membresía renovada no cuenta en los vencimientos próximos, no recibe el recordatorio y no se puede volver a renovar (ver `docs/backend/membresias.md`).
 
 **`PasswordResetToken` → `Usuario`**
 Un link de recuperación de contraseña pendiente. Se guarda solo el hash SHA-256 del token (`tokenHash`, único), nunca el token, con su vencimiento (`expiresAt`, 1 hora). Un usuario tiene como máximo uno: pedir otro borra los anteriores, y usarlo los borra todos. `onDelete: Cascade` desde `Usuario`. No tiene `gimnasioId` ni está en `TENANT_RULES` porque nunca se accede desde `req.db` (ver `docs/backend/auth.md`).

@@ -28,6 +28,7 @@ Permisos en la interfaz, iguales a los de la API:
 | FIT-51 | Detalle del socio con sus membresías (vigencia) y el historial de pagos |
 | FIT-95 | Renovar una membresía desde el detalle del socio |
 | FIT-97 | Cancelar una membresía desde el detalle del socio (solo administradores) |
+| FIT-98 | Lista de membresías vencidas sin renovar en el inicio |
 | FIT-72 (parcial) | Métrica "Socios activos" en el inicio |
 
 ---
@@ -82,7 +83,11 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 
 - `DashboardPage` usa `useResumen()` (`features/dashboard/hooks/useResumen.ts`), que llama a `GET /api/dashboard/resumen`, y muestra tres tarjetas: **Socios activos**, **Ingresos del mes** (con `formatearMonto` de `features/pagos/formato.ts`) y **Vencimientos próximos**.
 - Mientras carga o si falla, cada tarjeta muestra un guion y un texto que explica el motivo; con datos, el número.
-- Debajo, **"Vencen en los próximos 7 días"** lista esas membresías con `useVencimientosProximos()` (`GET /api/membresias?vigencia=POR_VENCER`), con enlace al detalle de cada socio. Deja afuera las ya renovadas (`renovada: true`), igual que el contador del resumen. Su clave cuelga de `["dashboard"]`, así que se refresca junto con las métricas.
+- Debajo hay dos listas con el mismo componente (`ListaDeMembresias`), cada una con enlace al detalle del socio:
+  - **"Vencen en los próximos 7 días"**: `useVencimientosProximos()` (`GET /api/membresias?vigencia=POR_VENCER&renovada=false`).
+  - **"Vencidas sin renovar"** (FIT-98): `useMembresiasVencidas()` (`GET /api/membresias?vigencia=VENCIDA&renovada=false`), con la fecha en que venció. Es la consulta de socios con la cuota vencida.
+
+  Las dos dejan afuera las renovadas o reemplazadas por otra inscripción, porque el socio ya no tiene nada pendiente (ver `renovada` en `docs/backend/membresias.md`). El contador "Vencimientos próximos" del resumen usa la misma regla. Sus claves cuelgan de `["dashboard"]`, así que se refrescan junto con las métricas.
 - Las mutaciones de socios (`useCrearSocio`, `useActualizarSocio`) invalidan también la clave `["dashboard"]`: al dar de alta o de baja un socio y volver al inicio, el número ya está actualizado.
 
 ---
