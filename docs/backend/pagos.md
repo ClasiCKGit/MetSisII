@@ -12,7 +12,7 @@
 | `POST` | `/api/pagos` | Registra un pago (ADMIN o RECEPCIONISTA) |
 | `PATCH` | `/api/pagos/:id/estado` | Cambia un pago pendiente a `PAGADO` o `RECHAZADO` (ADMIN o RECEPCIONISTA) |
 
-El alta acepta `socioId`, `monto`, `metodoPago` y opcionalmente `membresiaId`, `estado`, `concepto` y `fecha` (ISO 8601). Un `membresiaId` debe pertenecer al socio indicado. El monto acepta un número o una cadena decimal positiva de hasta dos decimales y el máximo de la columna `Decimal(10, 2)`.
+El alta acepta `socioId`, `monto`, `metodoPago` y opcionalmente `membresiaId`, `estado`, `concepto` y `fecha` (ISO 8601). Un `membresiaId` debe pertenecer al socio indicado y no estar cancelada (`409` "La membresía está cancelada"). Al cancelar una membresía, sus pagos pendientes pasan a `RECHAZADO` (ver `docs/backend/membresias.md`). El monto acepta un número o una cadena decimal positiva de hasta dos decimales y el máximo de la columna `Decimal(10, 2)`.
 
 Ejemplo:
 
