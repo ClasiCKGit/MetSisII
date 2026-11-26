@@ -106,7 +106,52 @@ En producción no se corre el seed (la imagen no lo incluye). Los gimnasios se c
 
 ---
 
-## 4. Checklist
+## 4. Respaldos de la base (FIT-84)
+
+El workflow `.github/workflows/respaldo-db.yml` respalda la base de Railway **todos los días a las 03:00** (hora argentina) y también se puede correr a mano (*Actions → Respaldo de la base → Run workflow*).
+
+1. `pg_dump` en formato custom (`--no-owner --no-privileges`, para poder restaurarlo en otra base con otro usuario). Corre en un contenedor `postgres:18-alpine`: tiene que ser de la misma versión mayor que el servidor o más nueva.
+2. Comprueba el volcado con `pg_restore --list` y que tenga los datos de `gimnasios`. Si no, el job falla.
+3. Lo **cifra con AES-256** (`gpg --symmetric`). El repo es público y los artefactos de un repo público los puede descargar cualquier usuario de GitHub: sin cifrar, quedarían expuestos los datos de socios y los hashes de contraseñas.
+4. Lo sube como artefacto `fitmanager-<fecha>.dump.gpg`, que GitHub guarda **30 días**.
+
+Si falla (por ejemplo, porque cambió la contraseña de la base), GitHub avisa por mail a quien modificó por última vez la programación del workflow.
+
+### Configurarlo (una sola vez)
+
+En GitHub, **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secreto | Valor |
+|---|---|
+| `BACKUP_DATABASE_URL` | La variable `DATABASE_PUBLIC_URL` del Postgres de Railway. Es la URL pública (por el proxy TCP de Railway): la `DATABASE_URL` normal usa la red privada, que desde GitHub no se alcanza |
+| `BACKUP_PASSPHRASE` | Una clave larga (`openssl rand -base64 32`). **Guardarla fuera de GitHub**, en un gestor de contraseñas: sin ella los respaldos no se pueden abrir, y GitHub no deja volver a leer un secreto |
+
+GitHub solo programa los workflows que están en la rama por defecto: el respaldo diario empieza cuando este archivo llega a `main`.
+
+### Restaurar
+
+```bash
+# 1. Bajar el respaldo (o desde la página del run, en "Artifacts")
+gh run download <id-del-run> --repo ClasiCKGit/MetSisII
+
+# 2. Descifrarlo
+gpg --batch --pinentry-mode loopback --passphrase "<BACKUP_PASSPHRASE>" \
+  --decrypt --output fitmanager.dump fitmanager-<fecha>.dump.gpg
+
+# 3. Restaurarlo. --clean --if-exists borra y recrea cada objeto: la base queda como en el respaldo
+docker run --rm -v "$PWD:/respaldo" postgres:18-alpine \
+  pg_restore --clean --if-exists --no-owner --no-privileges \
+  --dbname="<URL de la base destino>" /respaldo/fitmanager.dump
+```
+
+- **Probar primero en una base vacía**, no directamente sobre producción. Para restaurar producción, conviene apagar la API antes (en Railway, menú del deploy activo → **Remove**) para que nadie escriba mientras tanto.
+- Si el servidor es de una versión anterior a la de `pg_restore`, puede aparecer `unrecognized configuration parameter "transaction_timeout"`. Es inofensivo: es un parámetro de Postgres 17+ y los datos se restauran igual. Lo probamos restaurando un respaldo de la base de desarrollo (Postgres 16).
+
+**Complemento.** Railway también ofrece respaldos de los volúmenes en sus planes pagos (pestaña **Backups** del Postgres). Si el plan los incluye, conviene activarlos además de estos: se restauran con un clic, pero quedan dentro de Railway.
+
+---
+
+## 5. Checklist
 
 - [ ] `GET /health` de Railway responde 200.
 - [ ] La web carga y, recargando en `/socios`, sigue funcionando (sin 404).
