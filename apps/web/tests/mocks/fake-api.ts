@@ -1559,6 +1559,44 @@ export function crearHandlers(apiUrl: string) {
       });
     }),
 
+    // Solo ADMIN. Como el service: rechaza los pagos pendientes de la membresía y, si era una
+    // renovación, deja la anterior sin renovar
+    http.post(`${base}/membresias/:id/cancelacion`, ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const membresia = estado.membresias.find(
+        (m) => m.id === id && m.gimnasioId === actual.gimnasio.id
+      );
+      if (!membresia) return error(404, "Membresía no encontrada");
+      if (membresia.estado === "CANCELADA") return error(409, "La membresía ya está cancelada");
+
+      let pagosRechazados = 0;
+      for (const pago of estado.pagos) {
+        if (pago.membresiaId === id && pago.estado === "PENDIENTE") {
+          pago.estado = "RECHAZADO";
+          pagosRechazados++;
+        }
+      }
+      const anterior = estado.membresias
+        .filter(
+          (m) =>
+            m.id !== id &&
+            m.socioId === membresia.socioId &&
+            m.actividadId === membresia.actividadId &&
+            m.estado !== "CANCELADA" &&
+            m.renovada &&
+            new Date(m.fechaFin) <= new Date(membresia.fechaInicio)
+        )
+        .sort((x, y) => y.fechaFin.localeCompare(x.fechaFin))[0];
+      if (anterior) anterior.renovada = false;
+
+      membresia.estado = "CANCELADA";
+      return respuesta(200, { ...membresiaConRelaciones(membresia), pagosRechazados });
+    }),
+
     // ───── pagos: cualquier usuario con sesión consulta y registra
     http.get(`${base}/pagos`, ({ request }) => {
       const actual = autenticar(request);

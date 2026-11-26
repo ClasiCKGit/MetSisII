@@ -18,6 +18,8 @@ import { useMembresiasSocio } from "../hooks/useMembresiasSocio";
 import { usePagosSocio } from "../hooks/usePagosSocio";
 import type { MembresiaSocio } from "@/api/membresias.api";
 import { InscribirSocioDialog } from "../components/InscribirSocioDialog";
+import { useAuthStore } from "@/store/auth.store";
+import { CancelarMembresiaDialog } from "../components/CancelarMembresiaDialog";
 import { RenovarMembresiaDialog } from "../components/RenovarMembresiaDialog";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
@@ -101,10 +103,14 @@ function FilaMembresia({
   membresia,
   renovable,
   onRenovar,
+  cancelable,
+  onCancelar,
 }: {
   membresia: MembresiaSocio;
   renovable: boolean;
   onRenovar: () => void;
+  cancelable: boolean;
+  onCancelar: () => void;
 }) {
   return (
     <li className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
@@ -140,6 +146,16 @@ function FilaMembresia({
             Renovar
           </Button>
         )}
+        {cancelable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Cancelar ${membresia.actividad.nombre}`}
+            onClick={onCancelar}
+          >
+            Cancelar
+          </Button>
+        )}
       </div>
     </li>
   );
@@ -153,6 +169,9 @@ export function SocioDetallePage() {
   const [editando, setEditando] = useState(false);
   const [inscribiendo, setInscribiendo] = useState(false);
   const [renovando, setRenovando] = useState<MembresiaSocio | null>(null);
+  const [cancelando, setCancelando] = useState<MembresiaSocio | null>(null);
+  // Cancelar es solo de ADMIN (la API responde 403 a la recepción)
+  const esAdmin = useAuthStore((state) => state.usuario?.rol === "ADMIN");
 
   if (isPending) {
     return (
@@ -243,6 +262,8 @@ export function SocioDetallePage() {
                   // Un socio dado de baja no se puede renovar (la API responde 404)
                   renovable={socio.activo && idsRenovables(membresiasQuery.data).has(membresia.id)}
                   onRenovar={() => setRenovando(membresia)}
+                  cancelable={esAdmin && membresia.estado !== "CANCELADA"}
+                  onCancelar={() => setCancelando(membresia)}
                 />
               ))}
             </ul>
@@ -292,6 +313,7 @@ export function SocioDetallePage() {
 
       <EditarSocioDialog socio={editando ? socio : null} onCerrar={() => setEditando(false)} />
       <RenovarMembresiaDialog membresia={renovando} onCerrar={() => setRenovando(null)} />
+      <CancelarMembresiaDialog membresia={cancelando} onCerrar={() => setCancelando(null)} />
       <InscribirSocioDialog
         socio={socio}
         abierto={inscribiendo}
