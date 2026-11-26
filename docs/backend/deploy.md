@@ -1,6 +1,6 @@
 # Deploy de la API: imagen Docker
 
-La API se despliega como una imagen Docker (`apps/api/Dockerfile`, FIT-78). La misma imagen sirve para Render, Railway o un VPS, así que no depende de qué hosting se elija (FIT-79).
+La API se despliega como una imagen Docker (`apps/api/Dockerfile`, FIT-78). La misma imagen sirve para cualquier hosting con Docker. En producción corre en **Railway**: la configuración y los pasos están en `docs/deploy-produccion.md`.
 
 ---
 
@@ -82,7 +82,7 @@ La imagen no lleva ningún `.env`: todas las variables se configuran en el hosti
 
 ## 4. CI
 
-El job `docker-api` de `.github/workflows/ci.yml` construye la imagen en cada push a `dev` y `main` y en los PR a `main`. Solo verifica que el build funcione: **no publica la imagen** en ningún registro. Publicarla (o que el hosting la construya desde el repo) se define con el hosting.
+El job `docker-api` de `.github/workflows/ci.yml` construye la imagen en cada push a `dev` y `main` y en los PR a `main`. Solo verifica que el build funcione: **no publica la imagen** en ningún registro. Railway la construye por su cuenta desde `main` (ver `docs/deploy-produccion.md`).
 
 ---
 
