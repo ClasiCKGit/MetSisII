@@ -1,0 +1,2042 @@
+{
+  "info": {
+    "name": "FitManager API",
+    "description": "Todos los endpoints de la API de FitManager.\n\n**Uso rápido:** levantar la API (`npm run dev:api`, o `npm run docker:api` y cambiar `baseUrl` a `http://localhost:3001`) y correr la colección completa con el *Runner*, en orden. \nEl registro crea un gimnasio nuevo con un slug aleatorio, así que se puede correr las veces que haga falta sin chocar con datos anteriores.\n\n**Sesión:** la colección usa `Bearer {{token}}`. Cualquier respuesta que traiga `token` (registro, login, cambio de contraseña) lo guarda solo. \nPara probar con los datos del seed, ejecutar *Auth → Login con el seed* (admin de FitZone).\n\n**Ids:** cada request de creación guarda el id que devuelve en una variable de la colección (`socioId`, `membresiaId`, etc.) que usan los requests siguientes.\n\nRoles: los marcados *(ADMIN)* responden 403 a la recepción. Los errores tienen la forma `{ error, details? }`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Guarda el token de cualquier respuesta que lo traiga (registro, login, cambio de contraseña)",
+          "try {",
+          "  const datos = pm.response.json();",
+          "  if (datos && typeof datos.token === \"string\") pm.collectionVariables.set(\"token\", datos.token);",
+          "} catch (e) {}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gimnasioSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "nuevaPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "pegar-el-token-del-mail",
+      "type": "string"
+    },
+    {
+      "key": "usuarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "profesorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "actividadId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vinculoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tipoMembresiaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tipoDescartableId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "socioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "socioBajaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membresiaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membresiaRenovadaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pagoId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Estado de la API. No pasa por /api.",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Registro, sesión y contraseñas. Público salvo `me` y `change-password`.",
+      "item": [
+        {
+          "name": "Configuración pública",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "config"]
+            },
+            "description": "Indica si el registro de gimnasios está habilitado (`REGISTRO_GIMNASIOS_HABILITADO`).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con el seed (FitZone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Admin del seed. Otros usuarios del seed: `admin@powergym.com` / `admin123` en `powergym-punta-alta`; `admin@fitzone.com` / `recepcion123` es recepcionista en PowerGym.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gimnasioSlug\": \"fitzone-bahia-blanca\",\n  \"email\": \"admin@fitzone.com\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar gimnasio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-gimnasio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-gimnasio"]
+            },
+            "description": "Crea el gimnasio y su primer administrador, y devuelve la sesión. Responde 403 si el registro está deshabilitado y 409 si el slug ya existe. El pre-request genera un slug y un email aleatorios.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gimnasio\": {\n    \"nombre\": \"Gimnasio Postman\",\n    \"slug\": \"{{gimnasioSlug}}\",\n    \"email\": \"contacto@postman.test\",\n    \"telefono\": \"291-4000000\",\n    \"direccion\": \"Alsina 100, Bahía Blanca\"\n  },\n  \"admin\": {\n    \"nombre\": \"Ada\",\n    \"apellido\": \"Postman\",\n    \"email\": \"{{adminEmail}}\",\n    \"password\": \"{{adminPassword}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sufijo = Date.now().toString(36);",
+                  "pm.collectionVariables.set(\"gimnasioSlug\", \"postman-\" + sufijo);",
+                  "pm.collectionVariables.set(\"adminEmail\", \"admin-\" + sufijo + \"@postman.test\");",
+                  "pm.collectionVariables.set(\"adminPassword\", \"postman1234\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Devuelve `{ token, usuario, gimnasio }`. Credenciales inválidas → 401.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gimnasioSlug\": \"{{gimnasioSlug}}\",\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuario de la sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Olvidé mi contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            },
+            "description": "Siempre responde 200 con el mismo mensaje, exista o no el email. Si existe, manda un mail (Resend) con el enlace de restablecimiento.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gimnasioSlug\": \"{{gimnasioSlug}}\",\n  \"email\": \"{{adminEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password"]
+            },
+            "description": "Usa el token del enlace del mail: pegarlo en la variable `resetToken`. Con el valor de ejemplo responde 400 (token inválido o vencido).",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"otraClave123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200 o 400\", () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "change-password"]
+            },
+            "description": "Invalida las sesiones anteriores y devuelve una sesión nueva (el token se actualiza solo).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{adminPassword}}\",\n  \"newPassword\": \"{{nuevaPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"nuevaPassword\", \"postman-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set(\"adminPassword\", pm.collectionVariables.get(\"nuevaPassword\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gimnasio",
+      "description": "El gimnasio de la sesión (no lleva id).",
+      "item": [
+        {
+          "name": "Obtener gimnasio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/gimnasio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "gimnasio"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar gimnasio (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/gimnasio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "gimnasio"]
+            },
+            "description": "Campos opcionales; `null` o texto vacío borra el dato. El slug no se edita (400).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Gimnasio Postman Centro\",\n  \"telefono\": \"291-4111111\",\n  \"direccion\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Usuarios (ADMIN)",
+      "description": "Personal del gimnasio. Todo el módulo es solo para administradores.",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "Si no se indica `rol`, se crea como RECEPCIONISTA. Email repetido en el gimnasio → 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Rita\",\n  \"apellido\": \"Recepción\",\n  \"email\": \"{{emailUsuario}}\",\n  \"password\": \"recepcion123\",\n  \"rol\": \"RECEPCIONISTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set(\"emailUsuario\", \"recepcion-\" + Date.now() + \"@postman.test\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"usuarioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/{{usuarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios", "{{usuarioId}}"]
+            },
+            "description": "Nombre, apellido, rol o `activo`. Un admin no puede desactivarse ni cambiarse el rol a sí mismo (409).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apellido\": \"Recepcionista\",\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resetear contraseña de un usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/{{usuarioId}}/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios", "{{usuarioId}}", "reset-password"]
+            },
+            "description": "El admin le pone una contraseña nueva; cierra las sesiones abiertas de ese usuario.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"nuevaClave123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 204\", () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Profesores",
+      "description": "Consultar: cualquier sesión. Crear y modificar: ADMIN.",
+      "item": [
+        {
+          "name": "Crear profesor (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profesores",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profesores"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Carla\",\n  \"apellido\": \"Gómez\",\n  \"dni\": \"30111222\",\n  \"email\": \"carla@postman.test\",\n  \"telefono\": \"291-5550000\",\n  \"especialidad\": \"Funcional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"profesorId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar profesores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profesores",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profesores"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener profesor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profesores/{{profesorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profesores", "{{profesorId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar profesor (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/profesores/{{profesorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profesores", "{{profesorId}}"]
+            },
+            "description": "`activo: false` lo da de baja. `null` borra un campo opcional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"especialidad\": \"Funcional y Crossfit\",\n  \"telefono\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Actividades",
+      "description": "Consultar: cualquier sesión. Crear, modificar y vincular profesores: ADMIN.",
+      "item": [
+        {
+          "name": "Crear actividad (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades"]
+            },
+            "description": "`cupo: null` = sin límite.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Funcional\",\n  \"descripcion\": \"Entrenamiento funcional en grupo\",\n  \"cupo\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"actividadId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar actividades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener actividad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades/{{actividadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades", "{{actividadId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar actividad (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades/{{actividadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades", "{{actividadId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cupo\": 25,\n  \"activa\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vincular profesor (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades/{{actividadId}}/profesores",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades", "{{actividadId}}", "profesores"]
+            },
+            "description": "Devuelve el vínculo; su `id` es el `actividadProfesorId` de los horarios.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profesorId\": \"{{profesorId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"vinculoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar profesores de la actividad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades/{{actividadId}}/profesores",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades", "{{actividadId}}", "profesores"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tipos de membresía",
+      "description": "Planes y precios de cada actividad. Consultar: cualquier sesión. Crear, modificar y eliminar: ADMIN.",
+      "item": [
+        {
+          "name": "Crear tipo de membresía (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia"]
+            },
+            "description": "`cantidadClases: null` = clases libres.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actividadId\": \"{{actividadId}}\",\n  \"nombre\": \"Mensual\",\n  \"precio\": 15000,\n  \"duracionDias\": 30,\n  \"cantidadClases\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"tipoMembresiaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar tipos de membresía",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia?actividadId={{actividadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia"],
+              "query": [
+                {
+                  "key": "actividadId",
+                  "value": "{{actividadId}}",
+                  "description": "Opcional: solo los de una actividad",
+                  "disabled": false
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener tipo de membresía",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia/{{tipoMembresiaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia", "{{tipoMembresiaId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar tipo de membresía (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia/{{tipoMembresiaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia", "{{tipoMembresiaId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 16500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear tipo para eliminar (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actividadId\": \"{{actividadId}}\",\n  \"nombre\": \"Pase de prueba\",\n  \"precio\": 2000,\n  \"duracionDias\": 7,\n  \"cantidadClases\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"tipoDescartableId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar tipo de membresía (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tipos-membresia/{{tipoDescartableId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tipos-membresia", "{{tipoDescartableId}}"]
+            },
+            "description": "Baja lógica: el tipo queda con `activo: false` y las membresías que ya lo usan no cambian."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200 o 204\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Horarios",
+      "description": "Grilla semanal de cada actividad. Consultar: cualquier sesión. Modificar: ADMIN.",
+      "item": [
+        {
+          "name": "Crear horario (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/horarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "horarios"]
+            },
+            "description": "Horas `HH:MM` en 24 h. `actividadProfesorId` es el id del vínculo actividad-profesor (o `null`, sin profesor).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actividadId\": \"{{actividadId}}\",\n  \"diaSemana\": \"LUNES\",\n  \"horaInicio\": \"08:00\",\n  \"horaFin\": \"09:00\",\n  \"actividadProfesorId\": \"{{vinculoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"horarioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar horarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/horarios?actividadId={{actividadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "horarios"],
+              "query": [
+                {
+                  "key": "actividadId",
+                  "value": "{{actividadId}}",
+                  "description": "Opcional: solo los de una actividad",
+                  "disabled": false
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener horario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/horarios/{{horarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "horarios", "{{horarioId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar horario (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/horarios/{{horarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "horarios", "{{horarioId}}"]
+            },
+            "description": "No permite cambiar la actividad (400).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diaSemana\": \"MIERCOLES\",\n  \"horaInicio\": \"18:00\",\n  \"horaFin\": \"19:30\",\n  \"actividadProfesorId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar horario (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/horarios/{{horarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "horarios", "{{horarioId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 204\", () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desvincular profesor de la actividad (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/actividades/{{actividadId}}/profesores/{{profesorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actividades", "{{actividadId}}", "profesores", "{{profesorId}}"]
+            },
+            "description": "Está en esta carpeta porque el vínculo lo usaba el horario: va después de borrarlo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 204\", () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Socios",
+      "description": "Cualquier sesión crea y modifica; la baja es solo ADMIN.",
+      "item": [
+        {
+          "name": "Crear socio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios"]
+            },
+            "description": "DNI de 7 u 8 dígitos, único en el gimnasio (409 si se repite). El pre-request genera uno aleatorio.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Lucía\",\n  \"apellido\": \"Pérez\",\n  \"dni\": \"{{dni}}\",\n  \"email\": \"lucia@postman.test\",\n  \"telefono\": \"291-6660000\",\n  \"fechaNacimiento\": \"1995-04-12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set(\"dni\", String(Math.floor(10000000 + Math.random() * 89999999)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"socioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar socios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios?q=Pérez&activo=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Pérez",
+                  "description": "Opcional: busca por nombre, apellido o DNI",
+                  "disabled": false
+                },
+                {
+                  "key": "activo",
+                  "value": "true",
+                  "description": "Opcional: true | false",
+                  "disabled": false
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener socio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios/{{socioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios", "{{socioId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar socio",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios/{{socioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios", "{{socioId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"291-6661111\",\n  \"email\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear socio para dar de baja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Baja\",\n  \"dni\": \"{{dni}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set(\"dni\", String(Math.floor(10000000 + Math.random() * 89999999)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"socioBajaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dar de baja socio (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/socios/{{socioBajaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "socios", "{{socioBajaId}}"]
+            },
+            "description": "Baja lógica (`activo: false`). Se reactiva con PATCH `activo: true` (también solo ADMIN)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200 o 204\", () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Membresías",
+      "description": "Consultar: cualquier sesión. Inscribir y renovar: ADMIN o RECEPCIONISTA. Cancelar: ADMIN.",
+      "item": [
+        {
+          "name": "Inscribir socio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/membresias/inscripciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "membresias", "inscripciones"]
+            },
+            "description": "Crea la membresía y su pago PENDIENTE por el precio del plan. Respeta el cupo de la actividad (409 si está lleno). `fechaInicio` es opcional (ISO 8601; por defecto, ahora).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"socioId\": \"{{socioId}}\",\n  \"actividadId\": \"{{actividadId}}\",\n  \"tipoMembresiaId\": \"{{tipoMembresiaId}}\",\n  \"metodoPago\": \"EFECTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"membresiaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar membresías",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/membresias?socioId={{socioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "membresias"],
+              "query": [
+                {
+                  "key": "socioId",
+                  "value": "{{socioId}}",
+                  "description": "Opcional",
+                  "disabled": false
+                },
+                {
+                  "key": "estado",
+                  "value": "ACTIVA",
+                  "description": "Opcional: ACTIVA | VENCIDA | CANCELADA",
+                  "disabled": true
+                },
+                {
+                  "key": "vigencia",
+                  "value": "AL_DIA",
+                  "description": "Opcional: AL_DIA | POR_VENCER | VENCIDA",
+                  "disabled": true
+                },
+                {
+                  "key": "renovada",
+                  "value": "false",
+                  "description": "Opcional: false = solo las que todavía no se renovaron",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener membresía",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/membresias/{{membresiaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "membresias", "{{membresiaId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renovar membresía",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/membresias/{{membresiaId}}/renovaciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "membresias", "{{membresiaId}}", "renovaciones"]
+            },
+            "description": "Crea la membresía siguiente, que empieza cuando vence la actual (o hoy, si ya venció), con su pago pendiente. Sin `tipoMembresiaId` usa el mismo plan.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodoPago\": \"TRANSFERENCIA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"membresiaRenovadaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar membresía (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/membresias/{{membresiaRenovadaId}}/cancelacion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "membresias", "{{membresiaRenovadaId}}", "cancelacion"]
+            },
+            "description": "Pasa a CANCELADA y rechaza sus pagos pendientes (devuelve `pagosRechazados`). Si era una renovación, la anterior vuelve a figurar como no renovada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pagos",
+      "description": "Consultar: cualquier sesión. Registrar y cambiar estado: ADMIN o RECEPCIONISTA. Exportar: ADMIN.",
+      "item": [
+        {
+          "name": "Registrar pago",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagos"]
+            },
+            "description": "`monto` como número o string con hasta 2 decimales. `membresiaId` opcional (409 si la membresía está cancelada). `estado` por defecto PENDIENTE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"socioId\": \"{{socioId}}\",\n  \"membresiaId\": \"{{membresiaId}}\",\n  \"monto\": \"15000.00\",\n  \"metodoPago\": \"EFECTIVO\",\n  \"estado\": \"PENDIENTE\",\n  \"concepto\": \"Cuota mensual\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) pm.collectionVariables.set(\"pagoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pagos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos?socioId={{socioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagos"],
+              "query": [
+                {
+                  "key": "socioId",
+                  "value": "{{socioId}}",
+                  "description": "Opcional",
+                  "disabled": false
+                },
+                {
+                  "key": "membresiaId",
+                  "value": "{{membresiaId}}",
+                  "description": "Opcional",
+                  "disabled": true
+                },
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE",
+                  "description": "Opcional: PENDIENTE | PAGADO | RECHAZADO",
+                  "disabled": true
+                },
+                {
+                  "key": "metodoPago",
+                  "value": "EFECTIVO",
+                  "description": "Opcional: EFECTIVO | TARJETA | TRANSFERENCIA | MERCADO_PAGO",
+                  "disabled": true
+                },
+                {
+                  "key": "desde",
+                  "value": "2026-01-01T00:00:00.000Z",
+                  "description": "Opcional, ISO 8601",
+                  "disabled": true
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-12-31T23:59:59.999Z",
+                  "description": "Opcional, ISO 8601",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exportar pagos a CSV (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/exportar?",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagos", "exportar"],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "PAGADO",
+                  "description": "Opcional",
+                  "disabled": true
+                },
+                {
+                  "key": "desde",
+                  "value": "2026-01-01T00:00:00.000Z",
+                  "description": "Opcional",
+                  "disabled": true
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-12-31T23:59:59.999Z",
+                  "description": "Opcional",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Mismos filtros que el listado. Devuelve `pagos.csv` (en Postman: *Save response → Save to a file*)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener pago",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/{{pagoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagos", "{{pagoId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado del pago",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pagos/{{pagoId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pagos", "{{pagoId}}", "estado"]
+            },
+            "description": "Solo desde PENDIENTE, a PAGADO o RECHAZADO (409 si ya no está pendiente).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"PAGADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Inicio: cualquier sesión.",
+      "item": [
+        {
+          "name": "Resumen del inicio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/resumen",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "resumen"]
+            },
+            "description": "Métricas del gimnasio, membresías por vencer y vencidas sin renovar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"responde 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
