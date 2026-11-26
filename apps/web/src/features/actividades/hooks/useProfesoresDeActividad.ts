@@ -32,6 +32,7 @@ export function useDesvincularProfesor(actividadId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (profesorId: string) => desvincularProfesor(actividadId, profesorId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: claveDeProfesores(actividadId) }),
+    // Toda la actividad, no solo sus profesores: los horarios del profesor quitado quedan sin profesor
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: claveDeActividad(actividadId) }),
   });
 }

@@ -143,6 +143,43 @@ export async function apiListarVinculos(
   return (await res.json()) as VinculoDePrueba[];
 }
 
+export interface HorarioDePrueba {
+  id: string;
+  actividadId: string;
+  diaSemana: string;
+  horaInicio: string;
+  horaFin: string;
+  actividadProfesorId: string | null;
+}
+
+export async function apiCrearHorario(
+  token: string,
+  datos: {
+    actividadId: string;
+    diaSemana: string;
+    horaInicio: string;
+    horaFin: string;
+    actividadProfesorId?: string | null;
+  }
+): Promise<HorarioDePrueba> {
+  const res = await fetch(`${API}/horarios`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify(datos),
+  });
+  return (await res.json()) as HorarioDePrueba;
+}
+
+export async function apiListarHorarios(
+  token: string,
+  actividadId: string
+): Promise<HorarioDePrueba[]> {
+  const res = await fetch(`${API}/horarios?actividadId=${actividadId}`, {
+    headers: conToken(token),
+  });
+  return (await res.json()) as HorarioDePrueba[];
+}
+
 export async function apiDesactivarProfesor(token: string, id: string): Promise<void> {
   await fetch(`${API}/profesores/${id}`, {
     method: "PATCH",
