@@ -86,6 +86,13 @@ export const inscripcionSchema = z.object({
 
 export type InscripcionFormValues = z.infer<typeof inscripcionSchema>;
 
+export const renovacionSchema = z.object({
+  tipoMembresiaId: z.string().min(1, "Elegí el tipo de membresía"),
+  metodoPago: z.enum(METODOS_PAGO, "Elegí cómo va a pagar"),
+});
+
+export type RenovacionFormValues = z.infer<typeof renovacionSchema>;
+
 // La vigencia se cuenta en días UTC (igual que en la API): el día elegido va a medianoche UTC
 export function aFechaInicioIso(fecha: string): string {
   return `${fecha}T00:00:00.000Z`;

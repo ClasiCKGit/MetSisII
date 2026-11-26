@@ -9,6 +9,8 @@ export interface MembresiaSocio {
   fechaFin: string;
   estado: "ACTIVA" | "VENCIDA" | "CANCELADA";
   estadoVigencia: EstadoVigenciaMembresia | null;
+  // true cuando ya se renovó: hay otra membresía que empieza cuando termina esta
+  renovada: boolean;
   actividad: { id: string; nombre: string };
   tipoMembresia: { id: string; nombre: string; duracionDias: number };
 }
@@ -44,5 +46,17 @@ export interface Inscripcion extends Membresia {
 
 export async function inscribirSocio(input: InscripcionInput): Promise<Inscripcion> {
   const { data } = await apiClient.post<Inscripcion>("/membresias/inscripciones", input);
+  return data;
+}
+
+export interface RenovacionInput {
+  // Sin tipo, la API renueva con el mismo
+  tipoMembresiaId?: string;
+  metodoPago: MetodoPago;
+}
+
+// Crea la membresía siguiente (empieza cuando termina esta, o hoy si ya venció) y su pago pendiente
+export async function renovarMembresia(id: string, input: RenovacionInput): Promise<Inscripcion> {
+  const { data } = await apiClient.post<Inscripcion>(`/membresias/${id}/renovaciones`, input);
   return data;
 }

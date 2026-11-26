@@ -6,6 +6,9 @@ import { DASHBOARD_KEY } from "./useResumen";
 export function useVencimientosProximos() {
   return useQuery({
     queryKey: [...DASHBOARD_KEY, "vencimientos"],
-    queryFn: () => listarMembresiasPorVigencia("POR_VENCER"),
+    // Las renovadas vencen, pero el socio ya tiene la siguiente: no hay nada que hacer con
+    // ellas (el contador del resumen tampoco las cuenta)
+    queryFn: async () =>
+      (await listarMembresiasPorVigencia("POR_VENCER")).filter((m) => !m.renovada),
   });
 }

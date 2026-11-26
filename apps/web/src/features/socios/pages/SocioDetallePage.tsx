@@ -16,7 +16,9 @@ import {
 import { getErrorMessage, hasStatus } from "@/lib/api-error";
 import { useMembresiasSocio } from "../hooks/useMembresiasSocio";
 import { usePagosSocio } from "../hooks/usePagosSocio";
+import type { MembresiaSocio } from "@/api/membresias.api";
 import { InscribirSocioDialog } from "../components/InscribirSocioDialog";
+import { RenovarMembresiaDialog } from "../components/RenovarMembresiaDialog";
 import { EditarSocioDialog } from "../components/SocioDialogs";
 import { useSocio } from "../hooks/useSocios";
 
@@ -73,11 +75,75 @@ function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
 }
 
+/**
+ * Las membresías que se pueden renovar: no canceladas, no renovadas, y la más reciente de su
+ * actividad (una vencida vieja no se renueva si el socio ya se volvió a inscribir).
+ */
+function idsRenovables(membresias: MembresiaSocio[]): Set<string> {
+  const ultimaPorActividad = new Map<string, MembresiaSocio>();
+  for (const membresia of membresias) {
+    if (membresia.estado === "CANCELADA") continue;
+    const ultima = ultimaPorActividad.get(membresia.actividad.id);
+    if (!ultima || membresia.fechaFin > ultima.fechaFin) {
+      ultimaPorActividad.set(membresia.actividad.id, membresia);
+    }
+  }
+  return new Set([...ultimaPorActividad.values()].filter((m) => !m.renovada).map((m) => m.id));
+}
+
 const ETIQUETAS_VIGENCIA = {
   AL_DIA: "Al día",
   POR_VENCER: "Por vencer",
   VENCIDA: "Vencida",
 } as const;
+
+function FilaMembresia({
+  membresia,
+  renovable,
+  onRenovar,
+}: {
+  membresia: MembresiaSocio;
+  renovable: boolean;
+  onRenovar: () => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+      <div>
+        <p className="font-medium">{membresia.actividad.nombre}</p>
+        <p className="text-sm text-muted-foreground">
+          {membresia.tipoMembresia.nombre} · vence el {formatearFecha(membresia.fechaFin)}
+          {membresia.renovada && " · renovada"}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-2">
+        <Badge
+          variant="outline"
+          className={
+            membresia.estadoVigencia === "AL_DIA"
+              ? "border-success/30 bg-success/10 text-success"
+              : membresia.estadoVigencia === "POR_VENCER"
+                ? "border-warning/30 bg-warning/10 text-warning"
+                : membresia.estadoVigencia === "VENCIDA"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "text-muted-foreground"
+          }
+        >
+          {membresia.estadoVigencia ? ETIQUETAS_VIGENCIA[membresia.estadoVigencia] : "Cancelada"}
+        </Badge>
+        {renovable && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Renovar ${membresia.actividad.nombre}`}
+            onClick={onRenovar}
+          >
+            Renovar
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
 
 export function SocioDetallePage() {
   const { id = "" } = useParams();
@@ -86,6 +152,7 @@ export function SocioDetallePage() {
   const pagosQuery = usePagosSocio(id);
   const [editando, setEditando] = useState(false);
   const [inscribiendo, setInscribiendo] = useState(false);
+  const [renovando, setRenovando] = useState<MembresiaSocio | null>(null);
 
   if (isPending) {
     return (
@@ -170,34 +237,13 @@ export function SocioDetallePage() {
           ) : (
             <ul aria-label="Membresías del socio" className="divide-y">
               {membresiasQuery.data.map((membresia) => (
-                <li
+                <FilaMembresia
                   key={membresia.id}
-                  className="flex flex-wrap items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div>
-                    <p className="font-medium">{membresia.actividad.nombre}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {membresia.tipoMembresia.nombre} · vence el{" "}
-                      {formatearFecha(membresia.fechaFin)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      membresia.estadoVigencia === "AL_DIA"
-                        ? "border-success/30 bg-success/10 text-success"
-                        : membresia.estadoVigencia === "POR_VENCER"
-                          ? "border-warning/30 bg-warning/10 text-warning"
-                          : membresia.estadoVigencia === "VENCIDA"
-                            ? "border-destructive/30 bg-destructive/10 text-destructive"
-                            : "text-muted-foreground"
-                    }
-                  >
-                    {membresia.estadoVigencia
-                      ? ETIQUETAS_VIGENCIA[membresia.estadoVigencia]
-                      : "Cancelada"}
-                  </Badge>
-                </li>
+                  membresia={membresia}
+                  // Un socio dado de baja no se puede renovar (la API responde 404)
+                  renovable={socio.activo && idsRenovables(membresiasQuery.data).has(membresia.id)}
+                  onRenovar={() => setRenovando(membresia)}
+                />
               ))}
             </ul>
           )}
@@ -245,6 +291,7 @@ export function SocioDetallePage() {
       </div>
 
       <EditarSocioDialog socio={editando ? socio : null} onCerrar={() => setEditando(false)} />
+      <RenovarMembresiaDialog membresia={renovando} onCerrar={() => setRenovando(null)} />
       <InscribirSocioDialog
         socio={socio}
         abierto={inscribiendo}
