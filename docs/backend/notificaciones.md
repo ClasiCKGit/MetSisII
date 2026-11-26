@@ -46,12 +46,13 @@ Avisa por mail a los socios cuya membresía está por vencer, **una sola vez por
 | `fechaFin` entre hoy y dentro de 7 días (`rangoPorVencer()`) | Es la misma ventana que el estado `POR_VENCER` de la vigencia (ver `docs/backend/membresias.md`). |
 | `estado` distinto de `CANCELADA` | Una membresía cancelada no se renueva. |
 | `recordatorioEnviado = false` | No repetir el aviso todos los días de la semana. |
+| `renovada = false` | Si ya se renovó, el socio no tiene nada que hacer (la renovación además marca `recordatorioEnviado`). |
 | Socio activo y con email | Sin email no hay a quién mandarlo. |
 | Gimnasio activo | Un gimnasio dado de baja no manda mails. |
 
 Por cada membresía manda el mail y, **solo si salió bien**, marca `recordatorioEnviado = true`. Si falla, lo registra en el log y sigue con la siguiente: esa membresía se vuelve a intentar en la próxima corrida, mientras siga dentro de la ventana.
 
-`recordatorioEnviado` es una columna de `Membresia` (migración `20261125205149_agregar_recordatorio_enviado_a_membresia`, `false` por defecto). Una renovación crea una membresía nueva, así que el aviso vuelve a salir para el período siguiente.
+`recordatorioEnviado` es una columna de `Membresia` (migración `20261125205149_agregar_recordatorio_enviado_a_membresia`, `false` por defecto). Una renovación crea una membresía nueva, así que el aviso vuelve a salir para el período siguiente. Si el socio renueva antes de recibir el aviso, la membresía renovada ya no lo recibe.
 
 ### Por qué usa el `prisma` global
 
