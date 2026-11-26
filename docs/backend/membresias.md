@@ -18,6 +18,8 @@ Todas las rutas requieren sesión y se limitan al gimnasio del usuario autentica
 | `PATCH` | `/api/tipos-membresia/:id` | Actualiza los campos enviados (ADMIN) |
 | `DELETE` | `/api/tipos-membresia/:id` | Baja lógica (`activo: false`): se conserva por las membresías que lo referencian (ADMIN) |
 
+Desde la web se gestionan en el detalle de cada actividad, sección "Planes y precios" (ver `docs/frontend/actividades.md`).
+
 El `precio` debe ser no negativo, con hasta 2 decimales y como máximo `99999999.99` (la columna es `Decimal(10, 2)`); fuera de eso responde 400. Los ids de la ruta y del filtro deben ser UUID válidos.
 
 ## Vigencia

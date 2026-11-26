@@ -1271,7 +1271,10 @@ export function crearHandlers(apiUrl: string) {
         precio < 0 ||
         !MONTO.test(String(precio)) ||
         !Number.isInteger(cuerpo.duracionDias) ||
-        (cuerpo.duracionDias as number) <= 0
+        (cuerpo.duracionDias as number) <= 0 ||
+        (cuerpo.cantidadClases !== undefined &&
+          cuerpo.cantidadClases !== null &&
+          (!Number.isInteger(cuerpo.cantidadClases) || (cuerpo.cantidadClases as number) <= 0))
       ) {
         return errorDeValidacion();
       }
@@ -1292,6 +1295,62 @@ export function crearHandlers(apiUrl: string) {
       };
       estado.tiposMembresia.push(tipo);
       return respuesta(201, { ...tipo, actividad: { id: actividad.id, nombre: actividad.nombre } });
+    }),
+
+    // Mismo esquema que el PATCH real: todos los campos opcionales, al menos uno
+    http.patch(`${base}/tipos-membresia/:id`, async ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      if (!cuerpo || Object.keys(cuerpo).length === 0) return errorDeValidacion();
+      const precio = Number(cuerpo.precio);
+      if (
+        ("nombre" in cuerpo && !texto(cuerpo.nombre).trim()) ||
+        ("precio" in cuerpo &&
+          (!Number.isFinite(precio) || precio < 0 || !MONTO.test(String(precio)))) ||
+        ("duracionDias" in cuerpo &&
+          (!Number.isInteger(cuerpo.duracionDias) || (cuerpo.duracionDias as number) <= 0)) ||
+        ("cantidadClases" in cuerpo &&
+          cuerpo.cantidadClases !== null &&
+          (!Number.isInteger(cuerpo.cantidadClases) || (cuerpo.cantidadClases as number) <= 0)) ||
+        ("activo" in cuerpo && typeof cuerpo.activo !== "boolean")
+      ) {
+        return errorDeValidacion();
+      }
+
+      const tipo = estado.tiposMembresia.find(
+        (t) => t.id === id && t.gimnasioId === actual.gimnasio.id
+      );
+      if (!tipo) return error(404, "Tipo de membresía no encontrado");
+
+      if ("nombre" in cuerpo) tipo.nombre = texto(cuerpo.nombre).trim();
+      if ("precio" in cuerpo) tipo.precio = String(precio);
+      if ("duracionDias" in cuerpo) tipo.duracionDias = cuerpo.duracionDias as number;
+      if ("cantidadClases" in cuerpo) tipo.cantidadClases = cuerpo.cantidadClases as number | null;
+      if (typeof cuerpo.activo === "boolean") tipo.activo = cuerpo.activo;
+      const actividad = estado.actividades.find((a) => a.id === tipo.actividadId);
+      return respuesta(200, {
+        ...tipo,
+        actividad: { id: tipo.actividadId, nombre: actividad?.nombre ?? "" },
+      });
+    }),
+
+    // Baja lógica, como la API real: responde 200 con el tipo dado de baja
+    http.delete(`${base}/tipos-membresia/:id`, ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const tipo = estado.tiposMembresia.find(
+        (t) => t.id === id && t.gimnasioId === actual.gimnasio.id
+      );
+      if (!tipo) return error(404, "Tipo de membresía no encontrado");
+      tipo.activo = false;
+      return respuesta(200, tipo);
     }),
 
     // ───── membresías

@@ -4,6 +4,7 @@ import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
 import { HorariosDeLaActividad } from "../components/HorariosDeLaActividad";
 import { ProfesoresDeLaActividad } from "../components/ProfesoresDeLaActividad";
+import { TiposDeLaActividad } from "../components/TiposDeLaActividad";
 import { useActividad } from "../hooks/useProfesoresDeActividad";
 
 const VOLVER = (
@@ -56,6 +57,7 @@ export function ActividadDetallePage() {
 
       <ProfesoresDeLaActividad actividad={actividad} puedeEditar={puedeEditar} />
       <HorariosDeLaActividad actividad={actividad} puedeEditar={puedeEditar} />
+      <TiposDeLaActividad actividad={actividad} puedeEditar={puedeEditar} />
     </div>
   );
 }
