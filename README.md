@@ -159,6 +159,7 @@ MetSisII/
 | Tests de membresías y pagos | [`docs/backend/testing-membresias-pagos.md`](docs/backend/testing-membresias-pagos.md) |
 | Sesión, rutas y formularios (web) | [`docs/frontend/frontend-auth.md`](docs/frontend/frontend-auth.md) |
 | Socios (web) | [`docs/frontend/socios.md`](docs/frontend/socios.md) |
+| Actividades, profesores y horarios (web) | [`docs/frontend/actividades.md`](docs/frontend/actividades.md) |
 | Tests de la web | [`docs/frontend/testing-frontend.md`](docs/frontend/testing-frontend.md) |
 
 ## Flujo de trabajo

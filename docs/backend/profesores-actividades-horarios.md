@@ -340,7 +340,7 @@ Las factories nuevas (`crearProfesor`, `crearActividad`, `crearVinculo` y `crear
 
 | Tema | Detalle |
 |---|---|
-| Frontend | FIT-60 (gestión de profesores en la web) está pendiente. Actividades y horarios tampoco tienen pantallas todavía. |
+| Frontend | Las pantallas de profesores, actividades y horarios (FIT-60, FIT-61 y FIT-94) están documentadas en `docs/frontend/actividades.md`. |
 | Superposición de horarios | No se valida: una actividad puede tener dos horarios que se pisan el mismo día. Se reevalúa si hace falta (ver `docs/decisiones-diseno.md`, horas como `String`). |
 | Bajas y dependencias | Dar de baja una actividad no toca sus horarios ni sus asignaciones, y dar de baja un profesor no lo quita de los horarios donde estaba. Tampoco se impide asignar a un horario la asignación de un profesor dado de baja. |
 | Sin filtros en los listados | `GET /api/profesores` y `GET /api/actividades` devuelven todo, activos e inactivos, sin paginación. El filtrado queda del lado del cliente. |
