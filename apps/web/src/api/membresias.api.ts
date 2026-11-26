@@ -24,10 +24,13 @@ export async function listarMembresiasSocio(socioId: string): Promise<MembresiaS
   return data;
 }
 
+// Sin las renovadas: las que todavía requieren contactar al socio
 export async function listarMembresiasPorVigencia(
   vigencia: EstadoVigenciaMembresia
 ): Promise<Membresia[]> {
-  const { data } = await apiClient.get<Membresia[]>("/membresias", { params: { vigencia } });
+  const { data } = await apiClient.get<Membresia[]>("/membresias", {
+    params: { vigencia, renovada: false },
+  });
   return data;
 }
 

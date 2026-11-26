@@ -160,3 +160,84 @@ describe("POST /api/membresias/inscripciones", () => {
     expect(await prisma.pago.count()).toBe(0);
   });
 });
+
+describe("membresías vencidas sin renovar", () => {
+  it("?vigencia=VENCIDA&renovada=false trae solo las vencidas que el socio no renovó", async () => {
+    const { a } = await crearEscenario();
+    const actividad = await crearActividad(a.gimnasio.id);
+    const tipo = await crearTipoMembresia(a.gimnasio.id, actividad.id);
+    const [pendiente, renovado] = [
+      await crearSocio(a.gimnasio.id),
+      await crearSocio(a.gimnasio.id),
+    ];
+    const vencida = await crearMembresia(a.gimnasio.id, pendiente.id, actividad.id, tipo.id, {
+      fechaInicio: fechaUtc(-40),
+      fechaFin: fechaUtc(-10),
+    });
+    await crearMembresia(a.gimnasio.id, renovado.id, actividad.id, tipo.id, {
+      fechaInicio: fechaUtc(-40),
+      fechaFin: fechaUtc(-10),
+      renovada: true,
+    });
+
+    const res = await request(app)
+      .get("/api/membresias?vigencia=VENCIDA&renovada=false")
+      .set(conToken(a.token));
+
+    expect(res.status).toBe(200);
+    expect(res.body.map((m: { id: string }) => m.id)).toEqual([vencida.id]);
+  });
+
+  it("rechaza un valor de renovada que no es booleano", async () => {
+    const { a } = await crearEscenario();
+
+    const res = await request(app).get("/api/membresias?renovada=talvez").set(conToken(a.token));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("volver a inscribir al socio marca como renovada la membresía que ya había terminado", async () => {
+    const { a } = await crearEscenario();
+    const socio = await crearSocio(a.gimnasio.id);
+    const actividad = await crearActividad(a.gimnasio.id);
+    const tipo = await crearTipoMembresia(a.gimnasio.id, actividad.id);
+    const vieja = await crearMembresia(a.gimnasio.id, socio.id, actividad.id, tipo.id, {
+      fechaInicio: fechaUtc(-40),
+      fechaFin: fechaUtc(-10),
+    });
+    const deOtraActividad = await crearMembresia(
+      a.gimnasio.id,
+      socio.id,
+      (await crearActividad(a.gimnasio.id)).id,
+      tipo.id,
+      { fechaInicio: fechaUtc(-40), fechaFin: fechaUtc(-10) }
+    );
+
+    const res = await request(app)
+      .post("/api/membresias/inscripciones")
+      .set(conToken(a.token))
+      .send({
+        socioId: socio.id,
+        actividadId: actividad.id,
+        tipoMembresiaId: tipo.id,
+        metodoPago: "EFECTIVO",
+      });
+
+    expect(res.status).toBe(201);
+    expect((await prisma.membresia.findUniqueOrThrow({ where: { id: vieja.id } })).renovada).toBe(
+      true
+    );
+    expect(
+      (await prisma.membresia.findUniqueOrThrow({ where: { id: deOtraActividad.id } })).renovada
+    ).toBe(false);
+    expect(
+      (await prisma.membresia.findUniqueOrThrow({ where: { id: res.body.id } })).renovada
+    ).toBe(false);
+
+    // Si se cancela la inscripción nueva, la vieja vuelve a figurar como vencida sin renovar
+    await request(app).post(`/api/membresias/${res.body.id}/cancelacion`).set(conToken(a.token));
+    expect((await prisma.membresia.findUniqueOrThrow({ where: { id: vieja.id } })).renovada).toBe(
+      false
+    );
+  });
+});

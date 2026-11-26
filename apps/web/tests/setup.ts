@@ -11,7 +11,7 @@ import { server } from "./mocks/server";
 
 // Contra la API real, la primera pantalla de cada archivo tarda más que el segundo que esperan
 // por defecto los findBy (la API compila y abre conexiones con la primera request)
-if (USANDO_API_REAL) configure({ asyncUtilTimeout: 5000 });
+if (USANDO_API_REAL) configure({ asyncUtilTimeout: 10_000 });
 
 beforeAll(() => {
   // "error": una petición sin handler hace fallar el test, en vez de salir a la red sin avisar

@@ -160,13 +160,27 @@ export async function inscribir(db: TenantClient, input: InscribirSocioInput) {
     async (tx) => {
       const { socio, actividad, tipo } = await validarSocioActividadYTipo(tx, input);
       await verificarDisponibilidad(tx, { socioId: socio.id, actividad, fechaInicio });
-      return crearMembresiaConPago(tx, {
+      const nueva = await crearMembresiaConPago(tx, {
         socio,
         actividadId: actividad.id,
         tipo,
         fechaInicio,
         metodoPago: input.metodoPago,
       });
+      // Volver a inscribirse después de que terminó la anterior equivale a renovarla: así no
+      // queda listada como vencida sin renovar
+      await tx.membresia.updateMany({
+        where: {
+          id: { not: nueva.membresia.id },
+          socioId: socio.id,
+          actividadId: actividad.id,
+          estado: { not: "CANCELADA" },
+          renovada: false,
+          fechaFin: { lte: fechaInicio },
+        },
+        data: { renovada: true },
+      });
+      return nueva;
     },
     { isolationLevel: "Serializable" }
   );

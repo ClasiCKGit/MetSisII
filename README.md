@@ -14,14 +14,23 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Inicio de sesión por gimnasio, cambio de contraseña y recuperación por mail | ✅ |
 | Gestión de usuarios del personal (solo administradores) | ✅ |
 | Alta, edición, baja y listado de socios | ✅ |
-| Alta, edición y listado de profesores | ✅ |
+| Alta, edición, baja y listado de profesores | ✅ |
 | Actividades (Musculación, Spinning, CrossFit, etc.) y asignación de profesores | ✅ |
 | Horarios de cada actividad | ✅ |
-| Inicio con resumen del gimnasio (socios activos) | ✅ |
-| Membresías y registro de pagos | 🚧 |
+| Planes y precios (tipos de membresía) de cada actividad | ✅ |
+| Inscripción de socios a actividades, con el registro del cobro | ✅ |
+| Renovación y cancelación de membresías | ✅ |
+| Registro de pagos, cambio de estado y reporte por período exportable a CSV | ✅ |
+| Inicio con métricas (socios activos, ingresos del mes, vencimientos próximos) | ✅ |
+| Consulta de socios con cuotas por vencer y vencidas sin renovar | ✅ |
 | Aviso por mail a los socios con la membresía por vencer | ✅ |
-| Consulta de socios con cuotas vencidas | 🚧 |
-| Acceso de los socios (ver sus datos, inscribirse a actividades, estado de cuota) | 🚧 |
+| Gráficos (ingresos por mes, actividades con más inscriptos) | 🚧 |
+| Pago online con Mercado Pago | 🚧 |
+| Deploy en producción (la imagen Docker de la API ya está) | 🚧 |
+
+### Fuera de alcance
+
+- **Acceso de los socios** (ver sus datos, inscribirse a actividades o consultar su cuota desde la web). El sistema es para el personal del gimnasio: los socios no tienen usuario ni inicio de sesión. Sumarlo implica otro tipo de cuenta, un rol nuevo con sus permisos y pantallas propias, y quedó fuera del alcance de esta entrega. El socio sí recibe por mail el aviso de que su membresía está por vencer.
 
 ## Tecnologías
 
@@ -121,7 +130,10 @@ MetSisII/
 │   │   │   ├── config/         # variables de entorno, Prisma, logger y cliente multi-tenant
 │   │   │   ├── middlewares/    # autenticación, roles, validación y manejo de errores
 │   │   │   ├── modules/        # un módulo por dominio: routes → controller → service + schema
-│   │   │   │                   # (auth, usuarios, socios, profesores, actividades, horarios, dashboard)
+│   │   │   │                   # (auth, usuarios, socios, profesores, actividades, horarios,
+│   │   │   │                   #  tipos-membresia, membresias, pagos, dashboard)
+│   │   │   ├── jobs/           # tareas programadas (recordatorio de vencimiento)
+│   │   │   ├── utils/          # JWT, contraseñas, fechas, mails
 │   │   │   ├── app.ts          # setup de Express y montaje de rutas
 │   │   │   └── server.ts       # punto de entrada
 │   │   └── tests/              # integration/ (con base) y unit/
@@ -136,7 +148,7 @@ MetSisII/
 │       │   └── store/          # sesión (Zustand)
 │       └── tests/              # mocks de MSW, integration/ y unit/
 ├── docs/                       # documentación técnica
-├── docker-compose.yml          # Postgres para desarrollo
+├── docker-compose.yml          # Postgres para desarrollo (y la imagen de la API, con npm run docker:api)
 └── package.json                # workspaces y scripts de la raíz
 ```
 

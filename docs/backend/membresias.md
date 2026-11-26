@@ -4,7 +4,7 @@ Todas las rutas requieren sesión y se limitan al gimnasio del usuario autentica
 
 | Método | Ruta | Descripción |
 | --- | --- | --- |
-| `GET` | `/api/membresias` | Lista membresías; filtros opcionales: `socioId`, `estado` y `vigencia` |
+| `GET` | `/api/membresias` | Lista membresías; filtros opcionales: `socioId`, `estado`, `vigencia` y `renovada` (`true`/`false`) |
 | `GET` | `/api/membresias/:id` | Obtiene una membresía con socio, actividad y tipo |
 | `POST` | `/api/membresias/inscripciones` | Inscribe a un socio y crea el pago en una sola transacción (ADMIN o RECEPCIONISTA) |
 | `POST` | `/api/membresias/:id/renovaciones` | Renueva una membresía: crea la siguiente con su pago, en una sola transacción (ADMIN o RECEPCIONISTA) |
@@ -104,12 +104,19 @@ Content-Type: application/json
 
 ### El campo `renovada`
 
-Columna de `Membresia` (`false` por defecto, migración `20261126165407_agregar_renovada_a_membresia`). Una membresía renovada sigue teniendo su vigencia real (puede figurar como `POR_VENCER` hasta su fecha de fin), pero el socio ya tiene la siguiente, así que:
+Columna de `Membresia` (`false` por defecto, migración `20261126165407_agregar_renovada_a_membresia`). Significa **"el socio ya tiene la siguiente membresía en esta actividad"**, y la marcan dos operaciones:
+
+- **La renovación**, sobre la membresía que se renueva.
+- **Una inscripción nueva** (FIT-98), sobre las membresías anteriores del socio en la actividad que ya habían terminado cuando empieza la nueva (no canceladas). Volver a inscribirse después de que venció equivale a renovar. La migración de datos `20261126180849_marcar_renovadas_por_reinscripcion` marcó las que ya estaban en esa situación.
+
+Cancelar la membresía siguiente la desmarca (ver "Cancelación").
+
+Una membresía renovada sigue teniendo su vigencia real (puede figurar como `POR_VENCER` o `VENCIDA`), pero el socio ya tiene la siguiente, así que:
 
 - **No cuenta** en `vencimientosProximos` de `GET /api/dashboard/resumen`.
 - **No recibe** el mail de recordatorio de vencimiento (ver `docs/backend/notificaciones.md`).
 - **No se puede renovar** otra vez.
-- `GET /api/membresias` la sigue devolviendo, con `renovada: true`; el filtro `vigencia` no la excluye. El inicio de la web la saca de su lista de vencimientos.
+- `GET /api/membresias` la sigue devolviendo, con `renovada: true`; el filtro `vigencia` no la excluye. Para las que todavía requieren contactar al socio se combina con `renovada=false`: `?vigencia=POR_VENCER&renovada=false` y `?vigencia=VENCIDA&renovada=false` son las dos listas del inicio de la web. `renovada` acepta `true`/`false` (también `1`/`0`); otro valor da `400`.
 
 ## Cancelación (FIT-97)
 

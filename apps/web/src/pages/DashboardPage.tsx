@@ -11,9 +11,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import type { Membresia } from "@/api/membresias.api";
 import { useResumen } from "@/features/dashboard/hooks/useResumen";
-import { useVencimientosProximos } from "@/features/dashboard/hooks/useVencimientosProximos";
+import {
+  useMembresiasVencidas,
+  useVencimientosProximos,
+} from "@/features/dashboard/hooks/useVencimientosProximos";
 import { formatearMonto } from "@/features/pagos/formato";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
@@ -63,31 +68,48 @@ function formatearVencimiento(iso: string): string {
   return new Date(iso).toLocaleDateString("es-AR", { timeZone: "UTC" });
 }
 
-/** Lista de las membresías por vencer, con enlace a cada socio para avisarle. */
-function VencimientosProximos() {
-  const vencimientos = useVencimientosProximos();
+interface ListaDeMembresiasProps {
+  id: string;
+  titulo: string;
+  // Nombre accesible de la lista
+  etiqueta: string;
+  vacio: string;
+  // "Vence el" o "Venció el"
+  textoFecha: string;
+  // Color del texto de la fecha: aviso o urgencia
+  claseFecha: string;
+  consulta: UseQueryResult<Membresia[]>;
+}
 
+/** Membresías que requieren contactar al socio, con enlace al detalle de cada uno. */
+function ListaDeMembresias({
+  id,
+  titulo,
+  etiqueta,
+  vacio,
+  textoFecha,
+  claseFecha,
+  consulta,
+}: ListaDeMembresiasProps) {
   return (
-    <section aria-labelledby="vencimientos-proximos" className="flex flex-col gap-3.5">
-      <h2 id="vencimientos-proximos" className="rotulo">
-        Vencen en los próximos 7 días
+    <section aria-labelledby={id} className="flex flex-col gap-3.5">
+      <h2 id={id} className="rotulo">
+        {titulo}
       </h2>
       <div className="rounded-xl border bg-card p-4 sm:p-5">
-        {vencimientos.isPending ? (
+        {consulta.isPending ? (
           <p role="status" className="text-sm text-muted-foreground">
-            Cargando vencimientos…
+            Cargando…
           </p>
-        ) : vencimientos.error ? (
+        ) : consulta.error ? (
           <p role="alert" className="text-sm text-destructive">
-            {getErrorMessage(vencimientos.error)}
+            {getErrorMessage(consulta.error)}
           </p>
-        ) : vencimientos.data.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No hay membresías por vencer en los próximos 7 días.
-          </p>
+        ) : consulta.data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{vacio}</p>
         ) : (
-          <ul aria-label="Membresías por vencer" className="divide-y">
-            {vencimientos.data.map((membresia) => (
+          <ul aria-label={etiqueta} className="divide-y">
+            {consulta.data.map((membresia) => (
               <li
                 key={membresia.id}
                 className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
@@ -103,8 +125,8 @@ function VencimientosProximos() {
                     {membresia.actividad.nombre} · {membresia.tipoMembresia.nombre}
                   </p>
                 </div>
-                <span className="text-sm font-medium text-warning">
-                  Vence el {formatearVencimiento(membresia.fechaFin)}
+                <span className={cn("text-sm font-medium", claseFecha)}>
+                  {textoFecha} {formatearVencimiento(membresia.fechaFin)}
                 </span>
               </li>
             ))}
@@ -142,6 +164,8 @@ export function DashboardPage() {
   const nombre = useAuthStore((state) => state.usuario?.nombre);
   const rol = useAuthStore((state) => state.usuario?.rol);
   const resumen = useResumen();
+  const vencimientos = useVencimientosProximos();
+  const vencidas = useMembresiasVencidas();
   const hoy = format(new Date(), "EEEE d 'de' MMMM", { locale: es });
 
   return (
@@ -190,7 +214,26 @@ export function DashboardPage() {
         />
       </section>
 
-      <VencimientosProximos />
+      <div className="grid gap-5 xl:grid-cols-2">
+        <ListaDeMembresias
+          id="vencimientos-proximos"
+          titulo="Vencen en los próximos 7 días"
+          etiqueta="Membresías por vencer"
+          vacio="No hay membresías por vencer en los próximos 7 días."
+          textoFecha="Vence el"
+          claseFecha="text-warning"
+          consulta={vencimientos}
+        />
+        <ListaDeMembresias
+          id="membresias-vencidas"
+          titulo="Vencidas sin renovar"
+          etiqueta="Membresías vencidas"
+          vacio="No hay membresías vencidas sin renovar."
+          textoFecha="Venció el"
+          claseFecha="text-destructive"
+          consulta={vencidas}
+        />
+      </div>
 
       <section aria-labelledby="accesos-rapidos" className="flex flex-col gap-3.5">
         <h2 id="accesos-rapidos" className="rotulo">

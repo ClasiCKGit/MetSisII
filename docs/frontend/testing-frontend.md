@@ -122,7 +122,7 @@ DATABASE_URL="postgresql://fitmanager:fitmanager123@localhost:5433/fitmanager_de
 (Esa base la crea la suite del backend la primera vez que corre. Si después se agregó una migración, correr antes la suite del backend o `prisma migrate deploy` con esa `DATABASE_URL`.)
 
 - **Reiniciar la API después de cambiar su código.** Si se levantó con `tsx` sin `watch`, sigue sirviendo el código viejo y los endpoints nuevos responden `404 Ruta no encontrada`.
-- En este modo `tests/setup.ts` sube la espera de los `findBy` de 1 a 5 segundos (`configure({ asyncUtilTimeout })`): la primera pantalla de cada archivo tarda más contra la API real, y con 1 segundo el primer test de varios archivos fallaba por tiempo, no por un error.
+- En este modo `tests/setup.ts` sube la espera de los `findBy` de 1 a 10 segundos (`configure({ asyncUtilTimeout })`). Contra la API real (que corre con `tsx`, sin compilar) las pantallas tardan más: con 1 segundo fallaba el primer test de varios archivos, y con 5, corriendo la suite completa, alguno al azar, siempre por tiempo y nunca por un error. Si un test falla solo en la corrida completa y pasa aislado, es esto.
 
 Correr este modo cada tanto, y siempre después de tocar `fake-api.ts` o la API, es lo que evita que la API falsa se convierta en una ficción que los tests aprueban pero el sistema real no cumple. Un par de tests funcionan igual en ambos modos gracias a ayudantes (por ejemplo, `simularServidorCaido`).
 

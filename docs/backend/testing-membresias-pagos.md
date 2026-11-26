@@ -9,6 +9,7 @@ Las pruebas de estos módulos combinan integración contra PostgreSQL y una prue
 - Rutas protegidas, aislamiento por gimnasio y filtros de membresías.
 - Alta de inscripción junto con su pago, importe tomado del tipo de membresía y serialización decimal con dos dígitos.
 - Rechazo de inscripciones sin método de pago y de duplicados, sin crear registros parciales.
+- Vencidas sin renovar (`membresias.test.ts`): el filtro `vigencia=VENCIDA&renovada=false`, que una inscripción nueva marque como renovada la anterior ya terminada (y no las de otra actividad), y que cancelarla la desmarque.
 - Cancelación (`cancelaciones.test.ts`): permisos (`401`, `403` para la recepción), pagos pendientes rechazados y pagados intactos, doble cancelación, cupo liberado, cancelar una renovación deja la anterior renovable, sale de los vencimientos próximos, no admite pagos nuevos, id inválido y aislamiento entre gimnasios.
 - Renovación (`renovaciones.test.ts`): fecha de inicio al terminar la actual o desde hoy si venció, cambio de tipo, pago creado, doble renovación y dos renovaciones simultáneas, canceladas, cupo sin contar la renovada, tipo inválido, socio o actividad inactivos, validación del body, aislamiento, y que una renovada no cuente en los vencimientos próximos.
 - Filtros de pagos por socio, estado, método y fechas inclusivas.
