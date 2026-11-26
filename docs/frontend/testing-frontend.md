@@ -170,7 +170,7 @@ apps/web/
 
 | Función | Dónde | Qué hace |
 |---|---|---|
-| `renderApp(ruta)` | `render.tsx` | Monta la app completa en esa ruta y devuelve `{ router, user }` (`user` es el simulador de usuario de Testing Library). |
+| `renderApp(ruta)` | `render.tsx` | Monta la app completa en esa ruta y devuelve `{ router, user }` (`user` es el simulador de usuario de Testing Library). Usa las rutas con las pantallas diferidas **ya cargadas**: `setup.ts` llama una vez a `cargarRutas()` antes de los tests, así cada pantalla está lista apenas se monta, como antes de la carga diferida. |
 | `nuevoGimnasio()` | `api.ts` | Crea un gimnasio con un administrador (`Ana Admin`, contraseña `admin12345`) y devuelve `slug`, `nombre`, `email`, `password`, `token` y `adminId`. |
 | `apiCrearUsuario(token, datos)` | `api.ts` | Crea un usuario por API (contraseña `clave12345` por defecto). |
 | `apiActualizarUsuario(token, id, cambios)` | `api.ts` | Modifica un usuario por API y devuelve el código HTTP. |

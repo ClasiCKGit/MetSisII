@@ -200,6 +200,12 @@ Para mostrar un error en pantalla se usa `getErrorMessage(error)`; nunca el erro
 
 Las rutas se declaran como **datos** (`routes/index.tsx` exporta un `RouteObject[]`), y `main.tsx` crea el router con `createBrowserRouter`. Así las mismas rutas se pueden reutilizar en tests con `createMemoryRouter`.
 
+**Carga diferida por ruta (FIT-100).** Cada pantalla, salvo login, inicio y 404, se declara con `diferida(() => import(...))`, que usa el `lazy` de React Router: su código (y lo que solo ella usa) va en un archivo aparte que el navegador descarga recién la primera vez que se abre. Así el archivo principal pasó de 793 kB (242 kB con gzip) a unos 440 kB (139 kB con gzip), y el build dejó de avisar que supera los 500 kB.
+
+- Login, inicio y 404 quedan en el archivo principal porque son lo primero que se ve: no conviene que esperen una descarga extra.
+- Si la primera pantalla que se abre es una diferida (por ejemplo, recargar en `/socios`), mientras llega se ve `CargandoPantalla` (`HydrateFallback`). Al navegar entre pantallas, React Router mantiene la anterior hasta que la nueva está lista, sin parpadeos.
+- **Pantalla nueva:** declararla con `diferida`, salvo que sea de las primeras que ve todo el mundo. El componente se sigue exportando con nombre (`export function XPage`).
+
 | Ruta | Guard | Contenido |
 |---|---|---|
 | `/login` | `GuestOnly` | `LoginPage` dentro de `AuthLayout` |
@@ -497,6 +503,5 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Tema | Detalle |
 |---|---|
 | Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/frontend/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
-| Tamaño del bundle | El build avisa que supera los 500 kB; se resuelve con carga diferida por ruta cuando haya más pantallas |
 | Sincronización entre pestañas | Ver sección 6 |
 | Refresh tokens | No existen: pasadas las 8 horas hay que volver a iniciar sesión |
