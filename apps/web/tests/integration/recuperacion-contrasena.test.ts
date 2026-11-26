@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { apiLoginStatus, nuevoGimnasio, tokenDeResetDelUltimoMail } from "../helpers/api";
+import { USANDO_API_REAL } from "../helpers/modo";
 import { renderApp } from "../helpers/render";
 
 describe("olvidé mi contraseña", () => {
@@ -50,24 +51,28 @@ describe("restablecer contraseña", () => {
     expect(await screen.findByText("Las contraseñas no coinciden")).toBeInTheDocument();
   });
 
-  it("con un token válido cambia la contraseña y permite iniciar sesión con la nueva", async () => {
-    const g = await nuevoGimnasio();
-    const { user, router } = renderApp("/olvide-mi-contrasena");
+  // El token se lee de la API falsa: la real lo manda por mail y guarda solo su hash
+  it.skipIf(USANDO_API_REAL)(
+    "con un token válido cambia la contraseña y permite iniciar sesión con la nueva",
+    async () => {
+      const g = await nuevoGimnasio();
+      const { user, router } = renderApp("/olvide-mi-contrasena");
 
-    await user.type(screen.getByLabelText("Gimnasio"), g.slug);
-    await user.type(screen.getByLabelText("Email"), g.email);
-    await user.click(screen.getByRole("button", { name: "Enviar instrucciones" }));
-    await screen.findByText("Revisá tu email");
+      await user.type(screen.getByLabelText("Gimnasio"), g.slug);
+      await user.type(screen.getByLabelText("Email"), g.email);
+      await user.click(screen.getByRole("button", { name: "Enviar instrucciones" }));
+      await screen.findByText("Revisá tu email");
 
-    const token = tokenDeResetDelUltimoMail();
-    router.navigate(`/reset-password?token=${token}`);
+      const token = tokenDeResetDelUltimoMail();
+      router.navigate(`/reset-password?token=${token}`);
 
-    await user.type(await screen.findByLabelText("Contraseña nueva"), "nueva-clave-123");
-    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "nueva-clave-123");
-    await user.click(screen.getByRole("button", { name: "Guardar contraseña" }));
+      await user.type(await screen.findByLabelText("Contraseña nueva"), "nueva-clave-123");
+      await user.type(screen.getByLabelText("Repetir contraseña nueva"), "nueva-clave-123");
+      await user.click(screen.getByRole("button", { name: "Guardar contraseña" }));
 
-    expect(await screen.findByText("Contraseña actualizada")).toBeInTheDocument();
-    expect(await apiLoginStatus(g.slug, g.email, "nueva-clave-123")).toBe(200);
-    expect(await apiLoginStatus(g.slug, g.email, g.password)).toBe(401);
-  });
+      expect(await screen.findByText("Contraseña actualizada")).toBeInTheDocument();
+      expect(await apiLoginStatus(g.slug, g.email, "nueva-clave-123")).toBe(200);
+      expect(await apiLoginStatus(g.slug, g.email, g.password)).toBe(401);
+    }
+  );
 });

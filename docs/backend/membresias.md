@@ -29,6 +29,8 @@ La respuesta agrega `estadoVigencia`, calculado al consultar y al inscribir. No 
 - `VENCIDA`: la fecha de fin ya pasó.
 - `null`: la membresía está cancelada.
 
+Las membresías que entran en `POR_VENCER` reciben un mail de aviso una sola vez (campo `recordatorioEnviado`, ver `docs/backend/notificaciones.md`).
+
 La vigencia usa días calendario UTC y compara la fecha de fin inclusivamente. Se puede filtrar con, por ejemplo, `/api/membresias?socioId=<uuid>&vigencia=POR_VENCER`. El campo `estado` del modelo (`ACTIVA`, `VENCIDA`, `CANCELADA`) se conserva aparte por compatibilidad y para el ciclo operativo.
 
 La inscripción requiere `socioId`, `actividadId`, `tipoMembresiaId` y `metodoPago`. El monto se toma del precio vigente del tipo de membresía; se crean la membresía y el pago pendiente dentro de `req.db.$transaction`. La respuesta agrega un resumen `pago` y serializa `pago.monto` como una cadena decimal con dos dígitos. Si falla cualquiera de las dos escrituras, se revierten ambas. La transacción es `Serializable` para no superar el cupo: si dos inscripciones chocan, una responde 409 y se puede reintentar.

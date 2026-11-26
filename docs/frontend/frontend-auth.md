@@ -21,7 +21,7 @@ Documentación de la base de `apps/web`: cómo se maneja la sesión, cómo se ll
 ```
 apps/web/src/
 ├── api/
-│   └── auth.api.ts                 Funciones que llaman a la API (login, getMe)
+│   └── auth.api.ts                 Funciones que llaman a la API (login, getMe, forgotPassword, resetPassword...)
 ├── components/ui/                  Componentes de shadcn (generados por el CLI)
 ├── config/
 │   └── env.ts                      Variables de entorno validadas con Zod
@@ -29,8 +29,8 @@ apps/web/src/
 │   ├── components/
 │   │   ├── AuthBootstrap.tsx       Restaura la sesión al abrir la app
 │   │   └── guards.tsx              GuestOnly, RequireAuth, RequireRole
-│   ├── hooks/useLogin.ts           Mutación de login (TanStack Query)
-│   ├── pages/LoginPage.tsx
+│   ├── hooks/                      useLogin, useChangePassword, useForgotPassword, useResetPassword...
+│   ├── pages/                      LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage
 │   ├── redirect.ts                 A dónde volver después de iniciar sesión
 │   ├── schemas.ts                  Validación del formulario (Zod)
 │   ├── session.ts                  cerrarSesion()
@@ -128,6 +128,15 @@ sequenceDiagram
 
 `POST /api/auth/change-password` cierra todas las sesiones del usuario, incluida la actual, y responde con una sesión nueva. `useChangePassword` la guarda con `setSession`: si no lo hiciera, el token viejo daría `401` en el próximo request y el cliente cerraría la sesión. Las otras sesiones del usuario (otra pestaña con otro login, otro dispositivo) se cierran solas en su próximo request.
 
+### Recuperar la contraseña olvidada
+
+1. El login tiene el enlace "¿Olvidaste tu contraseña?", que lleva a `/olvide-mi-contrasena` (`ForgotPasswordPage`). El gimnasio se precarga con `ultimoSlug`.
+2. `useForgotPassword` llama a `POST /api/auth/forgot-password`. La API responde lo mismo exista o no el email, así que la página **siempre** muestra "Revisá tu email": no hay un error de "email inexistente" que mostrar.
+3. El mail trae un link a `/reset-password?token=...` (`ResetPasswordPage`). Sin `token` en la URL muestra "Link inválido". El formulario pide la contraseña dos veces y valida en el cliente que coincidan.
+4. `useResetPassword` llama a `POST /api/auth/reset-password`. Si sale bien muestra el aviso "Contraseña actualizada" y lleva al login; la API **no** devuelve una sesión, hay que iniciar sesión con la contraseña nueva. Si el link venció o ya se usó, muestra el mensaje de la API.
+
+Las dos páginas están bajo `GuestOnly`: si quien abre el link del mail ya tiene una sesión iniciada en ese navegador, lo redirige adentro de la app en lugar de mostrar el formulario.
+
 ### Registro de gimnasios habilitado o no
 
 `useAuthConfig` pide `GET /api/auth/config` (con `staleTime: Infinity`, porque solo cambia si se reinicia la API). `LoginPage` muestra el enlace "Registrá tu gimnasio" solo si la API confirma que el registro está abierto. `RegisterPage` muestra "Registro no disponible" si está cerrado; si la consulta falla (API caída) muestra el formulario igual, porque la que decide es la API al enviar.
@@ -188,6 +197,9 @@ Las rutas se declaran como **datos** (`routes/index.tsx` exporta un `RouteObject
 | Ruta | Guard | Contenido |
 |---|---|---|
 | `/login` | `GuestOnly` | `LoginPage` dentro de `AuthLayout` |
+| `/registro` | `GuestOnly` | `RegisterPage` dentro de `AuthLayout` |
+| `/olvide-mi-contrasena` | `GuestOnly` | `ForgotPasswordPage` dentro de `AuthLayout` |
+| `/reset-password` | `GuestOnly` | `ResetPasswordPage` dentro de `AuthLayout` (link del mail, con `?token=`) |
 | `/` | `RequireAuth` | `DashboardPage` dentro de `AppLayout` |
 | `/usuarios` | `RequireAuth` + `RequireRole(ADMIN)` | `UsuariosPage` |
 | cualquier otra | — | `NotFoundPage` |
@@ -445,6 +457,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | API caída | Apagar la API y recargar | "No pudimos conectar con el servidor" y "Reintentar" |
 | Cerrar sesión | "Salir" | Login con el gimnasio precargado |
 | Cambiar la contraseña | "Cambiar contraseña" con la actual correcta | "Contraseña actualizada" y sigue adentro; otro navegador con una sesión del mismo usuario vuelve al login en el próximo request |
+| Recuperar la contraseña | "¿Olvidaste tu contraseña?" con un usuario cuyo email sea el de la cuenta de Resend (con el remitente de prueba solo llega ahí) | "Revisá tu email"; el link del mail permite elegir una contraseña nueva y vuelve al login. Usarlo dos veces: "El link no es válido o expiró" |
 | Registro cerrado | `REGISTRO_GIMNASIOS_HABILITADO=false` en `apps/api/.env`, reiniciar la API y abrir `/login` y `/registro` | Sin enlace al registro; `/registro` muestra "Registro no disponible" |
 
 ---

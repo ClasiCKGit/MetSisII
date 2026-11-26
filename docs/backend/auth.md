@@ -13,6 +13,7 @@ Documentación del módulo de autenticación de `apps/api`: cómo se registra un
 - La autenticación usa **JWT** (HS256, 8 horas). El token identifica al usuario y a su gimnasio.
 - El filtrado por gimnasio **no se escribe a mano en cada query**: lo hace un cliente de Prisma especial (`req.db`) que agrega el `gimnasioId` automáticamente.
 - Hay dos roles: `ADMIN` y `RECEPCIONISTA`. Los profesores y los socios no tienen usuario en el sistema. Solo los `ADMIN` gestionan al personal (crear usuarios, cambiar roles, desactivar y resetear contraseñas); cualquier usuario puede cambiar su propia contraseña.
+- Quien olvidó su contraseña la recupera con un link que le llega por mail (`forgot-password` y `reset-password`).
 ---
 
 ## 2. Conceptos clave
@@ -165,6 +166,53 @@ Una contraseña actual incorrecta responde `400` y **no** `401`, a propósito: e
 
 ---
 
+### `POST /api/auth/forgot-password`
+
+Pide un link para restablecer la contraseña. No requiere sesión.
+
+**Request**
+
+```json
+{ "gimnasioSlug": "fitzone-bahia-blanca", "email": "admin@fitzone.com" }
+```
+
+**Respuesta `200`, siempre la misma:**
+
+```json
+{ "message": "Si el email existe, vas a recibir instrucciones para restablecer tu contraseña" }
+```
+
+Si el gimnasio existe y está activo, y el usuario existe y está activo, la API:
+
+1. Genera un token aleatorio de 32 bytes y guarda **solo su hash SHA-256** en `password_reset_tokens`, con vencimiento a **1 hora**. Antes borra los tokens anteriores del usuario: solo vale el último link pedido.
+2. Manda un mail con el link `<FRONTEND_URL>/reset-password?token=<token>` (ver `docs/backend/notificaciones.md`).
+
+En cualquier otro caso no hace nada y responde lo mismo, para no revelar qué emails están registrados. Por el mismo motivo **el mail se manda sin esperar a que salga**: si se esperara, la respuesta tardaría más cuando el usuario existe, y un fallo de Resend devolvería un error que tampoco aparece cuando no existe. Un envío fallido solo queda en el log.
+
+`PasswordResetToken` no está en `TENANT_RULES` ni se usa desde `req.db`: todo el flujo ocurre antes de tener sesión, con el `prisma` global, igual que el login.
+
+**Errores:** `400` validación · `429` demasiados intentos.
+
+---
+
+### `POST /api/auth/reset-password`
+
+Fija la contraseña nueva usando el token del link. No requiere sesión.
+
+**Request**
+
+```json
+{ "token": "<token del link>", "newPassword": "clave-nueva-123" }
+```
+
+**Respuesta `200`:** `{ "message": "Contraseña actualizada correctamente" }`. No devuelve una sesión: el usuario inicia sesión después con la contraseña nueva.
+
+En una sola transacción guarda el hash nuevo, **incrementa `tokenVersion`** (cierra todas las sesiones abiertas, ver la sección 6) y borra todos los tokens de reset del usuario, así que el link sirve una sola vez.
+
+**Errores:** `400` validación, o `El link no es válido o expiró` si el token no existe, ya se usó o pasó la hora · `429` demasiados intentos.
+
+---
+
 ### Gestión de usuarios del personal (`/api/usuarios`)
 
 Todas las rutas requieren `Authorization: Bearer <token>` y rol `ADMIN` (un `RECEPCIONISTA` recibe `403`). Trabajan sobre `req.db`, así que solo ven y modifican usuarios del propio gimnasio.
@@ -232,6 +280,9 @@ Definidas con Zod en `auth.schema.ts`.
 | `:id` (rutas de usuarios) | Tiene que ser un UUID válido; si no, `400`. |
 | `newPassword` / `password` (cambio y reset) | Misma regla que el registro: entre 8 y 72 caracteres. |
 | `currentPassword` | Solo se exige que no esté vacía. |
+| `gimnasioSlug` (forgot-password) | Se recorta y pasa a minúsculas; solo se exige que no esté vacío (si no existe, la respuesta es la misma). |
+| `token` (reset-password) | Solo se exige que no esté vacío. |
+| `newPassword` (reset-password) | Misma regla que el registro: entre 8 y 72 caracteres. |
 
 Un body inválido responde `400` con este formato:
 
@@ -285,6 +336,36 @@ sequenceDiagram
     H-->>C: respuesta
 ```
 
+### Recuperación de contraseña
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant W as Web
+    participant A as API
+    participant DB as Postgres
+    participant R as Resend
+
+    U->>W: /olvide-mi-contrasena con slug y email
+    W->>A: POST /api/auth/forgot-password
+    alt gimnasio y usuario existen y están activos
+        A->>DB: borrar tokens anteriores y guardar el hash del nuevo (vence en 1 hora)
+        A-)R: mandar el link (sin esperar la respuesta)
+    end
+    A-->>W: 200 con el mensaje genérico
+    R-->>U: mail con /reset-password?token=...
+    U->>W: abre el link y elige la contraseña nueva
+    W->>A: POST /api/auth/reset-password con token y newPassword
+    A->>DB: buscar el token por su hash
+    alt existe y no venció
+        A->>DB: guardar el hash nuevo, tokenVersion + 1 y borrar los tokens del usuario
+        A-->>W: 200
+        W->>U: vuelve al login con aviso de éxito
+    else no existe o venció
+        A-->>W: 400 El link no es válido o expiró
+    end
+```
+
 ---
 
 ## 6. JWT
@@ -300,7 +381,7 @@ El token **no incluye el rol ni datos personales**. El rol se lee de la base en 
 
 ### Cierre de sesiones con `tokenVersion`
 
-`Usuario` tiene una columna `tokenVersion` (entero, empieza en `0`) que viaja en el token como `ver`. `authenticate` solo acepta el token si su `ver` coincide con la versión actual del usuario en la base. Cambiar la contraseña propia o resetear la de otro usuario la incrementa en el mismo `update` que guarda el hash nuevo, y con eso **todos los tokens emitidos antes dejan de valer en el acto**.
+`Usuario` tiene una columna `tokenVersion` (entero, empieza en `0`) que viaja en el token como `ver`. `authenticate` solo acepta el token si su `ver` coincide con la versión actual del usuario en la base. Cambiar la contraseña propia, resetear la de otro usuario o restablecerla con el link del mail la incrementa en el mismo `update` que guarda el hash nuevo, y con eso **todos los tokens emitidos antes dejan de valer en el acto**.
 
 - No suma consultas: `authenticate` ya buscaba al usuario en cada request, y la versión es una condición más del mismo `where`.
 - Se eligió frente a una columna `passwordChangedAt` comparada con el `iat` del token porque el `iat` tiene precisión de segundos (un token emitido en el mismo segundo que el cambio es ambiguo) y porque un contador sirve para cualquier motivo de cierre, no solo la contraseña. Un futuro "cerrar todas mis sesiones" solo tendría que incrementarlo.
@@ -478,7 +559,9 @@ Para lanzar un error propio desde un service: `throw new AppError(404, "Socio no
 - **Algoritmo del JWT fijado** en la verificación, para evitar ataques que lo cambian.
 - **Estado verificado en cada request**, no solo al iniciar sesión.
 - **Registro en transacción**: gimnasio y admin se crean juntos o no se crea ninguno.
-- **Límite de intentos** (`authLimiter`): 20 requests cada 15 minutos por IP en producción, compartido por registro, login y cambio de contraseña (ver sección 7).
+- **Límite de intentos** (`authLimiter`): 20 requests cada 15 minutos por IP en producción, compartido por registro, login, cambio de contraseña y recuperación (ver sección 7).
+- **Recuperación sin revelar cuentas:** `forgot-password` responde igual exista o no el usuario, y no espera el envío del mail, que es lo que más haría variar el tiempo de respuesta (las escrituras del token en la base son mucho más rápidas).
+- **Tokens de recuperación hasheados:** la base guarda solo el SHA-256 del token, así que alguien con acceso de lectura a la base no puede usar los links pendientes. Duran 1 hora, sirven una vez y pedir uno nuevo invalida el anterior. Al usarlo se cierran todas las sesiones del usuario.
 - **El cambio de contraseña propia exige la actual**, y resetear la propia desde `/api/usuarios` está bloqueado: si no, una sesión robada podría cambiarla sin conocerla.
 - **Un admin no puede desactivarse ni quitarse el rol**, lo que asegura siempre un administrador activo sin tener que contarlos.
 - **Mínimo privilegio al crear usuarios:** si no se indica el rol, queda como `RECEPCIONISTA`.
@@ -536,8 +619,8 @@ apps/api/src/
 ├── modules/
 │   ├── auth/
 │   │   ├── auth.types.ts           Rol y AuthContext
-│   │   ├── auth.schema.ts          Schemas de Zod (registro, login y cambio de contraseña)
-│   │   ├── auth.service.ts         Lógica: registerGimnasio, login y changePassword
+│   │   ├── auth.schema.ts          Schemas de Zod (registro, login, cambio y recuperación de contraseña)
+│   │   ├── auth.service.ts         Lógica: registerGimnasio, login, changePassword, forgotPassword y resetPassword
 │   │   ├── auth.controller.ts      Handlers HTTP
 │   │   └── auth.routes.ts          Rutas de /api/auth
 │   └── usuarios/
@@ -548,7 +631,9 @@ apps/api/src/
 ├── types/
 │   └── express.d.ts                Agrega auth y db a Request
 └── utils/
+    ├── html.ts                     escaparHtml (texto de usuarios dentro de los mails)
     ├── jwt.ts                      signToken y verifyToken
+    ├── mailer.ts                   enviarMail (Resend), ver docs/backend/notificaciones.md
     └── password.ts                 hashPassword, comparePassword y rondas de bcrypt
 ```
 
@@ -622,7 +707,23 @@ curl -s -X POST http://localhost:3000/api/auth/change-password \
   -d '{"currentPassword":"admin123","newPassword":"otra-clave-123"}'
 ```
 
-El último comando cambia la contraseña de Ana en la base de desarrollo y devuelve un token nuevo: el `$TOKEN` anterior deja de servir. Para volver a `admin123`, correr `npm run db:seed`.
+**Recuperación de contraseña:**
+
+```bash
+# Pedir el link (responde lo mismo exista o no el usuario)
+curl -s -X POST http://localhost:3000/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"gimnasioSlug":"fitzone-bahia-blanca","email":"admin@fitzone.com"}'
+
+# Usar el token del link que llegó por mail
+curl -s -X POST http://localhost:3000/api/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<TOKEN_DEL_MAIL>","newPassword":"otra-clave-123"}'
+```
+
+Con el remitente de prueba de Resend el mail solo llega a la dirección de la cuenta de Resend (ver `docs/backend/notificaciones.md`): para recibirlo, crear un usuario con ese email.
+
+El último comando del bloque de gestión de usuarios cambia la contraseña de Ana en la base de desarrollo y devuelve un token nuevo: el `$TOKEN` anterior deja de servir. Para volver a `admin123`, correr `npm run db:seed`.
 
 Casos de error que conviene probar:
 
@@ -642,12 +743,13 @@ npm test
 | Archivo | Cubre |
 |---|---|
 | `tenant.test.ts` | El aislamiento de `req.db`: lectura, escritura, borrado, `Gimnasio`, `Horario`, transacciones |
-| `auth.test.ts` | Registro, login, `/me`, tokens falsificados y cambio de contraseña |
+| `auth.test.ts` | Registro, login, `/me`, tokens falsificados, cambio de contraseña y recuperación por mail |
 | `registro-habilitado.test.ts` | `GET /api/auth/config` y el registro con `REGISTRO_GIMNASIOS_HABILITADO` apagado |
-| `env.test.ts` | Interpretación de `REGISTRO_GIMNASIOS_HABILITADO` |
+| `env.test.ts` | Interpretación de `REGISTRO_GIMNASIOS_HABILITADO`, `TRUST_PROXY`, `CORS_ORIGINS` y `FRONTEND_URL` |
 | `usuarios.test.ts` | Gestión del personal y reglas del administrador |
 | `login-timing.test.ts` | Tiempo de respuesta constante del login |
-| `rate-limit.test.ts` | Límite de intentos |
+| `rate-limit.test.ts` | Límite de intentos, también detrás de un proxy |
+| `app-config.test.ts` | `trust proxy` y orígenes permitidos por CORS |
 | `app.test.ts` | Errores genéricos de la app |
 
 El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en `docs/backend/testing-backend.md`. El script temporal `check-tenant.ts` ya no existe: lo reemplazan los tests de aislamiento.
@@ -660,9 +762,10 @@ El detalle de cómo correrlos, cómo funcionan y cómo escribir nuevos está en 
 |---|---|---|
 | Consultas raw | `$queryRaw` ignora la extensión, también dentro de una transacción. Un test lo documenta (si algún día se protege, va a fallar). | Regla de equipo (sección 8). |
 | Sin refresh tokens | El token dura 8 horas y no se puede revocar un token puntual antes de que venza. Sí se cortan todas las sesiones de un usuario desactivándolo o cambiando su contraseña, porque `authenticate` lo verifica en cada request. | Se reevalúa si hace falta. |
-| Recuperación de contraseña | Un admin puede resetear la contraseña de otro usuario (`/api/usuarios/:id/reset-password`), pero falta el flujo por mail para quien olvidó la suya. | Epic 1 (opcional) o junto con las notificaciones por mail del Epic 6. |
+| Recuperación con usuario desactivado | `reset-password` no verifica que el usuario siga activo: si lo desactivan después de pedir el link, igual puede cambiar la contraseña. No entra, porque el login y `authenticate` lo siguen rechazando. | Se reevalúa si hace falta. |
+| Tokens de recuperación vencidos | Los tokens vencidos que nadie usó quedan en `password_reset_tokens` hasta que el usuario pide otro. No sirven, pero ocupan lugar. | Se puede sumar una limpieza al job diario. |
 | Dos admins que se degradan a la vez | La regla "un admin no puede quitarse el rol" no impide que dos admins se desactiven mutuamente en simultáneo y dejen el gimnasio sin administradores. Es una condición de carrera improbable. | Se resolvería con una transacción que cuente los admins activos; `$transaction` ya está verificada con la extensión. |
-| Límite de intentos por IP | El contador es por IP y lo comparten tres rutas: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
+| Límite de intentos por IP | El contador es por IP y lo comparten todas las rutas de autenticación: si todo el personal de un gimnasio sale por la misma IP, los intentos fallidos de uno pueden bloquear a los demás hasta 15 minutos. | Se puede afinar por email. |
 | Usuarios sin borrado ni cambio de email | Los usuarios solo se desactivan, y el email no se puede modificar. | Se reevalúa si hace falta. |
 | Registro de gimnasios abierto | Con `REGISTRO_GIMNASIOS_HABILITADO=true` cualquiera que llegue a la API puede crear un gimnasio; solo lo frena el límite de intentos. | Decisión tomada (FIT-47): en el deploy se define con la variable. Si hiciera falta abrirlo solo a algunos, se puede sumar un código de invitación. |
 | Almacenamiento del token en el frontend | Se guarda en `localStorage`. Una vulnerabilidad XSS podría leerlo; una cookie `httpOnly` es más segura pero exige cambios en el backend (cookies, CORS con credenciales, protección CSRF). | Decisión tomada; los motivos y cómo cambiarla están en `docs/frontend/frontend-auth.md`, sección 8. |
