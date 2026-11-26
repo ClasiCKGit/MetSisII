@@ -502,6 +502,5 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 
 | Tema | Detalle |
 |---|---|
-| Pruebas en un navegador real | Los tests corren en jsdom contra una API falsa (ver `docs/frontend/testing-frontend.md`). Falta una prueba de punta a punta en un navegador real, por ejemplo con Playwright. |
 | Sincronización entre pestañas | Ver sección 6 |
 | Refresh tokens | No existen: pasadas las 8 horas hay que volver a iniciar sesión |

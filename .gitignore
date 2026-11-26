@@ -8,3 +8,7 @@ apps/api/src/generated/
 # Archivos personales de agentes de IA
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Resultados de Playwright (pruebas e2e)
+playwright-report/
+test-results/

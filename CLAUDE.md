@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FitManager: app web multi-tenant de gestión de gimnasios. Monorepo con npm workspaces: `apps/api` (Express 5 + Prisma 7 + Zod 4 + Postgres), `apps/web` (React 19 + Vite 8 + Tailwind 4 + shadcn/ui sobre Base UI). Código, mensajes de error, textos de UI, nombres de tests y commits van **en español**.
 
-La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `backend/socios.md`, `backend/membresias.md`, `backend/pagos.md`, `backend/notificaciones.md`, `backend/deploy.md`, `backend/testing-membresias-pagos.md`, `frontend/frontend-auth.md`, `frontend/socios.md`, `frontend/actividades.md`, `frontend/testing-frontend.md`, `config-general.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
+La documentación detallada está en `docs/` (`backend/auth.md`, `backend/testing-backend.md`, `backend/database.md`, `backend/profesores-actividades-horarios.md`, `backend/socios.md`, `backend/membresias.md`, `backend/pagos.md`, `backend/notificaciones.md`, `backend/deploy.md`, `backend/testing-membresias-pagos.md`, `frontend/frontend-auth.md`, `frontend/socios.md`, `frontend/actividades.md`, `frontend/testing-frontend.md`, `frontend/testing-e2e.md`, `config-general.md`, `estandarizacion-y-automatizacion.md`, `decisiones-diseno.md`). Leer la sección relevante antes de cambios no triviales.
 
 ## Comandos
 
@@ -26,6 +26,7 @@ npm run docker:api                    # imagen de producción de la API en :3001
 npm test                              # todos los tests (la API necesita Postgres levantado)
 npm test -w apps/api | -w apps/web
 npm run test:watch -w apps/web
+npm run test:e2e                      # Playwright: navegador real contra el build y la API (puertos 4173 y 3100, base _test)
 ```
 
 Un solo test (Vitest), ubicándose en el workspace:
@@ -35,7 +36,7 @@ cd apps/api && npx vitest run tests/integration/auth.test.ts
 cd apps/web && npx vitest run -t "desactiva y reactiva"
 ```
 
-El CI (`.github/workflows/ci.yml`) corre lint, format:check, prisma:generate, build, tests y el build de la imagen Docker de la API en cada push a `main` y `dev` y en los PR a `main`. El pre-commit de Husky corre lint-staged (eslint --fix sobre `.ts/.tsx`; Prettier ignora los `.md`).
+El CI (`.github/workflows/ci.yml`) corre lint, format:check, prisma:generate, build, tests, las pruebas e2e y el build de la imagen Docker de la API en cada push a `main` y `dev` y en los PR a `main`. El pre-commit de Husky corre lint-staged (eslint --fix sobre `.ts/.tsx`; Prettier ignora los `.md`).
 
 ## Arquitectura del backend (`apps/api`)
 
