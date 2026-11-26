@@ -362,13 +362,13 @@ Valida y reemplaza `req.body` con el resultado de Zod (ya normalizado: emails en
 
 ### `authLimiter`
 
-Limita los requests por IP en `register-gimnasio`, `login` y `change-password` (en esta última va antes de `authenticate`). Usa `express-rate-limit`.
+Limita los requests por IP en `register-gimnasio`, `login`, `change-password` (en esta última va antes de `authenticate`), `forgot-password` y `reset-password`. Usa `express-rate-limit`.
 
 - **Producción:** 20 requests cada 15 minutos por IP. Al superarlo responde `429` con `{ "error": "Demasiados intentos, probá de nuevo en unos minutos" }` y los headers `RateLimit`.
 - **Desarrollo y tests:** 1000, para no molestar mientras se prueban credenciales inválidas.
-- **Es una sola instancia**: las tres rutas comparten el mismo contador por IP.
+- **Es una sola instancia**: todas esas rutas comparten el mismo contador por IP.
 - **Cuenta todos los requests**, también los exitosos y los de body inválido.
-- Al desplegar detrás de un proxy hay que configurar `app.set("trust proxy", 1)`; si no, todos los usuarios compartirían la IP del proxy.
+- **Detrás de un proxy** (Render, Railway, un balanceador) hay que definir `TRUST_PROXY` con la cantidad de proxies delante de la API (normalmente `1`). `app.ts` lo pasa a `app.set("trust proxy", ...)` y Express toma la IP real de `X-Forwarded-For`; si queda en `0`, todos los usuarios comparten la IP del proxy y el límite los bloquea juntos. No usar un valor mayor al real: cada salto de más le permite al cliente falsear su IP con un `X-Forwarded-For` propio y esquivar el límite.
 
 ---
 
