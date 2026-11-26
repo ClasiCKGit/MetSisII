@@ -22,6 +22,14 @@ export const envSchema = z.object({
   MAIL_FROM: z.string().min(1, "MAIL_FROM es obligatoria"),
   // URL del frontend, para armar el link de recuperación de contraseña que va en el mail
   FRONTEND_URL: z.string().min(1, "FRONTEND_URL es obligatoria").default("http://localhost:5173"),
+  // Cantidad de proxies (balanceador, CDN) delante de la API. Con 0, req.ip es la IP de
+  // quien se conecta; detrás de un proxy sería la del proxy y el límite de intentos
+  // bloquearía a todos juntos. En Render/Railway, 1.
+  TRUST_PROXY: z.coerce
+    .number()
+    .int("TRUST_PROXY debe ser un entero")
+    .min(0, "TRUST_PROXY no puede ser negativo")
+    .default(0),
 });
 
 const parsed = envSchema.safeParse(process.env);

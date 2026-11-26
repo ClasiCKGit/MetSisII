@@ -28,3 +28,17 @@ describe("REGISTRO_GIMNASIOS_HABILITADO", () => {
     expect(resultado.success).toBe(false);
   });
 });
+
+describe("TRUST_PROXY", () => {
+  it("es 0 si no se define (no confía en ningún proxy)", () => {
+    expect(envSchema.parse(base).TRUST_PROXY).toBe(0);
+  });
+
+  it("acepta la cantidad de proxies como texto", () => {
+    expect(envSchema.parse({ ...base, TRUST_PROXY: "1" }).TRUST_PROXY).toBe(1);
+  });
+
+  it.each(["-1", "1.5", "true", "abc"])("rechaza %s", (valor) => {
+    expect(envSchema.safeParse({ ...base, TRUST_PROXY: valor }).success).toBe(false);
+  });
+});

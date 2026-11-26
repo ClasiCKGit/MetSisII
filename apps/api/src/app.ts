@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 import { authRouter } from "./modules/auth/auth.routes";
@@ -18,6 +19,8 @@ import { pagosRouter } from "./modules/pagos/pagos.routes";
 export function createApp() {
   const app = express();
 
+  // Cuántos saltos de X-Forwarded-For creer para calcular req.ip (lo usa authLimiter)
+  app.set("trust proxy", env.TRUST_PROXY);
   app.use(helmet());
   app.use(cors()); // TODO: restringir origin al dominio del frontend cuando definamos deploy
   app.use(express.json());
