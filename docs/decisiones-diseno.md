@@ -262,7 +262,7 @@ flowchart LR
 | Conocimiento duplicado | `rolSchema` (Zod) y `RolUsuario` (Prisma) | Importar los valores del enum generado por Prisma | Se deja, con la contrapartida de que acoplaría `auth.types.ts` al cliente generado |
 | Primitive Obsession | `Horario.horaInicio` y `horaFin` son `String` (`"18:00"`) | Value Object o tipo `TIME` | Decisión consciente: simple de leer y ordenar. Se reevalúa si hay que calcular superposiciones de horarios (Epic 4) |
 | Acceso excesivo a datos | `req.db.gimnasio` no está restringido | Restringir el modelo | Pendiente (Análisis 1) |
-| Comentario `TODO` | `app.ts`: `cors()` abierto a cualquier origen | Restringir `origin` al dominio del frontend | Se resuelve en el Epic 7 (deploy) |
+| Comentario `TODO` | `app.ts`: `cors()` abierto a cualquier origen | Restringir `origin` al dominio del frontend | Resuelto (FIT-83): `cors()` solo acepta los orígenes de `CORS_ORIGINS` o, si no está, el de `FRONTEND_URL` |
 
 ---
 

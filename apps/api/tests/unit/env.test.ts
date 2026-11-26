@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { envSchema } from "../../src/config/env";
+import { envSchema, origenesPermitidos } from "../../src/config/env";
 
 const base = {
   DATABASE_URL: "postgresql://localhost/x",
@@ -40,5 +40,31 @@ describe("TRUST_PROXY", () => {
 
   it.each(["-1", "1.5", "true", "abc"])("rechaza %s", (valor) => {
     expect(envSchema.safeParse({ ...base, TRUST_PROXY: valor }).success).toBe(false);
+  });
+});
+
+describe("CORS_ORIGINS", () => {
+  it("si no se define, solo permite el origen de FRONTEND_URL", () => {
+    const env = envSchema.parse({ ...base, FRONTEND_URL: "https://app.fitmanager.com/login" });
+    expect(origenesPermitidos(env)).toEqual(["https://app.fitmanager.com"]);
+  });
+
+  it("separa la lista por comas, sin espacios ni barras finales", () => {
+    const env = envSchema.parse({
+      ...base,
+      CORS_ORIGINS: "https://fitmanager.com/ , https://www.fitmanager.com",
+    });
+    expect(origenesPermitidos(env)).toEqual([
+      "https://fitmanager.com",
+      "https://www.fitmanager.com",
+    ]);
+  });
+
+  it.each(["fitmanager.com", "https://fitmanager.com/login", "*"])("rechaza %s", (valor) => {
+    expect(envSchema.safeParse({ ...base, CORS_ORIGINS: valor }).success).toBe(false);
+  });
+
+  it("rechaza un FRONTEND_URL que no es una URL", () => {
+    expect(envSchema.safeParse({ ...base, FRONTEND_URL: "localhost" }).success).toBe(false);
   });
 });

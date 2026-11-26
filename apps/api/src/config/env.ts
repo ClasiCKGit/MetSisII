@@ -21,7 +21,9 @@ export const envSchema = z.object({
   // usar el de prueba: onboarding@resend.dev
   MAIL_FROM: z.string().min(1, "MAIL_FROM es obligatoria"),
   // URL del frontend, para armar el link de recuperación de contraseña que va en el mail
-  FRONTEND_URL: z.string().min(1, "FRONTEND_URL es obligatoria").default("http://localhost:5173"),
+  FRONTEND_URL: z
+    .url({ protocol: /^https?$/, error: "FRONTEND_URL debe ser una URL http(s)" })
+    .default("http://localhost:5173"),
   // Cantidad de proxies (balanceador, CDN) delante de la API. Con 0, req.ip es la IP de
   // quien se conecta; detrás de un proxy sería la del proxy y el límite de intentos
   // bloquearía a todos juntos. En Render/Railway, 1.
@@ -30,7 +32,37 @@ export const envSchema = z.object({
     .int("TRUST_PROXY debe ser un entero")
     .min(0, "TRUST_PROXY no puede ser negativo")
     .default(0),
+  // Orígenes que pueden llamar a la API desde el navegador, separados por comas
+  // (ej.: "https://fitmanager.com,https://www.fitmanager.com"). Si no se define, solo FRONTEND_URL.
+  CORS_ORIGINS: z
+    .string()
+    .optional()
+    .transform((valor) =>
+      valor
+        ?.split(",")
+        .map((origen) => origen.trim().replace(/\/+$/, ""))
+        .filter(Boolean)
+    )
+    .refine(
+      (origenes) => origenes === undefined || origenes.every(esOrigenValido),
+      'CORS_ORIGINS debe ser una lista de orígenes separados por comas, como "https://fitmanager.com"'
+    ),
 });
+
+function esOrigenValido(origen: string): boolean {
+  try {
+    return new URL(origen).origin === origen;
+  } catch {
+    return false;
+  }
+}
+
+/** Orígenes permitidos por CORS: CORS_ORIGINS si está definida, si no el del frontend. */
+export function origenesPermitidos(variables: z.infer<typeof envSchema>): string[] {
+  return variables.CORS_ORIGINS?.length
+    ? variables.CORS_ORIGINS
+    : [new URL(variables.FRONTEND_URL).origin];
+}
 
 const parsed = envSchema.safeParse(process.env);
 

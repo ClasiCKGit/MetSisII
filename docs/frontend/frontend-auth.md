@@ -402,7 +402,7 @@ npm run lint
 npm test -w apps/web     # tests del frontend (no necesitan la API ni Postgres)
 ```
 
-La API tiene `cors()` abierto a cualquier origen; se restringe al dominio del frontend en el deploy (Epic 8).
+La API solo acepta por CORS el origen de `FRONTEND_URL` (por defecto `http://localhost:5173`) o los de `CORS_ORIGINS` si está definida. Si el front corre en otro puerto o dominio, agregarlo ahí; si no, el navegador bloquea las respuestas y la app muestra `No se pudo conectar con el servidor`.
 
 ---
 
@@ -463,7 +463,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | `Maximum update depth exceeded` con Zustand | Un selector devuelve un objeto nuevo en cada render | Selectores simples o `useShallow` (sección 6) |
 | Un `asChild` no hace nada | Ejemplo pensado para Radix | Usar la prop `render` (sección 7) |
 | La app queda en "Cargando…" | La API no responde o `VITE_API_URL` es incorrecta | Si el servidor no responde aparece el error con "Reintentar"; revisar la URL (sin `/api`) |
-| Error de CORS en la consola | La API no está accesible o rechaza el origen | Verificar que la API esté corriendo en la URL de `VITE_API_URL` |
+| Error de CORS en la consola | La API no está accesible o rechaza el origen | Verificar que la API esté corriendo en la URL de `VITE_API_URL` y que el origen del front esté en `FRONTEND_URL` o `CORS_ORIGINS` de la API |
 | Después de cambiar un rol sigue viéndose el menú viejo | El perfil se pide al abrir la app | Recargar la página |
 | Cerré sesión en una pestaña y la otra sigue abierta | `persist` no sincroniza pestañas | Se desloguea sola con el primer `401` |
 | `(!) Your Vite config uses features that are unsupported by configLoader: 'native'` | `__dirname` en `vite.config.ts`, o un import sin extensión entre archivos de configuración | Usar `import.meta.dirname` y poner la extensión (`"./vite.config.ts"`) |

@@ -83,7 +83,7 @@ Guarda gimnasios, usuarios y sesiones en memoria, y se vacía después de cada t
 | `PATCH /usuarios/:id` | `404` para un usuario inexistente **o de otro gimnasio**; `409` si un administrador intenta desactivarse o cambiar su propio rol; `400` ante campos no permitidos o un id que no es UUID. |
 | `POST /usuarios/:id/reset-password` | `409` sobre uno mismo, `404` si no existe o es de otro gimnasio, `204` si sale bien. |
 
-**CORS.** jsdom aplica CORS como un navegador, y la app y la API están en orígenes distintos. Por eso todas las respuestas llevan `Access-Control-Allow-Origin: *` (igual que el `cors()` del backend) y hay un manejador de `OPTIONS` para el preflight. Sin ese encabezado, axios falla con `No se pudo conectar con el servidor` aunque MSW sí haya respondido. Las funciones `respuesta()` y `sinContenido()` ya lo agregan: usarlas en los handlers nuevos.
+**CORS.** jsdom aplica CORS como un navegador, y la app y la API están en orígenes distintos. Por eso todas las respuestas llevan `Access-Control-Allow-Origin: *` (la API real, en cambio, solo acepta el origen de `FRONTEND_URL`, que coincide con el `http://localhost:5173` de jsdom) y hay un manejador de `OPTIONS` para el preflight. Sin ese encabezado, axios falla con `No se pudo conectar con el servidor` aunque MSW sí haya respondido. Las funciones `respuesta()` y `sinContenido()` ya lo agregan: usarlas en los handlers nuevos.
 
 ### Mantenerla al día
 
