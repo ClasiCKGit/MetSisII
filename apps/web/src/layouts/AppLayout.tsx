@@ -1,5 +1,6 @@
 import { cn } from "cn";
 import {
+  Building2Icon,
   ContactIcon,
   DumbbellIcon,
   HouseIcon,
@@ -37,6 +38,7 @@ const MENU: ItemMenu[] = [
   { to: "/usuarios", etiqueta: "Usuarios", icono: UsersIcon, roles: ["ADMIN"] },
   { to: "/profesores", etiqueta: "Profesores", icono: ContactIcon },
   { to: "/actividades", etiqueta: "Actividades", icono: DumbbellIcon },
+  { to: "/gimnasio", etiqueta: "Gimnasio", icono: Building2Icon, roles: ["ADMIN"] },
 ];
 
 export function AppLayout() {

@@ -13,6 +13,9 @@ interface FakeGimnasio {
   id: string;
   nombre: string;
   slug: string;
+  email: string | null;
+  telefono: string | null;
+  direccion: string | null;
   activo: boolean;
 }
 
@@ -553,6 +556,9 @@ export function crearHandlers(apiUrl: string) {
         id: crypto.randomUUID(),
         nombre: texto(gimnasio.nombre).trim(),
         slug,
+        email: null,
+        telefono: null,
+        direccion: null,
         activo: true,
       };
       estado.gimnasios.push(nuevo);
@@ -1069,6 +1075,42 @@ export function crearHandlers(apiUrl: string) {
       if (posicion === -1) return error(404, "Horario no encontrado");
       estado.horarios.splice(posicion, 1);
       return sinContenido();
+    }),
+
+    // ───── el gimnasio de la sesión: cualquiera lo ve, solo ADMIN lo edita (el slug, nunca)
+    http.get(`${base}/gimnasio`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const { id, nombre, slug, email, telefono, direccion } = actual.gimnasio;
+      return respuesta(200, { id, nombre, slug, email, telefono, direccion });
+    }),
+
+    http.patch(`${base}/gimnasio`, async ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      const permitidos = ["nombre", "email", "telefono", "direccion"];
+      const nombre = texto(cuerpo?.nombre).trim();
+      if (
+        !cuerpo ||
+        Object.keys(cuerpo).length === 0 ||
+        Object.keys(cuerpo).some((campo) => !permitidos.includes(campo)) ||
+        ("nombre" in cuerpo && (nombre.length < 2 || nombre.length > 100)) ||
+        ("email" in cuerpo && cuerpo.email !== null && !emailOpcionalValido(cuerpo.email)) ||
+        ("telefono" in cuerpo && !opcionalValido(cuerpo.telefono, 30)) ||
+        ("direccion" in cuerpo && !opcionalValido(cuerpo.direccion, 200))
+      ) {
+        return errorDeValidacion();
+      }
+
+      const gimnasio = actual.gimnasio;
+      if ("nombre" in cuerpo) gimnasio.nombre = nombre;
+      if ("email" in cuerpo) gimnasio.email = emailOpcional(cuerpo.email);
+      if ("telefono" in cuerpo) gimnasio.telefono = textoOpcional(cuerpo.telefono) || null;
+      if ("direccion" in cuerpo) gimnasio.direccion = textoOpcional(cuerpo.direccion) || null;
+      const { id, slug, email, telefono, direccion } = gimnasio;
+      return respuesta(200, { id, nombre: gimnasio.nombre, slug, email, telefono, direccion });
     }),
 
     // Métricas del inicio: cualquier usuario con sesión, solo con datos de su gimnasio
