@@ -40,7 +40,7 @@ function FormularioGimnasio({ gimnasio }: { gimnasio: DatosGimnasio }) {
     <form
       noValidate
       onSubmit={form.handleSubmit(enviar)}
-      className="flex max-w-xl flex-col gap-6 rounded-xl border bg-card p-5"
+      className="mx-auto flex w-full max-w-xl flex-col gap-6 rounded-xl border bg-card p-5"
     >
       <div className="flex flex-col gap-1">
         <span className="rotulo">Identificador para iniciar sesión</span>
