@@ -6,7 +6,7 @@ import { PAGOS_KEY } from "@/features/pagos/hooks/usePagos";
 import { MEMBRESIAS_KEY } from "./useMembresiasSocio";
 
 export function useTiposMembresia() {
-  return useQuery({ queryKey: ["tipos-membresia"], queryFn: listarTiposMembresia });
+  return useQuery({ queryKey: ["tipos-membresia"], queryFn: () => listarTiposMembresia() });
 }
 
 // La inscripción crea una membresía y un pago pendiente: cambian las membresías del socio,

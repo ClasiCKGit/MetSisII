@@ -254,6 +254,20 @@ export async function apiCrearTipoMembresia(
   return (await res.json()) as TipoMembresiaDePrueba;
 }
 
+export async function apiListarTiposMembresia(
+  token: string,
+  actividadId: string
+): Promise<Array<TipoMembresiaDePrueba & Record<string, unknown>>> {
+  const res = await fetch(`${API}/tipos-membresia?actividadId=${actividadId}`, {
+    headers: conToken(token),
+  });
+  return (await res.json()) as Array<TipoMembresiaDePrueba & Record<string, unknown>>;
+}
+
+export async function apiDarDeBajaTipoMembresia(token: string, id: string): Promise<void> {
+  await fetch(`${API}/tipos-membresia/${id}`, { method: "DELETE", headers: conToken(token) });
+}
+
 // Inscribe al socio: crea la membresía y su pago pendiente
 export async function apiInscribir(
   token: string,
