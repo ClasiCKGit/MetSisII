@@ -5,6 +5,7 @@ import { toast } from "@/components/ui/toast";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/store/auth.store";
 import { USANDO_API_REAL } from "./helpers/modo";
+import { cargarRutas } from "./helpers/render";
 import { restaurarServidor } from "./helpers/servidor";
 import { resetFakeApi } from "./mocks/fake-api";
 import { server } from "./mocks/server";
@@ -13,7 +14,8 @@ import { server } from "./mocks/server";
 // por defecto los findBy (la API compila y abre conexiones con la primera request)
 if (USANDO_API_REAL) configure({ asyncUtilTimeout: 10_000 });
 
-beforeAll(() => {
+beforeAll(async () => {
+  await cargarRutas();
   // "error": una petición sin handler hace fallar el test, en vez de salir a la red sin avisar
   // (en MSW 3 la opción se llama onUnhandledFrame; el nombre viejo, onUnhandledRequest, se ignora)
   if (!USANDO_API_REAL) server.listen({ onUnhandledFrame: "error" });
