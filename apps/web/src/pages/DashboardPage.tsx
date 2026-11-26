@@ -41,9 +41,11 @@ function TarjetaMetrica({ titulo, icono: Icono, valor, detalle }: TarjetaMetrica
           <Icono aria-hidden="true" className="size-5" />
         </span>
       </div>
+      {/* Alto fijo y alineado abajo: los montos van en letra más chica que los conteos, y sin esto
+          quedaban más arriba que los números de las otras tarjetas */}
       <p
         className={cn(
-          "font-heading leading-none font-black tracking-tight tabular-nums",
+          "flex h-15 items-end font-heading leading-none font-black tracking-tight tabular-nums",
           // Los montos son más largos que un conteo: van más chicos para no desbordar la tarjeta
           typeof valor === "string" ? "text-4xl break-all" : "text-6xl",
           valor === undefined && "text-muted-foreground"

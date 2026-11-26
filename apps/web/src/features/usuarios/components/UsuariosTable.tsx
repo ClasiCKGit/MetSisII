@@ -53,7 +53,7 @@ export function UsuariosTable({
           return (
             <TableRow key={usuario.id}>
               <TableCell>
-                <div className="flex items-center gap-2.5 font-semibold">
+                <div className="flex items-center justify-center gap-2.5 font-semibold">
                   <Iniciales nombre={usuario.nombre} apellido={usuario.apellido} />
                   <span className={usuario.activo ? undefined : "opacity-60"}>
                     {nombreCompleto}
@@ -78,7 +78,7 @@ export function UsuariosTable({
                 <EstadoActivo activo={usuario.activo} />
               </TableCell>
               <TableCell>
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-lg"

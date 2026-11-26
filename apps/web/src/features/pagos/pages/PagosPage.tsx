@@ -47,9 +47,10 @@ function fechaLocalIso(fecha: string, finDelDia = false): string | undefined {
 
 function TarjetaResumen({ titulo, valor }: { titulo: string; valor: string }) {
   return (
+    // El valor va al pie (mt-auto): si un título ocupa dos líneas, los tres montos siguen alineados
     <article className="flex flex-col gap-3 rounded-xl border bg-card p-5">
       <h2 className="rotulo text-card-foreground/80">{titulo}</h2>
-      <p className="font-heading text-3xl font-black tabular-nums">{valor}</p>
+      <p className="mt-auto font-heading text-3xl font-black tabular-nums">{valor}</p>
     </article>
   );
 }
@@ -223,7 +224,7 @@ export function PagosPage() {
                   <TableHead>Concepto</TableHead>
                   <TableHead>Método</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Monto</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -245,7 +246,7 @@ export function PagosPage() {
                     <TableCell>
                       <EstadoPagoBadge estado={pago.estado} />
                     </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">
+                    <TableCell className="font-semibold tabular-nums">
                       {formatearMonto(pago.monto)}
                     </TableCell>
                   </TableRow>

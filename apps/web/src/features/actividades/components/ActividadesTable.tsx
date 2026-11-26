@@ -33,7 +33,7 @@ export function ActividadesTable({
       <TableHeader>
         <TableRow>
           <TableHead>Actividad</TableHead>
-          <TableHead className="text-right">Cupo</TableHead>
+          <TableHead>Cupo</TableHead>
           <TableHead>Estado</TableHead>
           {puedeEditar && (
             <TableHead>
@@ -60,8 +60,8 @@ export function ActividadesTable({
                 <div
                   className={
                     actividad.activa
-                      ? "flex items-center gap-2.5"
-                      : "flex items-center gap-2.5 opacity-60"
+                      ? "flex items-center justify-center gap-2.5"
+                      : "flex items-center justify-center gap-2.5 opacity-60"
                   }
                 >
                   <span
@@ -85,7 +85,7 @@ export function ActividadesTable({
                   </div>
                 </div>
               </TableCell>
-              <TableCell className="text-right font-heading font-extrabold">
+              <TableCell className="font-heading font-extrabold">
                 {actividad.cupo ?? "Sin límite"}
               </TableCell>
               <TableCell>
@@ -93,7 +93,7 @@ export function ActividadesTable({
               </TableCell>
               {puedeEditar && (
                 <TableCell>
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-lg"

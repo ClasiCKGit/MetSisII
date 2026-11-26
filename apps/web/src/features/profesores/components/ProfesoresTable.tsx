@@ -63,7 +63,7 @@ export function ProfesoresTable({
           return (
             <TableRow key={profesor.id}>
               <TableCell>
-                <div className="flex items-center gap-2.5 font-semibold">
+                <div className="flex items-center justify-center gap-2.5 font-semibold">
                   <Iniciales nombre={profesor.nombre} apellido={profesor.apellido} />
                   <span className={profesor.activo ? undefined : "opacity-60"}>
                     {nombreCompleto}
@@ -82,7 +82,7 @@ export function ProfesoresTable({
               </TableCell>
               {puedeEditar && (
                 <TableCell>
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-lg"

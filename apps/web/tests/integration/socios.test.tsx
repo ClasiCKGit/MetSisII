@@ -74,8 +74,11 @@ describe("gestión de socios", () => {
     await screen.findByRole("row", { name: /Pérez, Lucía/ });
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar socios" }), "2899");
-    await waitFor(() =>
-      expect(screen.queryByRole("row", { name: /Pérez, Lucía/ })).not.toBeInTheDocument()
+    // La búsqueda espera 300 ms sin teclear antes de consultar: con el 1 s por defecto de waitFor
+    // el margen quedaba justo cuando la suite completa corre en paralelo
+    await waitFor(
+      () => expect(screen.queryByRole("row", { name: /Pérez, Lucía/ })).not.toBeInTheDocument(),
+      { timeout: 3000 }
     );
     expect(fila(/Álvarez, Juan/)).toBeInTheDocument();
 

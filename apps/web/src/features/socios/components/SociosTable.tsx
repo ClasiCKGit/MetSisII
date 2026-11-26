@@ -62,7 +62,7 @@ export function SociosTable({
           return (
             <TableRow key={socio.id}>
               <TableCell>
-                <div className="flex items-center gap-2.5 font-semibold">
+                <div className="flex items-center justify-center gap-2.5 font-semibold">
                   <Iniciales nombre={socio.nombre} apellido={socio.apellido} />
                   <Link
                     to={`/socios/${socio.id}`}
@@ -90,7 +90,7 @@ export function SociosTable({
                 <EstadoActivo activo={socio.activo} />
               </TableCell>
               <TableCell>
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-center gap-1">
                   <Button
                     variant="ghost"
                     size="icon-lg"
