@@ -3,6 +3,7 @@ import cron from "node-cron";
 import { prisma } from "../config/database";
 import { env } from "../config/env";
 import { logger } from "../config/logger";
+import { escaparHtml } from "../utils/html";
 import { enviarMail } from "../utils/mailer";
 import { rangoPorVencer } from "../modules/membresias/vigencia";
 
@@ -37,8 +38,8 @@ export async function enviarRecordatoriosDeVencimiento(): Promise<void> {
         to: email,
         subject: `Tu membresía en ${membresia.gimnasio.nombre} está por vencer`,
         html: `
-          <p>Hola ${membresia.socio.nombre},</p>
-          <p>Tu membresía de <strong>${membresia.actividad.nombre}</strong> vence el
+          <p>Hola ${escaparHtml(membresia.socio.nombre)},</p>
+          <p>Tu membresía de <strong>${escaparHtml(membresia.actividad.nombre)}</strong> vence el
           ${membresia.fechaFin.toLocaleDateString("es-AR", { timeZone: env.ZONA_HORARIA })}.</p>
           <p>Te recomendamos renovarla a tiempo para seguir disfrutando de tus actividades.</p>
         `,
