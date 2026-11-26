@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { toast } from "@/components/ui/toast";
 import { queryClient } from "@/lib/query-client";
@@ -8,6 +8,10 @@ import { USANDO_API_REAL } from "./helpers/modo";
 import { restaurarServidor } from "./helpers/servidor";
 import { resetFakeApi } from "./mocks/fake-api";
 import { server } from "./mocks/server";
+
+// Contra la API real, la primera pantalla de cada archivo tarda más que el segundo que esperan
+// por defecto los findBy (la API compila y abre conexiones con la primera request)
+if (USANDO_API_REAL) configure({ asyncUtilTimeout: 5000 });
 
 beforeAll(() => {
   // "error": una petición sin handler hace fallar el test, en vez de salir a la red sin avisar

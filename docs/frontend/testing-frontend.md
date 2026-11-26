@@ -81,6 +81,7 @@ Guarda gimnasios, usuarios y sesiones en memoria, y se vacía después de cada t
 | `POST /auth/change-password` | `400` si la actual es incorrecta o si la nueva es igual (no `401`, para no cerrar la sesión); `204` si sale bien. |
 | `GET/POST /usuarios` | Solo `ADMIN` (`403` si no). Alta con `409` si el email ya existe en el gimnasio y rol `RECEPCIONISTA` por defecto. Lista solo los del propio gimnasio. |
 | `PATCH /usuarios/:id` | `404` para un usuario inexistente **o de otro gimnasio**; `409` si un administrador intenta desactivarse o cambiar su propio rol; `400` ante campos no permitidos o un id que no es UUID. |
+| `POST /membresias/:id/renovaciones` | Mismas reglas que el service: empieza al terminar la actual (o ahora, si venció), sin contar la renovada en el cupo; `409` si ya fue renovada o está cancelada; crea el pago pendiente y marca `renovada`. El resumen del inicio no cuenta las renovadas. |
 | `GET/POST /tipos-membresia`, `PATCH/DELETE /tipos-membresia/:id` | Lista (opcionalmente por `?actividadId=`) ordenada por actividad y nombre. Crear, editar y dar de baja es de `ADMIN`. El `DELETE` es una baja lógica que responde `200` con el tipo; el `PATCH` acepta `activo` para reactivar. |
 | `GET/POST /horarios`, `PATCH/DELETE /horarios/:id` | Lista por `?actividadId=` ordenando por día y hora. Crear, editar y borrar es de `ADMIN`. Mismas reglas que el service: formato `HH:MM` y orden de las horas (`400`), actividad o asignación inexistente (`404`), asignación de otra actividad o actividad dada de baja (`409`). Al quitar una asignación (`DELETE /actividades/:id/profesores/:profesorId`), sus horarios quedan sin profesor. |
 | `POST /usuarios/:id/reset-password` | `409` sobre uno mismo, `404` si no existe o es de otro gimnasio, `204` si sale bien. |
@@ -117,7 +118,10 @@ Requisitos:
 DATABASE_URL="postgresql://fitmanager:fitmanager123@localhost:5433/fitmanager_dev_test?schema=public" npm run dev:api
 ```
 
-(Esa base la crea la suite del backend la primera vez que corre.)
+(Esa base la crea la suite del backend la primera vez que corre. Si después se agregó una migración, correr antes la suite del backend o `prisma migrate deploy` con esa `DATABASE_URL`.)
+
+- **Reiniciar la API después de cambiar su código.** Si se levantó con `tsx` sin `watch`, sigue sirviendo el código viejo y los endpoints nuevos responden `404 Ruta no encontrada`.
+- En este modo `tests/setup.ts` sube la espera de los `findBy` de 1 a 5 segundos (`configure({ asyncUtilTimeout })`): la primera pantalla de cada archivo tarda más contra la API real, y con 1 segundo el primer test de varios archivos fallaba por tiempo, no por un error.
 
 Correr este modo cada tanto, y siempre después de tocar `fake-api.ts` o la API, es lo que evita que la API falsa se convierta en una ficción que los tests aprueban pero el sistema real no cumple. Un par de tests funcionan igual en ambos modos gracias a ayudantes (por ejemplo, `simularServidorCaido`).
 

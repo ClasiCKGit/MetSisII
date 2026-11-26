@@ -15,3 +15,8 @@ export async function obtener(req: Request, res: Response) {
 export async function inscribir(req: Request, res: Response) {
   res.status(201).json(await service.inscribir(req.db, req.body));
 }
+
+export async function renovar(req: Request, res: Response) {
+  const { id } = membresiaIdParamSchema.parse(req.params);
+  res.status(201).json(await service.renovar(req.db, id, req.body));
+}

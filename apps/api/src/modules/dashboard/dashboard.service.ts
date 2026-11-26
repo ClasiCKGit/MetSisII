@@ -21,6 +21,8 @@ export async function obtenerResumen(
     db.membresia.count({
       where: {
         estado: { not: "CANCELADA" },
+        // Una membresía renovada vence, pero el socio ya tiene la siguiente
+        renovada: false,
         fechaFin: { gte: porVencer.desde, lt: porVencer.hasta },
       },
     }),

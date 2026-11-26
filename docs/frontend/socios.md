@@ -26,6 +26,7 @@ Permisos en la interfaz, iguales a los de la API:
 | FIT-49 | Listado con búsqueda y filtro por estado |
 | FIT-50 | Alta y edición en diálogos |
 | FIT-51 | Detalle del socio con sus membresías (vigencia) y el historial de pagos |
+| FIT-95 | Renovar una membresía desde el detalle del socio |
 | FIT-72 (parcial) | Métrica "Socios activos" en el inicio |
 
 ---
@@ -57,7 +58,12 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 - Muestra los datos personales, el estado y un botón para editar (abre el mismo diálogo de edición).
 - La **fecha de nacimiento** se guarda como medianoche UTC y se muestra con `timeZone: "UTC"`: si no, en Argentina (UTC-3) aparecería el día anterior.
 - Un socio inexistente o de otro gimnasio muestra "No encontramos a ese socio." (la API responde `404` en los dos casos).
-- **Membresías**: `useMembresiasSocio(id)` llama a `GET /api/membresias?socioId=…`. Cada una muestra actividad, tipo, fecha de fin (en UTC) y un badge con la vigencia que calcula la API (`Al día`, `Por vencer`, `Vencida` o `Cancelada`).
+- **Membresías**: `useMembresiasSocio(id)` llama a `GET /api/membresias?socioId=…`. Cada una muestra actividad, tipo, fecha de fin (en UTC) y un badge con la vigencia que calcula la API (`Al día`, `Por vencer`, `Vencida` o `Cancelada`). Las ya renovadas agregan "· renovada".
+- **Renovar** (FIT-95): un botón en cada membresía que se puede renovar. Se ofrece solo en **la más reciente de cada actividad** que no esté cancelada ni renovada, y solo si el socio está activo (`idsRenovables` en `SocioDetallePage`); así no se ofrece renovar una vencida vieja que la API rechazaría. Abre `RenovarMembresiaDialog`:
+  - Dice cuándo empieza la renovación: "el dd/mm/aaaa, cuando vence la actual" o, si ya venció, "empieza hoy". La fecha no se elige.
+  - **Tipo de membresía**: los tipos activos de la misma actividad, con el actual elegido por defecto. Si el actual se dio de baja, hay que elegir otro; si la actividad no tiene ninguno activo, el diálogo lo avisa y no deja confirmar.
+  - **Método de pago**, con el monto del pago pendiente que se va a registrar.
+  - Llama a `POST /api/membresias/:id/renovaciones` (`useRenovarMembresia`), que invalida `["membresias"]`, `["pagos"]` y `["dashboard"]`, igual que la inscripción. Los errores de la API (ya renovada, sin cupo) se muestran en el diálogo.
 - **Historial de pagos**: `usePagosSocio(id)` llama a `GET /api/pagos?socioId=…`, del más reciente al más antiguo. Muestra concepto (o actividad y tipo de la membresía), fecha, método, monto y estado. Usa la misma clave de TanStack Query que la pantalla de pagos (`["pagos", filtros]`), así que invalidar `["pagos"]` refresca las dos; no usa `keepPreviousData` para que al cambiar de socio no se vean los pagos del anterior.
 - Los formatos de pagos (montos en centavos, etiquetas, concepto) y `EstadoPagoBadge` están en `features/pagos/formato.ts` y `features/pagos/components/`, compartidos con `PagosPage`.
 - **Cobro de pagos pendientes**: cada pago `PENDIENTE` del historial tiene los botones **Cobrado** y **Rechazar** (`AccionesPagoPendiente`), que llaman a `PATCH /api/pagos/:id/estado`. El cambio no tiene vuelta atrás: la API solo acepta cambiar un pago pendiente (`409` si no). `useActualizarEstadoPago` invalida `["pagos"]` y `["dashboard"]`, porque un pago cobrado suma a los ingresos del mes.
@@ -74,7 +80,7 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 
 - `DashboardPage` usa `useResumen()` (`features/dashboard/hooks/useResumen.ts`), que llama a `GET /api/dashboard/resumen`, y muestra tres tarjetas: **Socios activos**, **Ingresos del mes** (con `formatearMonto` de `features/pagos/formato.ts`) y **Vencimientos próximos**.
 - Mientras carga o si falla, cada tarjeta muestra un guion y un texto que explica el motivo; con datos, el número.
-- Debajo, **"Vencen en los próximos 7 días"** lista esas membresías con `useVencimientosProximos()` (`GET /api/membresias?vigencia=POR_VENCER`), con enlace al detalle de cada socio. Su clave cuelga de `["dashboard"]`, así que se refresca junto con las métricas.
+- Debajo, **"Vencen en los próximos 7 días"** lista esas membresías con `useVencimientosProximos()` (`GET /api/membresias?vigencia=POR_VENCER`), con enlace al detalle de cada socio. Deja afuera las ya renovadas (`renovada: true`), igual que el contador del resumen. Su clave cuelga de `["dashboard"]`, así que se refresca junto con las métricas.
 - Las mutaciones de socios (`useCrearSocio`, `useActualizarSocio`) invalidan también la clave `["dashboard"]`: al dar de alta o de baja un socio y volver al inicio, el número ya está actualizado.
 
 ---
@@ -85,7 +91,7 @@ Sin esa diferencia, vaciar el email de un socio al editarlo no tenía ningún ef
 apps/web/src/
 ├── api/
 │   ├── socios.api.ts               # listarSocios, obtenerSocio, crearSocio, actualizarSocio
-│   ├── membresias.api.ts           # listarMembresiasSocio, listarMembresiasPorVigencia, inscribirSocio
+│   ├── membresias.api.ts           # listarMembresiasSocio, listarMembresiasPorVigencia, inscribirSocio, renovarMembresia
 │   ├── tipos-membresia.api.ts      # listarTiposMembresia
 │   ├── pagos.api.ts                # listarPagos, actualizarEstadoPago
 │   └── dashboard.api.ts            # obtenerResumen
@@ -128,6 +134,7 @@ Helpers en `tests/helpers/api.ts`: `apiCrearSocio`, `apiListarSocios` (activos e
 |---|---|
 | `tests/integration/socios.test.tsx` | Listado y orden, aislamiento, búsqueda y filtro, alta, validaciones del cliente, DNI repetido, edición que borra un opcional, baja y reactivación, permisos de la recepción, detalle (incluida la fecha en UTC), socio de otro gimnasio y enlace del menú |
 | `tests/integration/socio-detalle.test.tsx` | Membresías e historial de pagos del socio |
+| `tests/integration/renovacion.test.tsx` | Renovar por vencer (con el mismo plan, empieza al terminar la actual) y con otro plan, renovar una vencida desde hoy, plan dado de baja, socio dado de baja y que la renovada salga de los vencimientos del inicio |
 | `tests/integration/inscripcion.test.tsx` | Inscripción completa (con la fecha y el pago que quedan en la API), opciones de actividad y tipo, validaciones, error de la API por inscripción repetida, aviso sin tipos, socio dado de baja, y cobro o rechazo de un pago pendiente |
 | `tests/integration/dashboard.test.tsx` | Conteo de socios activos del propio gimnasio, `0` sin socios, actualización al dar de alta, ingresos del mes (solo pagos cobrados) y vencimientos próximos con la lista y el enlace al socio |
 

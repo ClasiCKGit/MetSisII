@@ -95,6 +95,7 @@ interface FakeMembresia {
   fechaInicio: string;
   fechaFin: string;
   estado: "ACTIVA" | "VENCIDA" | "CANCELADA";
+  renovada: boolean;
   createdAt: string;
 }
 type EstadoPago = "PENDIENTE" | "PAGADO" | "RECHAZADO";
@@ -1088,7 +1089,7 @@ export function crearHandlers(apiUrl: string) {
         )
         .reduce((total, p) => total + Math.round(Number(p.monto) * 100), 0);
       const vencimientosProximos = estado.membresias.filter(
-        (m) => m.gimnasioId === gimnasioId && estadoVigencia(m) === "POR_VENCER"
+        (m) => m.gimnasioId === gimnasioId && !m.renovada && estadoVigencia(m) === "POR_VENCER"
       ).length;
       return respuesta(200, {
         sociosActivos,
@@ -1447,6 +1448,7 @@ export function crearHandlers(apiUrl: string) {
         fechaInicio: inicio.toISOString(),
         fechaFin: fin.toISOString(),
         estado: "ACTIVA",
+        renovada: false,
         createdAt: ahora,
       };
       const pago: FakePago = {
@@ -1463,6 +1465,94 @@ export function crearHandlers(apiUrl: string) {
       };
       estado.membresias.push(membresia);
       estado.pagos.push(pago);
+      return respuesta(201, {
+        ...membresiaConRelaciones(membresia),
+        pago: { id: pago.id, monto: pago.monto, metodoPago: pago.metodoPago, estado: pago.estado },
+      });
+    }),
+
+    // Igual que el service: la nueva empieza cuando termina la actual (o ahora, si venció),
+    // sin contar a la actual en el cupo ni como membresía existente
+    http.post(`${base}/membresias/:id/renovaciones`, async ({ request, params }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        Object.keys(cuerpo).some((campo) => !["tipoMembresiaId", "metodoPago"].includes(campo)) ||
+        !METODOS_PAGO.includes(texto(cuerpo.metodoPago)) ||
+        (cuerpo.tipoMembresiaId !== undefined && !UUID.test(texto(cuerpo.tipoMembresiaId)))
+      ) {
+        return errorDeValidacion();
+      }
+      const gimnasioId = actual.gimnasio.id;
+      const vieja = estado.membresias.find((m) => m.id === id && m.gimnasioId === gimnasioId);
+      if (!vieja) return error(404, "Membresía no encontrada");
+      if (vieja.estado === "CANCELADA") {
+        return error(409, "No se puede renovar una membresía cancelada");
+      }
+      if (vieja.renovada) return error(409, "La membresía ya fue renovada");
+
+      const socio = estado.socios.find((s) => s.id === vieja.socioId);
+      const actividad = estado.actividades.find((a) => a.id === vieja.actividadId);
+      const tipoId = texto(cuerpo.tipoMembresiaId) || vieja.tipoMembresiaId;
+      const tipo = estado.tiposMembresia.find(
+        (t) => t.id === tipoId && t.gimnasioId === gimnasioId
+      );
+      if (!socio?.activo) return error(404, "Socio inexistente o inactivo");
+      if (!actividad?.activa) return error(404, "Actividad inexistente o inactiva");
+      if (!tipo?.activo || tipo.actividadId !== actividad.id) {
+        return error(400, "El tipo de membresía no está activo para esta actividad");
+      }
+
+      const ahora = new Date();
+      const finActual = new Date(vieja.fechaFin);
+      const inicio = finActual > ahora ? finActual : ahora;
+      const otras = estado.membresias.filter(
+        (m) => m.id !== vieja.id && m.actividadId === actividad.id && m.estado === "ACTIVA"
+      );
+      if (otras.some((m) => m.socioId === socio.id && new Date(m.fechaFin) >= inicio)) {
+        return error(409, "El socio ya tiene una membresía activa para esta actividad");
+      }
+      const vigentes = otras.filter(
+        (m) => new Date(m.fechaInicio) <= inicio && new Date(m.fechaFin) >= inicio
+      );
+      if (actividad.cupo !== null && vigentes.length >= actividad.cupo) {
+        return error(409, "La actividad no tiene cupo disponible");
+      }
+
+      const fin = new Date(inicio);
+      fin.setDate(fin.getDate() + tipo.duracionDias);
+      const membresia: FakeMembresia = {
+        id: crypto.randomUUID(),
+        gimnasioId,
+        socioId: socio.id,
+        actividadId: actividad.id,
+        tipoMembresiaId: tipo.id,
+        fechaInicio: inicio.toISOString(),
+        fechaFin: fin.toISOString(),
+        estado: "ACTIVA",
+        renovada: false,
+        createdAt: ahora.toISOString(),
+      };
+      const pago: FakePago = {
+        id: crypto.randomUUID(),
+        gimnasioId,
+        socioId: socio.id,
+        membresiaId: membresia.id,
+        monto: Number(tipo.precio).toFixed(2),
+        fecha: ahora.toISOString(),
+        metodoPago: texto(cuerpo.metodoPago),
+        estado: "PENDIENTE",
+        concepto: null,
+        createdAt: ahora.toISOString(),
+      };
+      estado.membresias.push(membresia);
+      estado.pagos.push(pago);
+      vieja.renovada = true;
       return respuesta(201, {
         ...membresiaConRelaciones(membresia),
         pago: { id: pago.id, monto: pago.monto, metodoPago: pago.metodoPago, estado: pago.estado },

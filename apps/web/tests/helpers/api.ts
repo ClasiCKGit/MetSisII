@@ -271,7 +271,14 @@ export async function apiDarDeBajaTipoMembresia(token: string, id: string): Prom
 // Inscribe al socio: crea la membresía y su pago pendiente
 export async function apiInscribir(
   token: string,
-  datos: { socioId: string; actividadId: string; tipoMembresiaId: string; metodoPago: string }
+  datos: {
+    socioId: string;
+    actividadId: string;
+    tipoMembresiaId: string;
+    metodoPago: string;
+    // ISO; en el pasado sirve para armar membresías por vencer o vencidas
+    fechaInicio?: string;
+  }
 ): Promise<{ id: string; pago: { id: string; monto: string } }> {
   const res = await fetch(`${API}/membresias/inscripciones`, {
     method: "POST",
@@ -358,8 +365,18 @@ export interface MembresiaDePrueba {
   id: string;
   fechaInicio: string;
   fechaFin: string;
+  renovada: boolean;
   actividad: { id: string; nombre: string };
   tipoMembresia: { id: string; nombre: string };
+}
+
+export async function apiRenovar(token: string, membresiaId: string): Promise<void> {
+  const res = await fetch(`${API}/membresias/${membresiaId}/renovaciones`, {
+    method: "POST",
+    headers: conToken(token),
+    body: JSON.stringify({ metodoPago: "EFECTIVO" }),
+  });
+  if (!res.ok) throw new Error(`No se pudo renovar: ${res.status} ${await res.text()}`);
 }
 
 export async function apiListarMembresias(
@@ -373,13 +390,22 @@ export async function apiListarMembresias(
 export async function apiListarPagos(
   token: string,
   socioId: string
-): Promise<Array<{ id: string; monto: string; metodoPago: string; estado: string }>> {
+): Promise<
+  Array<{
+    id: string;
+    monto: string;
+    metodoPago: string;
+    estado: string;
+    membresiaId: string | null;
+  }>
+> {
   const res = await fetch(`${API}/pagos?socioId=${socioId}`, { headers: conToken(token) });
   return (await res.json()) as Array<{
     id: string;
     monto: string;
     metodoPago: string;
     estado: string;
+    membresiaId: string | null;
   }>;
 }
 

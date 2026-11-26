@@ -9,6 +9,7 @@ Las pruebas de estos módulos combinan integración contra PostgreSQL y una prue
 - Rutas protegidas, aislamiento por gimnasio y filtros de membresías.
 - Alta de inscripción junto con su pago, importe tomado del tipo de membresía y serialización decimal con dos dígitos.
 - Rechazo de inscripciones sin método de pago y de duplicados, sin crear registros parciales.
+- Renovación (`renovaciones.test.ts`): fecha de inicio al terminar la actual o desde hoy si venció, cambio de tipo, pago creado, doble renovación y dos renovaciones simultáneas, canceladas, cupo sin contar la renovada, tipo inválido, socio o actividad inactivos, validación del body, aislamiento, y que una renovada no cuente en los vencimientos próximos.
 - Filtros de pagos por socio, estado, método y fechas inclusivas.
 - Alta de pagos, rechazo de importes inválidos, aislamiento y transiciones desde `PENDIENTE`.
 - Reversión de una transacción interactiva si falla una operación interna, cubierta en `tests/integration/tenant.test.ts`.
@@ -26,5 +27,5 @@ La suite deriva la base de pruebas de `DATABASE_URL`, agregando el sufijo `_test
 También se pueden ejecutar solo los módulos nuevos desde `apps/api`:
 
 ```powershell
-npx vitest run tests/unit/membresia-vigencia.test.ts tests/integration/tipos-membresia.test.ts tests/integration/membresias.test.ts tests/integration/pagos.test.ts
+npx vitest run tests/unit/membresia-vigencia.test.ts tests/integration/tipos-membresia.test.ts tests/integration/membresias.test.ts tests/integration/renovaciones.test.ts tests/integration/pagos.test.ts
 ```

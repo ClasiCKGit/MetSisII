@@ -254,6 +254,8 @@ model Membresia {
   fechaFin        DateTime
   estado          EstadoMembresia @default(ACTIVA)
   recordatorioEnviado Boolean        @default(false)
+  // true cuando ya se renovó: la renovación es otra membresía que empieza cuando termina esta
+  renovada        Boolean         @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 

@@ -129,6 +129,7 @@ interface DatosMembresia {
   fechaFin?: Date;
   estado?: "ACTIVA" | "VENCIDA" | "CANCELADA";
   recordatorioEnviado?: boolean;
+  renovada?: boolean;
 }
 
 export async function crearMembresia(
@@ -150,6 +151,7 @@ export async function crearMembresia(
       fechaFin,
       estado: datos.estado ?? "ACTIVA",
       recordatorioEnviado: datos.recordatorioEnviado ?? false,
+      renovada: datos.renovada ?? false,
     },
   });
 }

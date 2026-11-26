@@ -122,7 +122,7 @@ Las tres métricas salen de `req.db`, así que nunca incluyen datos de otro gimn
 
 - **`sociosActivos`**: `socio.count({ where: { activo: true } })`.
 - **`ingresosMes`**: suma (`aggregate`) de los pagos `PAGADO` cuya `fecha` cae en el mes calendario en curso, como texto con dos decimales (`"1500.75"`, `"0.00"` si no hay), igual que los montos de pagos. "El mes" se calcula en la zona horaria `ZONA_HORARIA` (por defecto `America/Argentina/Buenos_Aires`) con `rangoDelMes` de `src/utils/fechas.ts`: el servidor corre en UTC y, sin esto, entre las 21:00 y las 24:00 del último día del mes los pagos contarían para el mes siguiente.
-- **`vencimientosProximos`**: membresías no canceladas con vigencia `POR_VENCER` (vencen hoy o en los próximos 7 días). Usa `rangoPorVencer` de `membresias/vigencia.ts`, la misma regla de días UTC que `estadoVigencia`, así que coincide con `GET /api/membresias?vigencia=POR_VENCER` (un test unitario lo verifica en los bordes).
+- **`vencimientosProximos`**: membresías no canceladas **ni renovadas** con vigencia `POR_VENCER` (vencen hoy o en los próximos 7 días). Usa `rangoPorVencer` de `membresias/vigencia.ts`, la misma regla de días UTC que `estadoVigencia`, así que coincide con `GET /api/membresias?vigencia=POR_VENCER` (un test unitario lo verifica en los bordes).
 
 ---
 
