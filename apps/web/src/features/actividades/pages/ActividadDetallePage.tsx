@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { EstadoActivo } from "@/components/shared/EstadoActivo";
 import { getErrorMessage } from "@/lib/api-error";
 import { useAuthStore } from "@/store/auth.store";
+import { HorariosDeLaActividad } from "../components/HorariosDeLaActividad";
 import { ProfesoresDeLaActividad } from "../components/ProfesoresDeLaActividad";
 import { useActividad } from "../hooks/useProfesoresDeActividad";
 
@@ -54,6 +55,7 @@ export function ActividadDetallePage() {
       </div>
 
       <ProfesoresDeLaActividad actividad={actividad} puedeEditar={puedeEditar} />
+      <HorariosDeLaActividad actividad={actividad} puedeEditar={puedeEditar} />
     </div>
   );
 }

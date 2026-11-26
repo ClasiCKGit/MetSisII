@@ -66,6 +66,16 @@ interface FakeVinculo {
   actividadId: string;
   profesorId: string;
 }
+type DiaSemana = "LUNES" | "MARTES" | "MIERCOLES" | "JUEVES" | "VIERNES" | "SABADO" | "DOMINGO";
+interface FakeHorario {
+  id: string;
+  gimnasioId: string;
+  actividadId: string;
+  diaSemana: DiaSemana;
+  horaInicio: string;
+  horaFin: string;
+  actividadProfesorId: string | null;
+}
 interface FakeTipoMembresia {
   id: string;
   gimnasioId: string;
@@ -107,6 +117,7 @@ const estado = {
   profesores: [] as FakeProfesor[],
   actividades: [] as FakeActividad[],
   vinculos: [] as FakeVinculo[],
+  horarios: [] as FakeHorario[],
   socios: [] as FakeSocio[],
   tiposMembresia: [] as FakeTipoMembresia[],
   membresias: [] as FakeMembresia[],
@@ -123,6 +134,7 @@ export function resetFakeApi(): void {
   estado.profesores.length = 0;
   estado.actividades.length = 0;
   estado.vinculos.length = 0;
+  estado.horarios.length = 0;
   estado.socios.length = 0;
   estado.tiposMembresia.length = 0;
   estado.membresias.length = 0;
@@ -291,6 +303,33 @@ const METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "MERCADO_PAGO"];
 const ESTADOS_PAGO: EstadoPago[] = ["PENDIENTE", "PAGADO", "RECHAZADO"];
 const MONTO = /^\d{1,8}(?:\.\d{1,2})?$/;
 const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+// Mismo orden que el enum de Prisma: la API ordena por día de lunes a domingo y después por hora
+const DIAS_SEMANA: DiaSemana[] = [
+  "LUNES",
+  "MARTES",
+  "MIERCOLES",
+  "JUEVES",
+  "VIERNES",
+  "SABADO",
+  "DOMINGO",
+];
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+const diaValido = (valor: unknown): valor is DiaSemana => DIAS_SEMANA.includes(valor as DiaSemana);
+const horaValida = (valor: unknown) => typeof valor === "string" && HORA.test(valor);
+const vinculoValido = (valor: unknown) =>
+  valor === undefined || valor === null || (typeof valor === "string" && UUID.test(valor));
+
+// Igual que verificarVinculo del service: 404 si la asignación no existe en el gimnasio,
+// 409 si es de otra actividad
+function errorDeVinculo(gimnasioId: string, vinculoId: string, actividadId: string) {
+  const vinculo = estado.vinculos.find((v) => v.id === vinculoId && v.gimnasioId === gimnasioId);
+  if (!vinculo) return error(404, "La asignación de profesor no existe");
+  if (vinculo.actividadId !== actividadId) {
+    return error(409, "El profesor no está asignado a la actividad de este horario");
+  }
+  return null;
+}
+
 const fechaIsoValida = (valor: unknown) =>
   typeof valor === "string" && !Number.isNaN(new Date(valor).getTime());
 
@@ -907,9 +946,130 @@ export function crearHandlers(apiUrl: string) {
       );
       if (posicion === -1) return error(404, "El profesor no está asignado a esta actividad");
 
+      // Como el onDelete: SetNull de la base: los horarios de esa asignación quedan sin profesor
+      const vinculoId = estado.vinculos[posicion]?.id;
+      for (const horario of estado.horarios) {
+        if (horario.actividadProfesorId === vinculoId) horario.actividadProfesorId = null;
+      }
       estado.vinculos.splice(posicion, 1);
       return sinContenido();
     }),
+    // ───── horarios: cualquier usuario con sesión consulta; crear, editar y borrar es de ADMIN
+    http.get(`${base}/horarios`, ({ request }) => {
+      const actual = autenticar(request);
+      if (actual instanceof Response) return actual;
+      const actividadId = new URL(request.url).searchParams.get("actividadId");
+      if (actividadId !== null && !UUID.test(actividadId)) return errorDeValidacion();
+
+      const lista = estado.horarios
+        .filter((h) => h.gimnasioId === actual.gimnasio.id)
+        .filter((h) => actividadId === null || h.actividadId === actividadId)
+        .sort(
+          (a, b) =>
+            DIAS_SEMANA.indexOf(a.diaSemana) - DIAS_SEMANA.indexOf(b.diaSemana) ||
+            a.horaInicio.localeCompare(b.horaInicio)
+        );
+      return respuesta(200, lista);
+    }),
+
+    http.post(`${base}/horarios`, async ({ request }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+
+      const cuerpo = await leerJson(request);
+      if (
+        !cuerpo ||
+        !UUID.test(texto(cuerpo.actividadId)) ||
+        !diaValido(cuerpo.diaSemana) ||
+        !horaValida(cuerpo.horaInicio) ||
+        !horaValida(cuerpo.horaFin) ||
+        texto(cuerpo.horaInicio) >= texto(cuerpo.horaFin) ||
+        !vinculoValido(cuerpo.actividadProfesorId)
+      ) {
+        return errorDeValidacion();
+      }
+
+      const actividadId = texto(cuerpo.actividadId);
+      const actividad = estado.actividades.find(
+        (a) => a.id === actividadId && a.gimnasioId === actual.gimnasio.id
+      );
+      if (!actividad) return error(404, "Actividad no encontrada");
+      const vinculoId = texto(cuerpo.actividadProfesorId) || null;
+      if (vinculoId) {
+        const fallo = errorDeVinculo(actual.gimnasio.id, vinculoId, actividadId);
+        if (fallo) return fallo;
+      }
+      if (!actividad.activa) return error(409, "La actividad está dada de baja");
+
+      const horario: FakeHorario = {
+        id: crypto.randomUUID(),
+        gimnasioId: actual.gimnasio.id,
+        actividadId,
+        diaSemana: cuerpo.diaSemana,
+        horaInicio: texto(cuerpo.horaInicio),
+        horaFin: texto(cuerpo.horaFin),
+        actividadProfesorId: vinculoId,
+      };
+      estado.horarios.push(horario);
+      return respuesta(201, horario);
+    }),
+
+    http.patch(`${base}/horarios/:id`, async ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const cuerpo = await leerJson(request);
+      const permitidos = ["diaSemana", "horaInicio", "horaFin", "actividadProfesorId"];
+      if (
+        !cuerpo ||
+        Object.keys(cuerpo).length === 0 ||
+        Object.keys(cuerpo).some((campo) => !permitidos.includes(campo)) ||
+        ("diaSemana" in cuerpo && !diaValido(cuerpo.diaSemana)) ||
+        ("horaInicio" in cuerpo && !horaValida(cuerpo.horaInicio)) ||
+        ("horaFin" in cuerpo && !horaValida(cuerpo.horaFin)) ||
+        !vinculoValido(cuerpo.actividadProfesorId)
+      ) {
+        return errorDeValidacion();
+      }
+
+      const horario = estado.horarios.find(
+        (h) => h.id === id && h.gimnasioId === actual.gimnasio.id
+      );
+      if (!horario) return error(404, "Horario no encontrado");
+      const vinculoId = texto(cuerpo.actividadProfesorId);
+      if (vinculoId) {
+        const fallo = errorDeVinculo(actual.gimnasio.id, vinculoId, horario.actividadId);
+        if (fallo) return fallo;
+      }
+      const horaInicio = "horaInicio" in cuerpo ? texto(cuerpo.horaInicio) : horario.horaInicio;
+      const horaFin = "horaFin" in cuerpo ? texto(cuerpo.horaFin) : horario.horaFin;
+      if (horaInicio >= horaFin) {
+        return error(400, "La hora de inicio debe ser anterior a la de fin");
+      }
+
+      if (diaValido(cuerpo.diaSemana)) horario.diaSemana = cuerpo.diaSemana;
+      horario.horaInicio = horaInicio;
+      horario.horaFin = horaFin;
+      if ("actividadProfesorId" in cuerpo) horario.actividadProfesorId = vinculoId || null;
+      return respuesta(200, horario);
+    }),
+
+    http.delete(`${base}/horarios/:id`, ({ request, params }) => {
+      const actual = autenticarAdmin(request);
+      if (actual instanceof Response) return actual;
+      const id = String(params.id);
+      if (!UUID.test(id)) return errorDeValidacion();
+
+      const posicion = estado.horarios.findIndex(
+        (h) => h.id === id && h.gimnasioId === actual.gimnasio.id
+      );
+      if (posicion === -1) return error(404, "Horario no encontrado");
+      estado.horarios.splice(posicion, 1);
+      return sinContenido();
+    }),
+
     // Métricas del inicio: cualquier usuario con sesión, solo con datos de su gimnasio
     http.get(`${base}/dashboard/resumen`, ({ request }) => {
       const actual = autenticar(request);
