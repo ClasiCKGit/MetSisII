@@ -10,7 +10,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 
 | Funcionalidad | Estado |
 |---|---|
-| Registro de gimnasio con su primer administrador | ✅ |
+| Registro de gimnasio con su primer administrador, y edición de sus datos | ✅ |
 | Inicio de sesión por gimnasio, cambio de contraseña y recuperación por mail | ✅ |
 | Gestión de usuarios del personal (solo administradores) | ✅ |
 | Alta, edición, baja y listado de socios | ✅ |
@@ -131,7 +131,7 @@ MetSisII/
 │   │   │   ├── middlewares/    # autenticación, roles, validación y manejo de errores
 │   │   │   ├── modules/        # un módulo por dominio: routes → controller → service + schema
 │   │   │   │                   # (auth, usuarios, socios, profesores, actividades, horarios,
-│   │   │   │                   #  tipos-membresia, membresias, pagos, dashboard)
+│   │   │   │                   #  tipos-membresia, membresias, pagos, dashboard, gimnasio)
 │   │   │   ├── jobs/           # tareas programadas (recordatorio de vencimiento)
 │   │   │   ├── utils/          # JWT, contraseñas, fechas, mails
 │   │   │   ├── app.ts          # setup de Express y montaje de rutas

@@ -137,6 +137,12 @@ sequenceDiagram
 
 Las dos páginas están bajo `GuestOnly`: si quien abre el link del mail ya tiene una sesión iniciada en ese navegador, lo redirige adentro de la app en lugar de mostrar el formulario.
 
+### Datos del gimnasio (FIT-99)
+
+`GimnasioPage` (`features/gimnasio/`), en el ítem **Gimnasio** del menú, solo para administradores. Muestra el identificador (slug) como texto, con la aclaración de que no se puede cambiar, y un formulario con nombre, email, teléfono y dirección (`gimnasioSchema`, mismas reglas que la API; los opcionales vacíos se mandan como `null` para borrarlos).
+
+Al guardar, `useActualizarGimnasio` deja en la caché lo que devolvió la API y **actualiza el nombre en el store de la sesión** (`useAuthStore.setState`), así el menú lateral muestra el nombre nuevo sin recargar ni volver a pedir `/me`.
+
 ### Registro de gimnasios habilitado o no
 
 `useAuthConfig` pide `GET /api/auth/config` (con `staleTime: Infinity`, porque solo cambia si se reinicia la API). `LoginPage` muestra el enlace "Registrá tu gimnasio" solo si la API confirma que el registro está abierto. `RegisterPage` muestra "Registro no disponible" si está cerrado; si la consulta falla (API caída) muestra el formulario igual, porque la que decide es la API al enviar.
@@ -202,6 +208,7 @@ Las rutas se declaran como **datos** (`routes/index.tsx` exporta un `RouteObject
 | `/reset-password` | `GuestOnly` | `ResetPasswordPage` dentro de `AuthLayout` (link del mail, con `?token=`) |
 | `/` | `RequireAuth` | `DashboardPage` dentro de `AppLayout` |
 | `/usuarios` | `RequireAuth` + `RequireRole(ADMIN)` | `UsuariosPage` |
+| `/gimnasio` | `RequireAuth` + `RequireRole(ADMIN)` | `GimnasioPage`: datos del gimnasio (ver más abajo) |
 | cualquier otra | — | `NotFoundPage` |
 
 | Guard | Qué hace |
@@ -458,6 +465,7 @@ Con el backend y la base cargada con `npm run db:seed`, en `http://localhost:517
 | Cerrar sesión | "Salir" | Login con el gimnasio precargado |
 | Cambiar la contraseña | "Cambiar contraseña" con la actual correcta | "Contraseña actualizada" y sigue adentro; otro navegador con una sesión del mismo usuario vuelve al login en el próximo request |
 | Recuperar la contraseña | "¿Olvidaste tu contraseña?" con un usuario cuyo email sea el de la cuenta de Resend (con el remitente de prueba solo llega ahí) | "Revisá tu email"; el link del mail permite elegir una contraseña nueva y vuelve al login. Usarlo dos veces: "El link no es válido o expiró" |
+| Datos del gimnasio | Como admin, "Gimnasio" en el menú: cambiar el nombre y guardar | "Datos del gimnasio actualizados" y el menú lateral muestra el nombre nuevo; el identificador se ve pero no se edita |
 | Registro cerrado | `REGISTRO_GIMNASIOS_HABILITADO=false` en `apps/api/.env`, reiniciar la API y abrir `/login` y `/registro` | Sin enlace al registro; `/registro` muestra "Registro no disponible" |
 
 ---
