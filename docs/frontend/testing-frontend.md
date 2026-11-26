@@ -100,6 +100,8 @@ Si la API cambia (un endpoint nuevo, un mensaje de error distinto, una regla nue
 
 ---
 
+> Para pruebas en un navegador real contra el build de producción, ver `docs/frontend/testing-e2e.md` (Playwright).
+
 ## 5. Modo real: comprobar que la API falsa es fiel
 
 Con `TEST_API=real` la suite **se salta MSW** y corre contra la API verdadera:

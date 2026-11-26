@@ -40,7 +40,7 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Base de datos | PostgreSQL 16 (Docker), Prisma 7 |
 | Frontend | React 19, Vite 8, Tailwind 4, shadcn/ui sobre Base UI, React Router, TanStack Query, Zustand, react-hook-form |
 | Testing | Vitest, Supertest (API), Testing Library + MSW (web) |
-| Calidad y CI | ESLint, Prettier, Husky + lint-staged, GitHub Actions |
+| Calidad y CI | ESLint, Prettier, Husky + lint-staged, GitHub Actions, Playwright (e2e) |
 
 Es un monorepo con npm workspaces: `apps/api` y `apps/web`.
 
@@ -113,10 +113,12 @@ Todos se corren desde la raíz.
 npm test                 # todos los tests
 npm test -w apps/api     # API: necesita Postgres levantado
 npm test -w apps/web     # web: no necesita la API ni Postgres
+npm run test:e2e         # punta a punta en un navegador real (Playwright): necesita Postgres
 ```
 
 - Los tests de la API corren contra una base aparte con sufijo `_test`, que se crea y migra sola; nunca tocan la base de desarrollo.
 - Los tests de la web usan una API falsa en memoria (MSW). Con `TEST_API=real` corren contra la API verdadera.
+- Las pruebas e2e abren la app en Chromium contra el build de producción y la API real; levantan los servidores solas. La primera vez hay que instalar el navegador con `cd apps/web && npx playwright install chromium`.
 - Para correr un solo archivo o un solo test: `cd apps/api && npx vitest run tests/integration/auth.test.ts` o `cd apps/web && npx vitest run -t "nombre del test"`.
 
 ## Estructura del proyecto
@@ -146,7 +148,8 @@ MetSisII/
 │       │   ├── lib/            # cliente axios, errores, utilidades
 │       │   ├── routes/         # rutas y guards
 │       │   └── store/          # sesión (Zustand)
-│       └── tests/              # mocks de MSW, integration/ y unit/
+│       ├── tests/              # mocks de MSW, integration/ y unit/
+│       └── tests-e2e/          # pruebas de punta a punta con Playwright
 ├── docs/                       # documentación técnica
 ├── docker-compose.yml          # Postgres para desarrollo (y la imagen de la API, con npm run docker:api)
 └── package.json                # workspaces y scripts de la raíz
@@ -173,6 +176,7 @@ MetSisII/
 | Socios (web) | [`docs/frontend/socios.md`](docs/frontend/socios.md) |
 | Actividades, profesores, horarios y planes (web) | [`docs/frontend/actividades.md`](docs/frontend/actividades.md) |
 | Tests de la web | [`docs/frontend/testing-frontend.md`](docs/frontend/testing-frontend.md) |
+| Pruebas e2e (Playwright) | [`docs/frontend/testing-e2e.md`](docs/frontend/testing-e2e.md) |
 
 ## Flujo de trabajo
 

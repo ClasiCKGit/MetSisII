@@ -303,6 +303,8 @@ El job **"Lint y build"** ejecuta, en un entorno limpio:
 
 El job **"Tests"** levanta un servicio de Postgres 16 y ejecuta `npm test` (API y frontend). El detalle está en `docs/backend/testing-backend.md`, sección 9.
 
+El job **"Pruebas e2e (Playwright)"** abre la app en Chromium contra el build de producción y la API real sobre una base de pruebas (ver `docs/frontend/testing-e2e.md`). Si falla, deja el reporte de Playwright como artefacto.
+
 El job **"Imagen Docker de la API"** construye `apps/api/Dockerfile` (sin publicar la imagen), para detectar a tiempo un cambio que rompa el build de producción: una dependencia que falta en `dependencies`, un archivo excluido por `.dockerignore`, etc. Ver `docs/backend/deploy.md`.
 
 ### 6.3 Decisiones de configuración
