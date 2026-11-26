@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fitmanager-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Imagen de producción de la API, para probarla en local contra el Postgres de arriba.
+  # Tiene perfil propio: `npm run db:up` sigue levantando solo la base.
+  #   npm run docker:api   (equivale a: docker compose --profile api up -d --build)
+  api:
+    profiles: ["api"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: fitmanager-api
+    container_name: fitmanager-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Toma el resto de las variables (JWT_SECRET, RESEND_API_KEY, ...) de apps/api/.env
+    env_file: apps/api/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Dentro de la red de Compose la base es "postgres:5432", no localhost:POSTGRES_PORT
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    ports:
+      # 3001 para no chocar con `npm run dev`, que usa el 3000
+      - "${API_DOCKER_PORT:-3001}:3000"
+
+volumes:
+  pgdata:

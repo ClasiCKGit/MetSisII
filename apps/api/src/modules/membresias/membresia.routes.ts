@@ -1,0 +1,25 @@
+import { Router } from "express";
+import { authenticate, requireRole } from "../../middlewares/auth.middleware";
+import { validateBody } from "../../middlewares/validate.middleware";
+import * as controller from "./membresia.controller";
+import { inscribirSocioSchema, renovarMembresiaSchema } from "./membresia.schema";
+
+export const membresiasRouter = Router();
+
+membresiasRouter.use(authenticate);
+membresiasRouter.get("/", controller.listar);
+membresiasRouter.get("/:id", controller.obtener);
+membresiasRouter.post(
+  "/inscripciones",
+  requireRole("ADMIN", "RECEPCIONISTA"),
+  validateBody(inscribirSocioSchema),
+  controller.inscribir
+);
+membresiasRouter.post(
+  "/:id/renovaciones",
+  requireRole("ADMIN", "RECEPCIONISTA"),
+  validateBody(renovarMembresiaSchema),
+  controller.renovar
+);
+// Solo ADMIN, como la baja de socios: deshace un cobro pendiente
+membresiasRouter.post("/:id/cancelacion", requireRole("ADMIN"), controller.cancelar);
