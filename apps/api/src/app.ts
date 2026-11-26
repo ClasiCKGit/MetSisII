@@ -15,6 +15,7 @@ import { horariosRouter } from "./modules/horarios/horarios.routes";
 import { sociosRouter } from "./modules/socios/socios.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { pagosRouter } from "./modules/pagos/pagos.routes";
+import { gimnasioRouter } from "./modules/gimnasio/gimnasio.routes";
 
 export function createApp() {
   const app = express();
@@ -41,6 +42,7 @@ export function createApp() {
   app.use("/api/horarios", horariosRouter);
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/pagos", pagosRouter);
+  app.use("/api/gimnasio", gimnasioRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

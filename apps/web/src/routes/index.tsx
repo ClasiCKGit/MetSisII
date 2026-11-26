@@ -7,6 +7,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { GimnasioPage } from "@/features/gimnasio/pages/GimnasioPage";
 import { ProfesoresPage } from "@/features/profesores/pages/ProfesoresPage";
 import { ActividadesPage } from "@/features/actividades/pages/ActividadesPage";
 import { ActividadDetallePage } from "@/features/actividades/pages/ActividadDetallePage";
@@ -48,7 +49,10 @@ export const routes: RouteObject[] = [
           {
             // Solo administradores
             element: <RequireRole roles={["ADMIN"]} />,
-            children: [{ path: "usuarios", element: <UsuariosPage /> }],
+            children: [
+              { path: "usuarios", element: <UsuariosPage /> },
+              { path: "gimnasio", element: <GimnasioPage /> },
+            ],
           },
           { path: "profesores", element: <ProfesoresPage /> },
           { path: "actividades", element: <ActividadesPage /> },

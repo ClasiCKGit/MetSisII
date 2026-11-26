@@ -34,7 +34,7 @@ El mismo email puede existir en dos gimnasios distintos (por ejemplo, alguien qu
 
 ## 3. Endpoints
 
-Prefijos: `/api/auth` (sesión y cuenta propia) y `/api/usuarios` (gestión del personal, solo `ADMIN`).
+Prefijos: `/api/auth` (sesión y cuenta propia), `/api/usuarios` (gestión del personal, solo `ADMIN`) y `/api/gimnasio` (datos del gimnasio propio).
 
 ### `GET /api/auth/config`
 
@@ -260,6 +260,27 @@ Todas las rutas requieren `Authorization: Bearer <token>` y rol `ADMIN` (un `REC
 - **Crear un usuario con un email que ya existe en el gimnasio** responde `409`, aunque el existente esté desactivado.
 - **Un usuario de otro gimnasio responde `404`**, igual que uno inexistente.
 - **Desactivar corta el acceso al instante**, porque `authenticate` verifica el estado en cada request. Los usuarios no se borran, solo se desactivan.
+
+---
+
+### Datos del gimnasio (`/api/gimnasio`, FIT-99)
+
+Siempre el gimnasio de la sesión: la ruta **no lleva id**. Los dos endpoints usan `req.db`, y `TENANT_RULES` solo deja leer y actualizar el gimnasio propio, así que no hay forma de llegar a otro gimnasio aunque se lo intente.
+
+| Endpoint | Quién | Qué hace | Respuesta |
+|---|---|---|---|
+| `GET /api/gimnasio` | Cualquier usuario con sesión | Devuelve `id`, `nombre`, `slug`, `email`, `telefono` y `direccion` (no `activo` ni fechas) | `200` |
+| `PATCH /api/gimnasio` | `ADMIN` | Actualiza los campos enviados y responde con los datos guardados | `200` |
+
+```json
+// PATCH /api/gimnasio (al menos un campo; null o texto vacío borra un opcional)
+{ "nombre": "FitZone Centro", "email": "hola@fitzone.com", "telefono": null }
+```
+
+- **El slug no se puede cambiar.** Es lo que todo el personal escribe al iniciar sesión (y más adelante el subdominio): cambiarlo dejaría a todos sin poder entrar con lo que conocen. El body es un `strictObject`, así que `slug`, `activo` o cualquier otro campo dan `400`.
+- `nombre`: de 2 a 100 caracteres, igual que en el registro. `email`: se normaliza como en el resto de la API (recortado y en minúsculas). `telefono` hasta 30 caracteres y `direccion` hasta 200; un texto vacío se guarda como `null`.
+- **El nombre nuevo se ve enseguida en la sesión** (`GET /api/auth/me`) y en los mails a los socios (el asunto del recordatorio usa el nombre del gimnasio).
+- Desactivar un gimnasio no se hace desde acá: el borrado es lógico y queda fuera de la API (ver `TENANT_RULES`).
 
 ## 4. Reglas de validación
 
@@ -623,11 +644,16 @@ apps/api/src/
 │   │   ├── auth.service.ts         Lógica: registerGimnasio, login, changePassword, forgotPassword y resetPassword
 │   │   ├── auth.controller.ts      Handlers HTTP
 │   │   └── auth.routes.ts          Rutas de /api/auth
-│   └── usuarios/
-│       ├── usuarios.schema.ts      Schemas de Zod (crear, actualizar, resetear, id)
-│       ├── usuarios.service.ts     Lógica de gestión del personal
-│       ├── usuarios.controller.ts  Handlers HTTP
-│       └── usuarios.routes.ts      Rutas de /api/usuarios (solo ADMIN)
+│   ├── usuarios/
+│   │   ├── usuarios.schema.ts      Schemas de Zod (crear, actualizar, resetear, id)
+│   │   ├── usuarios.service.ts     Lógica de gestión del personal
+│   │   ├── usuarios.controller.ts  Handlers HTTP
+│   │   └── usuarios.routes.ts      Rutas de /api/usuarios (solo ADMIN)
+│   └── gimnasio/
+│       ├── gimnasio.schema.ts      Schema de Zod de la actualización (sin slug)
+│       ├── gimnasio.service.ts     obtener y actualizar el gimnasio de la sesión
+│       ├── gimnasio.controller.ts  Handlers HTTP
+│       └── gimnasio.routes.ts      Rutas de /api/gimnasio (PATCH solo ADMIN)
 ├── types/
 │   └── express.d.ts                Agrega auth y db a Request
 └── utils/
@@ -747,6 +773,7 @@ npm test
 | `registro-habilitado.test.ts` | `GET /api/auth/config` y el registro con `REGISTRO_GIMNASIOS_HABILITADO` apagado |
 | `env.test.ts` | Interpretación de `REGISTRO_GIMNASIOS_HABILITADO`, `TRUST_PROXY`, `CORS_ORIGINS` y `FRONTEND_URL` |
 | `usuarios.test.ts` | Gestión del personal y reglas del administrador |
+| `gimnasio.test.ts` | Ver y editar los datos del gimnasio: permisos, normalización, slug no editable y aislamiento |
 | `login-timing.test.ts` | Tiempo de respuesta constante del login |
 | `rate-limit.test.ts` | Límite de intentos, también detrás de un proxy |
 | `app-config.test.ts` | `trust proxy` y orígenes permitidos por CORS |
