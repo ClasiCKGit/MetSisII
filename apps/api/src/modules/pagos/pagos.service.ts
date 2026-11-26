@@ -68,11 +68,15 @@ export async function crearPago(db: TenantClient, input: CrearPagoInput) {
   if (input.membresiaId) {
     const membresia = await db.membresia.findUnique({
       where: { id: input.membresiaId },
-      select: { id: true, socioId: true },
+      select: { id: true, socioId: true, estado: true },
     });
     if (!membresia) throw new AppError(404, "Membresía no encontrada");
     if (membresia.socioId !== input.socioId) {
       throw new AppError(400, "La membresía no pertenece al socio indicado");
+    }
+    // Al cancelarla se rechazan sus pagos pendientes: no se le puede cargar uno nuevo
+    if (membresia.estado === "CANCELADA") {
+      throw new AppError(409, "La membresía está cancelada");
     }
   }
 

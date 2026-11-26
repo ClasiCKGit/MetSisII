@@ -21,3 +21,5 @@ membresiasRouter.post(
   validateBody(renovarMembresiaSchema),
   controller.renovar
 );
+// Solo ADMIN, como la baja de socios: deshace un cobro pendiente
+membresiasRouter.post("/:id/cancelacion", requireRole("ADMIN"), controller.cancelar);
