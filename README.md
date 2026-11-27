@@ -26,11 +26,13 @@ Los usuarios del sistema son el personal del gimnasio, con dos roles: **administ
 | Aviso por mail a los socios con la membresía por vencer | ✅ |
 | Gráficos (ingresos por mes, actividades con más inscriptos) | 🚧 |
 | Pago online con Mercado Pago | 🚧 |
-| Deploy en producción: API y base en Railway, web en Netlify, respaldo diario cifrado (configurado; falta crear los servicios) | 🚧 |
+| Deploy en producción: web en Netlify (https://fitmanagerproyect.netlify.app), API y base en Railway, respaldo diario cifrado | ✅ |
 
 ### Fuera de alcance
 
 - **Acceso de los socios** (ver sus datos, inscribirse a actividades o consultar su cuota desde la web). El sistema es para el personal del gimnasio: los socios no tienen usuario ni inicio de sesión. Sumarlo implica otro tipo de cuenta, un rol nuevo con sus permisos y pantallas propias, y quedó fuera del alcance de esta entrega. El socio sí recibe por mail el aviso de que su membresía está por vencer.
+
+- **Dominio propio y un subdominio por gimnasio** (`fitzone.fitmanager.com`). Cada usuario elige su gimnasio escribiendo el identificador (slug) en el login, así que la app funciona con las URLs de Netlify y Railway sin comprar un dominio. El aislamiento entre gimnasios no depende de la URL: lo aplica la API en cada consulta, según la sesión. Sumarlo implica comprar el dominio, configurar un DNS comodín (`*.dominio`) en Netlify, tomar el slug de la URL en el login, aceptar esos orígenes en CORS y verificar el dominio en Resend. Los slugs reservados (`www`, `api`, `app`...) ya contemplan ese uso.
 
 ## Tecnologías
 
