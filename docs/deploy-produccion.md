@@ -159,3 +159,15 @@ docker run --rm -v "$PWD:/respaldo" postgres:18-alpine \
 - [ ] "Olvidé mi contraseña" manda el mail y el link abre la web de Netlify.
 - [ ] `REGISTRO_GIMNASIOS_HABILITADO=false` después de crear los gimnasios.
 - [ ] El respaldo diario de la base corrió al menos una vez.
+
+---
+
+## 6. Problemas que aparecieron en el primer deploy
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| Railway muestra el recuadro de **Railpack** y falla con `No start command detected` | La rama que despliega no tiene `railway.json` (pasó porque `main` todavía no tenía los cambios de `dev`), o el servicio no lo lee | Que `railway.json` y `apps/api/Dockerfile` estén en `main`. Si sigue, cargar la variable `RAILWAY_DOCKERFILE_PATH=apps/api/Dockerfile` o poner `/railway.json` en *Settings → Config-as-code*. No agregar un start command ni cambiar el Root Directory: se saltearía el Dockerfile |
+| La API crashea con `PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL` | La variable no llega al contenedor. En nuestro caso la referencia `${{Postgres.DATABASE_URL}}` no se resolvía | Pegar en la API el valor real de `DATABASE_URL` del servicio de Postgres. Revisar que esté en el servicio de la API y aplicar los cambios con **Deploy** |
+| La web queda en negro | El build se hizo sin `VITE_API_URL`, o con un valor que no es una URL completa (sin `https://`). `src/config/env.ts` la valida y corta la carga | Corregir la variable en Netlify y **Clear cache and deploy site**. Vite la escribe dentro del build: cambiarla no alcanza sin un deploy nuevo |
+| El login falla con un error de red | CORS: `FRONTEND_URL` de Railway no es exactamente la URL de Netlify | `https://<sitio>.netlify.app`, sin barra final |
+| "Application failed to respond" al abrir la URL de Railway | El puerto del dominio no es el que escucha la API | Usar el que figura en el log `API corriendo en http://localhost:<puerto>` (Railway pone `PORT`, normalmente 8080) |
