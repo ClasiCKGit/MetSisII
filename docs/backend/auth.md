@@ -22,7 +22,7 @@ Documentación del módulo de autenticación de `apps/api`: cómo se registra un
 |---|---|
 | **Gimnasio (tenant)** | Un cliente del sistema. Tiene un `slug` único (por ejemplo `fitzone-bahia-blanca`) que lo identifica. |
 | **Usuario** | Cuenta del staff de un gimnasio (admin o recepción). El email es único **dentro de cada gimnasio**, no global. |
-| **Slug** | Identificador del gimnasio en el login. Más adelante saldrá del subdominio. |
+| **Slug** | Identificador del gimnasio en el login. Un subdominio por gimnasio quedó fuera de alcance (ver el README), pero los slugs reservados ya lo contemplan. |
 | **`req.auth`** | Datos del usuario autenticado (id, rol, gimnasio). Lo completa `authenticate`. |
 | **`req.db`** | Cliente de Prisma limitado al gimnasio del usuario. Lo completa `authenticate`. |
 
@@ -277,7 +277,7 @@ Siempre el gimnasio de la sesión: la ruta **no lleva id**. Los dos endpoints us
 { "nombre": "FitZone Centro", "email": "hola@fitzone.com", "telefono": null }
 ```
 
-- **El slug no se puede cambiar.** Es lo que todo el personal escribe al iniciar sesión (y más adelante el subdominio): cambiarlo dejaría a todos sin poder entrar con lo que conocen. El body es un `strictObject`, así que `slug`, `activo` o cualquier otro campo dan `400`.
+- **El slug no se puede cambiar.** Es lo que todo el personal escribe al iniciar sesión (y lo sería el subdominio, si se agrega): cambiarlo dejaría a todos sin poder entrar con lo que conocen. El body es un `strictObject`, así que `slug`, `activo` o cualquier otro campo dan `400`.
 - `nombre`: de 2 a 100 caracteres, igual que en el registro. `email`: se normaliza como en el resto de la API (recortado y en minúsculas). `telefono` hasta 30 caracteres y `direccion` hasta 200; un texto vacío se guarda como `null`.
 - **El nombre nuevo se ve enseguida en la sesión** (`GET /api/auth/me`) y en los mails a los socios (el asunto del recordatorio usa el nombre del gimnasio).
 - Desactivar un gimnasio no se hace desde acá: el borrado es lógico y queda fuera de la API (ver `TENANT_RULES`).
